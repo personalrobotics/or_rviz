@@ -1,0 +1,23 @@
+<package>
+  <description brief="superviewer">
+
+     superviewer is a new viewer meant to replace OpenRAVEs other viewers while providing more functionality and being faster, and all around cooler.
+
+  </description>
+  <author>Matt Klingensmith</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/superviewer</url>
+  <depend package="openrave"/>
+  <depend package="rviz"/>
+  <depend package="ogre_tools"/>
+  <rosdep name="eigen"/>
+	<export>
+	<cpp cflags="`pkg-config --cflags eigen3` -I${prefix}/include"/>
+	</export>
+
+  <rosdep name="libqt4-dev"/>
+
+</package>
+
+
