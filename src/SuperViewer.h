@@ -10,6 +10,7 @@
 #include "Plugins/KinBodyDisplay.h"
 #include "Plugins/KinBodyVisual.h"
 #include "Plugins/LinkVisual.h"
+#include <map>
 
 namespace superviewer
 {
@@ -76,6 +77,8 @@ namespace superviewer
 
             virtual void RemoveKinBody(OpenRAVE::KinBodyPtr kinBody);
 
+            inline bool HasKinBody(std::string name) { return m_kinBodies.find(name) != m_kinBodies.end(); }
+
 
             public Q_SLOTS:
                  void syncUpdate();
@@ -84,6 +87,8 @@ namespace superviewer
 
             rviz::VisualizationManager* m_rvizManager;
             rviz::RenderPanel* m_mainRenderPanel;
+            std::map<std::string, KinBodyDisplay*> m_kinBodies;
+
 
             bool m_autoSync;
             std::string m_name;

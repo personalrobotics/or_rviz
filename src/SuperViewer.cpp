@@ -77,7 +77,12 @@ namespace superviewer
 
     SuperViewer::~SuperViewer()
     {
+        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
+        {
+            delete it->second;
+        }
 
+        m_kinBodies.clear();
     }
 
     int SuperViewer::main(bool showWindow)
@@ -146,89 +151,20 @@ namespace superviewer
 
         std::vector<OpenRAVE::KinBodyPtr> bodies;
         GetEnv()->GetBodies(bodies);
-        rviz::DisplayWrapper* boxDisplay = m_rvizManager->createDisplay( "rviz/Marker", "box", true );
-
-        if(!boxDisplay)
-        {
-            return;
-        }
-
-        rviz::Display* display = boxDisplay->getDisplay();
-        rviz::MarkerDisplay* marker = dynamic_cast<rviz::MarkerDisplay*>(display);
-        marker->setFixedFrame("world");
 
         for(size_t i = 0; i < bodies.size(); i++)
         {
-            const OpenRAVE::KinBodyPtr& body = bodies.at(i);
-            const std::vector<OpenRAVE::KinBody::LinkPtr>& links = body->GetLinks();
-
-            for(size_t j = 0; j < links.size(); j++)
+            if(!HasKinBody(bodies[i]->GetName()))
             {
-                const OpenRAVE::KinBody::LinkPtr& link = links.at(i);
-                const std::vector<OpenRAVE::KinBody::Link::GeometryPtr>& geoms = link->GetGeometries();
-
-                for(size_t k = 0; k < geoms.size(); k++)
-                {
-                    const OpenRAVE::KinBody::Link::GeometryPtr& geometry = geoms.at(k);
-
-                    switch(geometry->GetType())
-                    {
-                        case OpenRAVE::GT_Box:
-                        case OpenRAVE::GT_Cylinder:
-                        case OpenRAVE::GT_Sphere:
-                        case OpenRAVE::GT_TriMesh:
-                        default:
-                        {
-
-                            OpenRAVE::Transform ident;
-                            ident.identity();
-                            OpenRAVE::AABB aabb = geometry->ComputeAABB(ident);
-                           if(isnan(aabb.extents.x))
-                           {
-                               continue;
-                           }
-
-                           RAVELOG_INFO("AABB extents are: %f %f %f\n", aabb.extents.x, aabb.extents.y, aabb.extents.z);
-
-
-                            rviz::ShapeMarker* shapeMarker = new rviz::ShapeMarker(marker, m_rvizManager, m_rvizManager->getSceneManager()->getRootSceneNode());
-
-
-                            visualization_msgs::Marker markerMsg;
-                            OpenRAVE::RaveVector<double> translation = (link->GetTransform() * geometry->GetTransform()).trans;
-                            OpenRAVE::RaveVector<double> rotation = (link->GetTransform() * geometry->GetTransform()).rot;
-                            RAVELOG_INFO("Object translation are: %f %f %f\n", translation.x, translation.y, translation.z);
-                            markerMsg.header.frame_id = "world";
-                            markerMsg.header.stamp = ros::Time();
-                            markerMsg.color.r = geometry->GetDiffuseColor().x;
-                            markerMsg.color.g = geometry->GetDiffuseColor().y;
-                            markerMsg.color.b = geometry->GetDiffuseColor().z;
-                            markerMsg.color.a = 1.0f;
-                            markerMsg.scale.x = aabb.extents.x;
-                            markerMsg.scale.y = aabb.extents.y;
-                            markerMsg.scale.z = aabb.extents.z;
-                            markerMsg.action = visualization_msgs::Marker::ADD;
-                            markerMsg.pose.position.x = translation.x;
-                            markerMsg.pose.position.y = translation.y;
-                            markerMsg.pose.position.z = translation.z;
-                            markerMsg.pose.orientation.x = rotation.x;
-                            markerMsg.pose.orientation.y = rotation.y;
-                            markerMsg.pose.orientation.z = rotation.z;
-                            markerMsg.pose.orientation.w = rotation.w;
-
-
-                            markerMsg.type = visualization_msgs::Marker::CUBE;
-                            shapeMarker->setMessage(markerMsg);
-
-                            break;
-                        }
-                    }
-                    break;
-                }
-                break;
+                KinBodyDisplay* display = new KinBodyDisplay(bodies[i], m_rvizManager->getSceneManager());
+                display->setFixedFrame("World");
+                m_kinBodies[bodies[i]->GetName()] = display;
             }
-            break;
         }
+
+
+
+
         GetEnv()->GetMutex().unlock();
     }
 
@@ -374,8 +310,8 @@ namespace superviewer
 
     void SuperViewer::RemoveKinBody(OpenRAVE::KinBodyPtr kinBody)
     {
-        //TODO: Implement
-        return;
+        delete m_kinBodies[kinBody->GetName()];
+        m_kinBodies.erase(kinBody->GetName());
     }
 
     void SuperViewer::syncUpdate()

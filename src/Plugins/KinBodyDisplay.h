@@ -8,21 +8,29 @@
 #ifndef KINBODYDISPLAY_H_
 #define KINBODYDISPLAY_H_
 
+#include <openrave-core.h>
+
 #include <rviz/display.h>
+#include "KinBodyVisual.h"
 
 namespace superviewer
 {
 
-    class KinBodyDisplay : rviz::Display
+    class KinBodyDisplay : public rviz::Display
     {
         public:
-            KinBodyDisplay();
+            KinBodyDisplay(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             virtual ~KinBodyDisplay();
 
             virtual void onInitialize();
             virtual void fixedFrameChanged();
             virtual void reset();
             virtual void createProperties();
+
+        protected:
+            virtual void onEnable() { }
+            virtual void onDisable() { }
+            KinBodyVisual* m_visual;
 
     };
 

@@ -5,20 +5,43 @@
  *      Author: mklingen
  */
 
+#include "../Converters.h"
 #include "KinBodyDisplay.h"
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 
 namespace superviewer
 {
 
-    KinBodyDisplay::KinBodyDisplay()
+    KinBodyDisplay::KinBodyDisplay(OpenRAVE::KinBodyPtr kinBod, Ogre::SceneManager* sceneManager)
     {
-        // TODO Auto-generated constructor stub
-
+        m_visual = new KinBodyVisual(sceneManager, sceneManager->getRootSceneNode(), kinBod);
     }
 
     KinBodyDisplay::~KinBodyDisplay()
     {
-        // TODO Auto-generated destructor stub
+        delete m_visual;
     }
+
+    void  KinBodyDisplay::onInitialize()
+    {
+        //TODO: Implement
+    }
+
+    void  KinBodyDisplay::fixedFrameChanged()
+    {
+        //TODO: Implement
+    }
+
+    void  KinBodyDisplay::reset()
+    {
+        //TODO: Implement
+    }
+
+    void  KinBodyDisplay::createProperties()
+    {
+        //TODO: Implement
+    }
+
 
 } /* namespace superviewer */

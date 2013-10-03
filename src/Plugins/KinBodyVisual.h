@@ -10,6 +10,7 @@
 
 #include <openrave/openrave.h>
 #include <openrave/kinbody.h>
+#include <vector>
 
 namespace Ogre
 {
@@ -21,6 +22,7 @@ namespace Ogre
 namespace superviewer
 {
 
+    class LinkVisual;
     class KinBodyVisual
     {
         public:
@@ -46,6 +48,7 @@ namespace superviewer
             Ogre::SceneManager* m_sceneManager;
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
+            std::vector<LinkVisual*> m_links;
 
     };
 
