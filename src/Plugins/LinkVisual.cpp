@@ -21,6 +21,7 @@
 #include <OgreMeshManager.h>
 #include <OgreMeshSerializer.h>
 #include "KinBodyVisual.h"
+#include <boost/filesystem.hpp>
 
 namespace superviewer
 {
@@ -37,6 +38,13 @@ namespace superviewer
         m_sceneManager->destroySceneNode(m_sceneNode);
     }
 
+
+    Ogre::MeshPtr meshToOgre(OpenRAVE::TriMesh* trimesh, std::string name)
+    {
+
+        Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "superviewer");
+                return mesh;
+    }
 
     void LinkVisual::CreateParts()
     {
