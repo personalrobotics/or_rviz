@@ -41,6 +41,8 @@ namespace superviewer
             inline Ogre::SceneNode* GetParentNode() { return m_parentNode; }
             inline void SetParentNode(Ogre::SceneNode* value) { m_parentNode = value; }
 
+            void UpdateTransforms();
+
             void CreateParts();
 
         protected:

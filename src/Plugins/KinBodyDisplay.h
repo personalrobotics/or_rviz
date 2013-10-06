@@ -22,6 +22,8 @@ namespace superviewer
             KinBodyDisplay(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             virtual ~KinBodyDisplay();
 
+            inline void UpdateTransforms() { m_visual->UpdateTransforms(); }
+
             virtual void onInitialize();
             virtual void fixedFrameChanged();
             virtual void reset();

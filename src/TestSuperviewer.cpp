@@ -14,6 +14,25 @@ using namespace std;
 void OpenraveThread(EnvironmentBasePtr penv, std::string scenefilename)
 {
     penv->Load(scenefilename); // load the scene
+    sleep(2);
+
+    std::vector<OpenRAVE::RobotBasePtr> robots;
+    penv->GetRobots(robots);
+    OpenRAVE::RobotBasePtr robot = robots[0];
+
+    while(true)
+    {
+        usleep(10000);
+        std::vector<double> values;
+        robot->GetActiveDOFValues(values);
+
+        for(size_t i = 0; i < values.size(); i++)
+        {
+            values[i] += ((float)rand() / (float)RAND_MAX - 0.5f) * 0.05f;
+        }
+
+        robot->SetActiveDOFValues(values, false);
+    }
 }
 
 int main(int argc, char ** argv)
@@ -21,7 +40,7 @@ int main(int argc, char ** argv)
     //int num = 1;
     QApplication app(argc, argv);
     ros::init(argc, argv, "superviewer", ros::init_options::AnonymousName);
-    string scenefilename = "data/lab1.env.xml";
+    string scenefilename = "data/wam_cabinet.env.xml";
     string viewername = "superviewer";
     // parse the command line options
     int i = 1;
@@ -55,6 +74,7 @@ int main(int argc, char ** argv)
     penv->Add(viewer);
 
     boost::thread threadRave(boost::bind(OpenraveThread,penv,scenefilename));
+
     viewer->main(true);
 
     threadRave.join();

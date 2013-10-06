@@ -43,6 +43,22 @@ namespace superviewer
     }
 
 
+    void KinBodyVisual::UpdateTransforms()
+    {
+        m_sceneNode->setPosition(converters::ToOgreVector(m_kinBody->GetTransform().trans));
+        m_sceneNode->setOrientation(converters::ToOgreQuaternion(m_kinBody->GetTransform().rot));
+        for(size_t i = 0; i < m_kinBody->GetLinks().size(); i++)
+        {
+            LinkVisual* visual = m_links.at(i);
+            OpenRAVE::KinBody::LinkPtr link = m_kinBody->GetLinks().at(i);
+
+            OpenRAVE::Transform relativeTransform = m_kinBody->GetTransform().inverse() * link->GetTransform();
+
+            visual->GetSceneNode()->setPosition(converters::ToOgreVector(relativeTransform.trans));
+            visual->GetSceneNode()->setOrientation(converters::ToOgreQuaternion(relativeTransform.rot));
+        }
+    }
+
     void KinBodyVisual::CreateParts()
     {
         for(size_t i = 0; i < m_kinBody->GetLinks().size(); i++)

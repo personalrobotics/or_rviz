@@ -12,6 +12,7 @@
 #include "Plugins/LinkVisual.h"
 #include <map>
 
+
 namespace superviewer
 {
     class SuperViewer : public QMainWindow, public OpenRAVE::ViewerBase
@@ -105,7 +106,6 @@ namespace superviewer
             virtual OpenRAVE::GraphHandlePtr  drawplane (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture);
             virtual OpenRAVE::GraphHandlePtr  drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color);
             virtual OpenRAVE::GraphHandlePtr  drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors);
-
     };
 }
 

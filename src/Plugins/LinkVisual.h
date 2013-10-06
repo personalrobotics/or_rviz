@@ -16,6 +16,7 @@ namespace Ogre
 {
     class SceneNode;
     class SceneManager;
+    class MeshPtr;
 }
 
 namespace superviewer
@@ -35,6 +36,7 @@ namespace superviewer
 
             inline KinBodyVisual* GetKinBody() { return m_kinBody; }
             inline void SetKinBody(KinBodyVisual* value) { m_kinBody = value; }
+            Ogre::MeshPtr meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name);
 
             void CreateParts();
 

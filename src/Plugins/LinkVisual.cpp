@@ -38,25 +38,148 @@ namespace superviewer
         m_sceneManager->destroySceneNode(m_sceneNode);
     }
 
-
-    Ogre::MeshPtr meshToOgre(OpenRAVE::TriMesh* trimesh, std::string name)
+    Ogre::MeshPtr LinkVisual::meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name)
     {
+        Ogre::MeshPtr existingMesh = Ogre::ResourceGroupManager::getSingleton()._getResourceManager("Mesh")->getByName(name, "General");
 
-        Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "superviewer");
-                return mesh;
+        if(existingMesh.get())
+        {
+            RAVELOG_INFO("Mesh %s exists. returning.\n", name.c_str());
+            return existingMesh;
+        }
+
+
+        Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "General");
+        Ogre::SubMesh* subMesh = mesh->createSubMesh();
+
+        std::vector<Ogre::Vector3> normals(trimesh.vertices.size(), Ogre::Vector3(0, 0, 0));
+
+        for (std::vector<int>::const_iterator i = trimesh.indices.begin(); i != trimesh.indices.end(); std::advance(i, 3))
+        {
+            Ogre::Vector3 v[3] = { converters::ToOgreVector(trimesh.vertices.at(*i)), converters::ToOgreVector(trimesh.vertices.at(*(i + 1))), converters::ToOgreVector((trimesh.vertices.at(*(i + 2)))) };
+            Ogre::Vector3 normal = (v[1] - v[0]).crossProduct(v[2] - v[0]);
+
+            for (int j = 0; j < 3; ++j)
+            {
+                Ogre::Vector3 a = v[(j + 1) % 3] - v[j];
+                Ogre::Vector3 b = v[(j + 2) % 3] - v[j];
+
+                float weight = acos(a.dotProduct(b) / (a.length() * b.length()));
+                normals[*(i + j)] += weight * normal;
+            }
+        }
+
+        for (size_t i = 0; i < normals.size(); i++)
+        {
+            normals.at(i).normalise();
+        }
+
+
+        /* create the vertex data structure */
+        mesh->sharedVertexData = new Ogre::VertexData;
+        mesh->sharedVertexData->vertexCount = trimesh.vertices.size();
+
+        /* declare how the vertices will be represented */
+        Ogre::VertexDeclaration *decl = mesh->sharedVertexData->vertexDeclaration;
+        size_t offset = 0;
+
+        /* the first three floats of each vertex represent the position */
+        decl->addElement(0, offset, Ogre::VET_FLOAT3, Ogre::VES_POSITION);
+        offset += Ogre::VertexElement::getTypeSize(Ogre::VET_FLOAT3);
+
+        decl->addElement(0, offset, Ogre::VET_FLOAT3, Ogre::VES_NORMAL);
+        offset += Ogre::VertexElement::getTypeSize(Ogre::VET_FLOAT3);
+
+        /* create the vertex buffer */
+        Ogre::HardwareVertexBufferSharedPtr vertexBuffer = Ogre::HardwareBufferManager::getSingleton().createVertexBuffer(offset, mesh->sharedVertexData->vertexCount, Ogre::HardwareBuffer::HBU_STATIC);
+
+        /* lock the buffer so we can get exclusive access to its data */
+        float *vertices = static_cast<float *>(vertexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
+
+        Ogre::Vector3 min(9999, 9999, 9999);
+        Ogre::Vector3 max(-9999, -9999, -9999);
+
+        size_t i = 0;
+        for (std::vector<OpenRAVE::Vector>::const_iterator it = trimesh.vertices.begin(); it != trimesh.vertices.end(); it++)
+        {
+            vertices[i * 6 + 0] = it->x;
+            vertices[i * 6 + 1] = it->y;
+            vertices[i * 6 + 2] = it->z;
+            vertices[i * 6 + 3] = normals[i].x;
+            vertices[i * 6 + 4] = normals[i].y;
+            vertices[i * 6 + 5] = normals[i].z;
+
+
+            min.x = fmin(it->x, min.x);
+            min.y = fmin(it->y, min.y);
+            min.z = fmin(it->z, min.z);
+
+            max.x = fmax(it->x, max.x);
+            max.y = fmax(it->y, max.y);
+            max.z = fmax(it->z, max.z);
+            i++;
+        }
+
+        /* unlock the buffer */
+        vertexBuffer->unlock();
+
+
+        /* create the index buffer */
+        Ogre::HardwareIndexBufferSharedPtr indexBuffer = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(Ogre::HardwareIndexBuffer::IT_16BIT, trimesh.indices.size(), Ogre::HardwareBuffer::HBU_STATIC);
+
+        /* lock the buffer so we can get exclusive access to its data */
+        uint16_t *indices = static_cast<uint16_t *>(indexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
+
+        i = 0;
+        for (std::vector<int>::const_iterator it = trimesh.indices.begin(); it != trimesh.indices.end(); it++)
+        {
+            indices[i] = static_cast<uint16_t>(*it);
+            i++;
+        }
+
+        /* unlock the buffer */
+        indexBuffer->unlock();
+
+        /* attach the buffers to the mesh */
+        mesh->sharedVertexData->vertexBufferBinding->setBinding(0, vertexBuffer);
+        subMesh->useSharedVertices = true;
+
+        subMesh->indexData->indexBuffer = indexBuffer;
+        subMesh->indexData->indexCount = trimesh.indices.size();
+        subMesh->indexData->indexStart = 0;
+
+
+        RAVELOG_INFO("Mesh %s\n", name.c_str());
+        RAVELOG_INFO("Min: %f %f %f\n", min.x, min.y, min.z);
+        RAVELOG_INFO("Max: %f %f %f\n", max.x, max.y, max.z);
+
+        /* set the bounds of the mesh */
+        mesh->_setBounds(Ogre::AxisAlignedBox(min.x, min.y, min.z, max.x, max.y, max.z));
+
+        /* notify the mesh that we're all ready */
+        mesh->load();
+
+        return mesh;
     }
 
     void LinkVisual::CreateParts()
     {
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = m_link->GetGeometries();
-
-
+        static int id = 0;
         for (size_t i = 0; i < geometries.size(); i++)
         {
-            std::stringstream ss;
-            ss << i;
-            Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
+
             OpenRAVE::KinBody::Link::GeometryPtr geom = geometries.at(i);
+
+            if(!geom->IsVisible())
+            {
+                continue;
+            }
+
+            std::stringstream ss;
+            ss << id;
+            id++;
+            Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
             Ogre::Entity* entity = NULL;
             Ogre::Vector3 scale(Ogre::Vector3::UNIT_SCALE);
             Ogre::Vector3 offset_position(Ogre::Vector3::ZERO);
@@ -74,7 +197,7 @@ namespace superviewer
                 case OpenRAVE::GT_Box:
                 {
                     entity = rviz::Shape::createEntity("Box" + objectName + ss.str(), rviz::Shape::Cube, m_sceneManager);
-                    scale = converters::ToOgreVector(geom->GetBoxExtents());
+                    scale = converters::ToOgreVector(geom->GetBoxExtents() * 2);
                     break;
                 }
                 case OpenRAVE::GT_Cylinder:
@@ -95,18 +218,11 @@ namespace superviewer
                 }
                 case OpenRAVE::GT_TriMesh:
                 {
-                    std::string meshFile = geom->GetInfo()._filenamerender;
-                    Ogre::MeshPtr ogreMesh = rviz::loadMeshFromResource(meshFile);
-                    scale = converters::ToOgreVector(geom->GetRenderScale());
+                    Ogre::MeshPtr mesh = meshToOgre(geom->GetCollisionMesh(), geom->GetInfo()._filenamerender);
+                    entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), geom->GetInfo()._filenamerender, "General");
+                    entity->setVisible(true);
+                    //entity->setDebugDisplayEnabled(true);
 
-                    try
-                    {
-                        m_sceneManager->createEntity(meshFile + m_link->GetName() + ss.str(), meshFile);
-                    }
-                    catch (Ogre::Exception& e)
-                    {
-                        RAVELOG_ERROR("Could not load model '%s' for link '%s': %s\n", meshFile.c_str(), m_link->GetName().c_str(), e.what());
-                    }
                     break;
                 }
                 default:
@@ -115,6 +231,23 @@ namespace superviewer
                     break;
                 }
             }
+
+            Ogre::MaterialManager &matMgr = Ogre::MaterialManager::getSingleton();
+            Ogre::MaterialPtr mat = (Ogre::MaterialPtr) matMgr.create(objectName + " Material" + ss.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
+            mat->setReceiveShadows(true);
+
+            mat->createTechnique();
+            Ogre::Pass *pass1 = mat->getTechnique(0)->createPass();
+            pass1->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
+            pass1->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
+            mat->setShadingMode(Ogre::SO_GOURAUD);
+            pass1->setShadingMode(Ogre::SO_GOURAUD);
+
+            RAVELOG_INFO("Material %s\n", (objectName + " Material" + ss.str()).c_str());
+            RAVELOG_INFO("Diffuse: %f %f %f %f\n", geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
+            RAVELOG_INFO("Ambient: %f %f %f\n", geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
+
+            mat->compile();
 
             if (entity)
             {
@@ -125,31 +258,13 @@ namespace superviewer
 
                 for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
                 {
-                    // Assign materials only if the submesh does not have one already
                     Ogre::SubEntity* sub = entity->getSubEntity(i);
-                    const std::string& material_name = sub->getMaterialName();
 
-                    if (material_name == "BaseWhite" || material_name == "BaseWhiteNoLighting")
-                    {
-                        sub->setMaterialName("");
-                    }
-                    else
-                    {
-                        // Need to clone here due to how selection works.  Once selection id is done per object and not per material,
-                        // this can go away
-                        static int count = 0;
-                        std::stringstream ss;
-                        ss << material_name << count++ << "Robot";
-                        std::string cloned_name = ss.str();
-                        sub->getMaterial()->clone(cloned_name);
-                        sub->setMaterialName(cloned_name);
-                    }
+                    sub->setMaterialName(objectName + " Material" + ss.str());
 
-                    //materials_[sub] = sub->getMaterial();
                 }
             }
         }
     }
-
 
 } /* namespace superviewer */

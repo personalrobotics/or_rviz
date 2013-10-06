@@ -12,6 +12,9 @@
 #include <rviz/default_plugin/markers/marker_base.h>
 #include <rviz/default_plugin/markers/shape_marker.h>
 #include <visualization_msgs/Marker.h>
+#include <rviz/default_plugin/grid_display.h>
+#include <rviz/ogre_helpers/grid.h>
+#include <rviz/ogre_helpers/render_system.h>
 #include <OgreSceneManager.h>
 #include <qtimer.h>
 
@@ -56,21 +59,55 @@ namespace superviewer
             m_name("Superviewer")
     {
         m_mainRenderPanel = new rviz::RenderPanel();
+
         m_rvizManager = new rviz::VisualizationManager(m_mainRenderPanel);
+
         setCentralWidget(m_mainRenderPanel);
 
 
         m_mainRenderPanel->initialize( m_rvizManager->getSceneManager(), m_rvizManager );
+        m_rvizManager->getSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
+
         m_rvizManager->initialize();
         m_rvizManager->startUpdate();
         setUpdatesEnabled(true);
 
         QTimer* timer = new QTimer(this);
-        timer->setInterval(100);
+        timer->setInterval(33);
         timer->setSingleShot(false);
         timer->start();
 
         connect(timer, SIGNAL(timeout()), this, SLOT(syncUpdate()));
+
+
+        // Create a Grid display.
+        rviz::DisplayWrapper* wrapper = m_rvizManager->createDisplay( "rviz/Grid", "adjustable grid", true );
+        ROS_ASSERT( wrapper != NULL );
+
+
+        // Unwrap it.
+         rviz::Display* display = wrapper->getDisplay();
+         ROS_ASSERT( display != NULL );
+
+         // Downcast it to the type we think we know it is.
+         //
+         // (This is one part I would like to improve in the future.  For
+         // this to work currently, we need to link against the plugin
+         // library containing GridDisplay (libdefault_plugin.so) in addition
+         // to linking against librviz.so.  This pretty much negates the
+         // benefits of the plugin architecture.)
+         rviz::GridDisplay* grid_ = dynamic_cast<rviz::GridDisplay*>( display );
+         ROS_ASSERT( grid_ != NULL );
+
+         // Configure the GridDisplay the way we like it.
+         grid_->setStyle( rviz::Grid::Lines); // Fat lines.
+         grid_->setColor( rviz::Color( 0.1f, 0.1f, 0.1f ));
+
+         Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("Backlight");
+         light->setType(Ogre::Light::LT_DIRECTIONAL);
+         light->setDiffuseColour(0.6, 0.6, 0.6);
+         light->setDirection(0.1, 0.1, -1);
+         light->setPosition(0, 0.1, 5);
 
     }
 
@@ -145,8 +182,6 @@ namespace superviewer
     // forces synchronization with the environment, returns when the environment is fully synchronized.
     void SuperViewer::EnvironmentSync()
     {
-
-        RAVELOG_INFO("Syncing environment...\n");
         GetEnv()->GetMutex().lock();
 
         std::vector<OpenRAVE::KinBodyPtr> bodies;
@@ -159,6 +194,10 @@ namespace superviewer
                 KinBodyDisplay* display = new KinBodyDisplay(bodies[i], m_rvizManager->getSceneManager());
                 display->setFixedFrame("World");
                 m_kinBodies[bodies[i]->GetName()] = display;
+            }
+            else
+            {
+                m_kinBodies[bodies[i]->GetName()]->UpdateTransforms();
             }
         }
 
