@@ -103,11 +103,30 @@ namespace superviewer
          grid_->setStyle( rviz::Grid::Lines); // Fat lines.
          grid_->setColor( rviz::Color( 0.1f, 0.1f, 0.1f ));
 
-         Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("Backlight");
+         Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("FillLight");
          light->setType(Ogre::Light::LT_DIRECTIONAL);
-         light->setDiffuseColour(0.6, 0.6, 0.6);
-         light->setDirection(0.1, 0.1, -1);
-         light->setPosition(0, 0.1, 5);
+         light->setDiffuseColour(0.6, 0.55, 0.5);
+         light->setSpecularColour(1, 1, 1);
+         light->setDirection(0.05, 0.01, -1);
+         light->setCastShadows(true);
+
+         Ogre::Light* light2 = m_rvizManager->getSceneManager()->createLight("Backlight");
+         light2->setType(Ogre::Light::LT_DIRECTIONAL);
+         light2->setDiffuseColour(0.2, 0.25, 0.3);
+         light2->setSpecularColour(1, 1, 1);
+         light2->setDirection(-0.1, -0.1, 0.05);
+         light2->setCastShadows(false);
+
+         Ogre::Light* light3 = m_rvizManager->getSceneManager()->createLight("Keylight");
+         light3->setType(Ogre::Light::LT_DIRECTIONAL);
+         light3->setDiffuseColour(0.4, 0.4, 0.4);
+         light3->setSpecularColour(1, 1, 1);
+         light3->setDirection(0.1, 0.1, -0.05);
+         light3->setCastShadows(false);
+
+         m_rvizManager->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
+         m_rvizManager->getSceneManager()->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
+
 
     }
 

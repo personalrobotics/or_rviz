@@ -38,6 +38,41 @@ namespace superviewer
         m_sceneManager->destroySceneNode(m_sceneNode);
     }
 
+    void DeleteRepeatedVertices(const OpenRAVE::TriMesh& trimesh, std::vector<Ogre::Vector3>& verts, std::vector<int>& indices, bool remove)
+    {
+        for(size_t i = 0; i < trimesh.indices.size(); i++)
+        {
+            indices.push_back(trimesh.indices.at(i));
+        }
+
+        float epsilon = 0.0001;
+        for(size_t i = 0; i < trimesh.vertices.size(); i++)
+        {
+            Ogre::Vector3 vec = converters::ToOgreVector(trimesh.vertices.at(i));
+
+            bool copyFound = false;
+
+            if(remove)
+            {
+                for(size_t j = 0; j < verts.size(); j++)
+                {
+                    if(fabs(vec.x - verts[j].x) < epsilon && fabs(vec.y - verts[j].y) < epsilon && fabs(vec.z - verts[j].z) < epsilon)
+                    {
+                        copyFound = true;
+                        indices[i] = indices[j];
+                        break;
+                    }
+                }
+            }
+
+            if(copyFound)
+            {
+                continue;
+            }
+            verts.push_back(vec);
+        }
+    }
+
     Ogre::MeshPtr LinkVisual::meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name)
     {
         Ogre::MeshPtr existingMesh = Ogre::ResourceGroupManager::getSingleton()._getResourceManager("Mesh")->getByName(name, "General");
@@ -52,11 +87,17 @@ namespace superviewer
         Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "General");
         Ogre::SubMesh* subMesh = mesh->createSubMesh();
 
-        std::vector<Ogre::Vector3> normals(trimesh.vertices.size(), Ogre::Vector3(0, 0, 0));
 
-        for (std::vector<int>::const_iterator i = trimesh.indices.begin(); i != trimesh.indices.end(); std::advance(i, 3))
+        std::vector<Ogre::Vector3> verts;
+        std::vector<int> index;
+
+        DeleteRepeatedVertices(trimesh, verts, index, false);
+
+        std::vector<Ogre::Vector3> normals(verts.size(), Ogre::Vector3(0, 0, 0));
+
+        for (std::vector<int>::const_iterator i = index.begin(); i != index.end(); std::advance(i, 3))
         {
-            Ogre::Vector3 v[3] = { converters::ToOgreVector(trimesh.vertices.at(*i)), converters::ToOgreVector(trimesh.vertices.at(*(i + 1))), converters::ToOgreVector((trimesh.vertices.at(*(i + 2)))) };
+            Ogre::Vector3 v[3] = { (verts.at(*i)), (verts.at(*(i + 1))), ((verts.at(*(i + 2)))) };
             Ogre::Vector3 normal = (v[1] - v[0]).crossProduct(v[2] - v[0]);
 
             for (int j = 0; j < 3; ++j)
@@ -77,7 +118,7 @@ namespace superviewer
 
         /* create the vertex data structure */
         mesh->sharedVertexData = new Ogre::VertexData;
-        mesh->sharedVertexData->vertexCount = trimesh.vertices.size();
+        mesh->sharedVertexData->vertexCount = verts.size();
 
         /* declare how the vertices will be represented */
         Ogre::VertexDeclaration *decl = mesh->sharedVertexData->vertexDeclaration;
@@ -100,7 +141,7 @@ namespace superviewer
         Ogre::Vector3 max(-9999, -9999, -9999);
 
         size_t i = 0;
-        for (std::vector<OpenRAVE::Vector>::const_iterator it = trimesh.vertices.begin(); it != trimesh.vertices.end(); it++)
+        for (std::vector<Ogre::Vector3>::const_iterator it = verts.begin(); it != verts.end(); it++)
         {
             vertices[i * 6 + 0] = it->x;
             vertices[i * 6 + 1] = it->y;
@@ -131,7 +172,7 @@ namespace superviewer
         uint16_t *indices = static_cast<uint16_t *>(indexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
 
         i = 0;
-        for (std::vector<int>::const_iterator it = trimesh.indices.begin(); it != trimesh.indices.end(); it++)
+        for (std::vector<int>::const_iterator it = index.begin(); it != index.end(); it++)
         {
             indices[i] = static_cast<uint16_t>(*it);
             i++;
@@ -145,7 +186,7 @@ namespace superviewer
         subMesh->useSharedVertices = true;
 
         subMesh->indexData->indexBuffer = indexBuffer;
-        subMesh->indexData->indexCount = trimesh.indices.size();
+        subMesh->indexData->indexCount = index.size();
         subMesh->indexData->indexStart = 0;
 
 
@@ -218,9 +259,14 @@ namespace superviewer
                 }
                 case OpenRAVE::GT_TriMesh:
                 {
-                    Ogre::MeshPtr mesh = meshToOgre(geom->GetCollisionMesh(), geom->GetInfo()._filenamerender);
+                    boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
+                    myMesh.reset(new OpenRAVE::TriMesh());
+                    m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
+
+                    Ogre::MeshPtr mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
                     entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), geom->GetInfo()._filenamerender, "General");
                     entity->setVisible(true);
+                    scale = converters::ToOgreVector(geom->GetRenderScale());
                     //entity->setDebugDisplayEnabled(true);
 
                     break;
@@ -240,8 +286,10 @@ namespace superviewer
             Ogre::Pass *pass1 = mat->getTechnique(0)->createPass();
             pass1->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
             pass1->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
+            pass1->setSpecular(0.02, 0.02, 0.02, 12.5);
             mat->setShadingMode(Ogre::SO_GOURAUD);
             pass1->setShadingMode(Ogre::SO_GOURAUD);
+
 
             RAVELOG_INFO("Material %s\n", (objectName + " Material" + ss.str()).c_str());
             RAVELOG_INFO("Diffuse: %f %f %f %f\n", geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);

@@ -20,18 +20,31 @@ void OpenraveThread(EnvironmentBasePtr penv, std::string scenefilename)
     penv->GetRobots(robots);
     OpenRAVE::RobotBasePtr robot = robots[0];
 
+    OpenRAVE::KinBodyPtr mug = penv->GetKinBody("plasticmugb1");
+
+    float theta = 0;
     while(true)
     {
         usleep(10000);
-        std::vector<double> values;
-        robot->GetActiveDOFValues(values);
+        OpenRAVE::Transform t = robot->GetTransform();
+        t.trans.z += 0.8 + 0.4 * sin(theta * 3);
+        t.trans.x = 0.4 * cos(theta);
+        t.trans.y = 0.3 * sin(theta);
 
-        for(size_t i = 0; i < values.size(); i++)
+        mug->SetTransform(t);
+
+        theta += 0.01;
+        std::vector<double> joints(robot->GetActiveManipulator()->GetArmIndices().size());
+        OpenRAVE::IkParameterization params(t, OpenRAVE::IKP_Transform6D);
+
+        if(robot->GetManipulators().at(0)->FindIKSolution(params, joints, OpenRAVE::IKFO_CheckEnvCollisions))
         {
-            values[i] += ((float)rand() / (float)RAND_MAX - 0.5f) * 0.05f;
+            robot->SetDOFValues(joints, true, robot->GetManipulators().at(0)->GetArmIndices());
         }
-
-        robot->SetActiveDOFValues(values, false);
+        else
+        {
+            RAVELOG_INFO("NO solution\n");
+        }
     }
 }
 
