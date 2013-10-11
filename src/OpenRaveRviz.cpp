@@ -18,6 +18,9 @@
 #include <qtimer.h>
 #include <openrave/plugin.h>
 #include <rviz/displays_panel.h>
+#include <rviz/tool_properties_panel.h>
+
+
 
 using namespace OpenRAVE;
 using namespace rviz;
@@ -47,8 +50,13 @@ namespace or_rviz
         rviz::DisplaysPanel* propertyWidget = new rviz::DisplaysPanel(this);
         QDockWidget* dockWidgetProperties = new QDockWidget(this);
         dockWidgetProperties->setWidget(propertyWidget);
-
         addDockWidget(Qt::LeftDockWidgetArea, dockWidgetProperties);
+
+        rviz::ToolPropertiesPanel* toolWidget = new rviz::ToolPropertiesPanel(this);
+        toolWidget->initialize(m_rvizManager );
+        QDockWidget* toolWidgetDock = new QDockWidget(this);
+        toolWidgetDock->setWidget(toolWidget);
+        addDockWidget(Qt::RightDockWidgetArea, toolWidgetDock);
 
         m_mainRenderPanel->initialize( m_rvizManager->getSceneManager(), m_rvizManager );
         m_rvizManager->getSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
@@ -368,25 +376,34 @@ namespace or_rviz
     }
 }
 
+static char* argv[1] = {const_cast<char *>("or_rviz")};
+static int argc = 1;
+
 OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, const std::string& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
-    if( type == OpenRAVE::PT_Viewer && interfacename == "or_rviz" )
+    if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
     {
-    RAVELOG_INFO("Creating or_rviz");
-    char** argv = NULL;
-    int argc = 0;
-    ros::init(argc, argv, "or_rviz", ros::init_options::AnonymousName);
-    QApplication* app = new QApplication(argc, argv);
-        RAVELOG_INFO("success\n");
+
+        if (!ros::isInitialized())
+        {
+            int argc = 0;
+            ros::init(argc, argv, "or_rviz", ros::init_options::AnonymousName);
+        }
+        else
+        {
+            RAVELOG_DEBUG("Using existing ROS node '%s'\n", ros::this_node::getName().c_str());
+        }
+
+
+        QApplication* app = new QApplication(argc, argv);
         return OpenRAVE::InterfaceBasePtr(new or_rviz::OpenRaveRviz(penv));
     }
-    RAVELOG_INFO("Failure!\n");
     return OpenRAVE::InterfaceBasePtr();
 }
 
 void GetPluginAttributesValidated(OpenRAVE::PLUGININFO& info)
 {
-    info.interfacenames[  OpenRAVE::PT_Viewer].push_back("or_rviz");
+    info.interfacenames[OpenRAVE::PT_Viewer].push_back("or_rviz");
 }
 
 OPENRAVE_PLUGIN_API void DestroyPlugin()

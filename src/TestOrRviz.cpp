@@ -85,7 +85,7 @@ int main(int argc, char ** argv)
 
     EnvironmentBasePtr penv = RaveCreateEnvironment(); // create the main environment
     RaveSetDebugLevel(Level_Verbose);
-    RaveLoadPlugin("./lib/or_rviz.so");
+    //RaveLoadPlugin("./lib/or_rviz.so");
     ViewerBasePtr viewer = RaveCreateViewer(penv, "or_rviz");
     penv->Add(viewer);
 

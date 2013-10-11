@@ -36,10 +36,10 @@ set(SOURCE_FILES
   ${MOC_FILES})
 
 #Building the viewer
-link_directories(${OPENRAVE_LINK_DIRS})
+#link_directories(${OPENRAVE_LINK_DIRS})
 rosbuild_add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
-target_link_libraries(${PROJECT_NAME} ${OpenRAVE_LIBRARIES} ${QT_LIBRARIES} default_plugin)
+#set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
+target_link_libraries(${PROJECT_NAME}  ${QT_LIBRARIES} default_plugin)
 
 rosbuild_add_executable(test_or_rviz src/TestOrRviz.cpp)
 target_link_libraries(test_or_rviz ${PROJECT_NAME})
