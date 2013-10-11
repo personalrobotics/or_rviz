@@ -1,0 +1,9 @@
+<library path="lib/libor_rviz">
+  <class name="or_rviz/KinBody"
+         type="or_rviz::KinBodyDisplay"
+         base_class_type="rviz::Display">
+    <description>
+      Displays an OpenRAVE Kinbody
+    </description>
+  </class>
+</library>
