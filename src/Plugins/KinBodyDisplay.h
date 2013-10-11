@@ -13,15 +13,17 @@
 #include <rviz/display.h>
 #include "KinBodyVisual.h"
 
-namespace superviewer
+namespace or_rviz
 {
 
     class KinBodyDisplay : public rviz::Display
     {
         public:
+            KinBodyDisplay();
             KinBodyDisplay(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             virtual ~KinBodyDisplay();
 
+            void CreateVisual(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             inline void UpdateTransforms() { m_visual->UpdateTransforms(); }
 
             virtual void onInitialize();
@@ -29,9 +31,10 @@ namespace superviewer
             virtual void reset();
             virtual void createProperties();
 
+
         protected:
-            virtual void onEnable() { }
-            virtual void onDisable() { }
+            virtual void onEnable();
+            virtual void onDisable();
             KinBodyVisual* m_visual;
 
     };

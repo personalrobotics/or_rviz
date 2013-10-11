@@ -9,14 +9,27 @@
 #include "KinBodyDisplay.h"
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
+#include <pluginlib/class_list_macros.h>
 
-namespace superviewer
+
+namespace or_rviz
 {
+
+    KinBodyDisplay::KinBodyDisplay()
+    {
+        m_visual = NULL;
+    }
 
     KinBodyDisplay::KinBodyDisplay(OpenRAVE::KinBodyPtr kinBod, Ogre::SceneManager* sceneManager)
     {
-        m_visual = new KinBodyVisual(sceneManager, sceneManager->getRootSceneNode(), kinBod);
+        CreateVisual(kinBod, sceneManager);
     }
+
+    void KinBodyDisplay::CreateVisual(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager)
+    {
+        m_visual = new KinBodyVisual(sceneManager, sceneManager->getRootSceneNode(), kinBody);
+    }
+
 
     KinBodyDisplay::~KinBodyDisplay()
     {
@@ -43,5 +56,17 @@ namespace superviewer
         //TODO: Implement
     }
 
+    void KinBodyDisplay::onEnable()
+    {
+         if(m_visual && m_visual->GetSceneNode()) {m_visual->GetSceneNode()->setVisible(true, true);}
+    }
+
+    void KinBodyDisplay::onDisable()
+    {
+         if(m_visual && m_visual->GetSceneNode()) {m_visual->GetSceneNode()->setVisible(false, true);}
+    }
+
 
 } /* namespace superviewer */
+
+PLUGINLIB_DECLARE_CLASS( or_rviz, KinBody, or_rviz::KinBodyDisplay, rviz::Display );

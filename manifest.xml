@@ -4,6 +4,11 @@
      superviewer is a new viewer meant to replace OpenRAVEs other viewers while providing more functionality and being faster, and all around cooler.
 
   </description>
+
+	<export>
+	    <rviz plugin="${prefix}/plugin_description.xml"/>
+	</export>
+
   <author>Matt Klingensmith</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>

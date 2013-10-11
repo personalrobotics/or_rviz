@@ -19,7 +19,7 @@ namespace Ogre
 }
 
 
-namespace superviewer
+namespace or_rviz
 {
 
     class LinkVisual;

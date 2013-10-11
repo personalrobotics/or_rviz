@@ -19,11 +19,13 @@
 #include <rviz/ogre_helpers/object.h>
 #include <OgreException.h>
 #include <OgreMeshManager.h>
+#include <OgreMaterialManager.h>
+#include <OgreMaterial.h>
 #include <OgreMeshSerializer.h>
 #include "KinBodyVisual.h"
 #include <boost/filesystem.hpp>
 
-namespace superviewer
+namespace or_rviz
 {
 
     LinkVisual::LinkVisual(KinBodyVisual* kinBody, OpenRAVE::KinBody::LinkPtr link, Ogre::SceneNode* parent, Ogre::SceneManager* sceneManager) :
@@ -59,7 +61,7 @@ namespace superviewer
                     if(fabs(vec.x - verts[j].x) < epsilon && fabs(vec.y - verts[j].y) < epsilon && fabs(vec.z - verts[j].z) < epsilon)
                     {
                         copyFound = true;
-                        indices[i] = indices[j];
+                        indices[i] = j;
                         break;
                     }
                 }
@@ -68,6 +70,11 @@ namespace superviewer
             if(copyFound)
             {
                 continue;
+            }
+
+            if(remove)
+            {
+                indices[i] = (int)verts.size();
             }
             verts.push_back(vec);
         }
@@ -207,6 +214,7 @@ namespace superviewer
     {
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = m_link->GetGeometries();
         static int id = 0;
+
         for (size_t i = 0; i < geometries.size(); i++)
         {
 
@@ -218,6 +226,8 @@ namespace superviewer
             }
 
             std::stringstream ss;
+            std::stringstream iterSS;
+            iterSS << i;
             ss << id;
             id++;
             Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
@@ -259,15 +269,47 @@ namespace superviewer
                 }
                 case OpenRAVE::GT_TriMesh:
                 {
-                    boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
-                    myMesh.reset(new OpenRAVE::TriMesh());
-                    m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
 
-                    Ogre::MeshPtr mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
-                    entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), geom->GetInfo()._filenamerender, "General");
-                    entity->setVisible(true);
-                    scale = converters::ToOgreVector(geom->GetRenderScale());
-                    //entity->setDebugDisplayEnabled(true);
+                    if(geom->GetInfo()._filenamerender.size() == 0)
+                    {
+                       break;
+                    }
+
+                    Ogre::MeshPtr mesh;
+
+                    try
+                    {
+                        mesh = rviz::loadMeshFromResource ("file://" + geom->GetInfo()._filenamerender);
+                    }
+                    catch (Ogre::Exception& e)
+                    {
+                        RAVELOG_WARN("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
+                    }
+
+                    if(!mesh.get())
+                    {
+                        RAVELOG_WARN("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
+                        boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
+                        myMesh.reset(new OpenRAVE::TriMesh());
+                        m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
+
+                        if(myMesh && myMesh->vertices.size() >= 3)
+                        {
+                            mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
+                        }
+                    }
+                    else
+                    {
+                        RAVELOG_INFO("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
+                    }
+
+
+                    if(mesh.get())
+                    {
+                        entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
+                        entity->setVisible(true);
+                        scale = converters::ToOgreVector(geom->GetRenderScale());
+                    }
 
                     break;
                 }
@@ -278,27 +320,33 @@ namespace superviewer
                 }
             }
 
-            Ogre::MaterialManager &matMgr = Ogre::MaterialManager::getSingleton();
-            Ogre::MaterialPtr mat = (Ogre::MaterialPtr) matMgr.create(objectName + " Material" + ss.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
-            mat->setReceiveShadows(true);
-
-            mat->createTechnique();
-            Ogre::Pass *pass1 = mat->getTechnique(0)->createPass();
-            pass1->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
-            pass1->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
-            pass1->setSpecular(0.02, 0.02, 0.02, 12.5);
-            mat->setShadingMode(Ogre::SO_GOURAUD);
-            pass1->setShadingMode(Ogre::SO_GOURAUD);
 
 
-            RAVELOG_INFO("Material %s\n", (objectName + " Material" + ss.str()).c_str());
-            RAVELOG_INFO("Diffuse: %f %f %f %f\n", geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
-            RAVELOG_INFO("Ambient: %f %f %f\n", geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
-
-            mat->compile();
 
             if (entity)
             {
+
+
+                Ogre::MaterialManager &matMgr = Ogre::MaterialManager::getSingleton();
+                Ogre::ResourceManager::ResourceCreateOrRetrieveResult result = matMgr.createOrRetrieve(objectName + " Material" + iterSS.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
+                if(result.second)
+                {
+                    Ogre::MaterialPtr mat = (Ogre::MaterialPtr)result.first;
+                    mat->setReceiveShadows(true);
+
+                    mat->createTechnique();
+                    Ogre::Pass *pass1 = mat->getTechnique(0)->createPass();
+                    pass1->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
+                    pass1->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
+                    pass1->setSpecular(0.02, 0.02, 0.02, 12.5);
+                    mat->setShadingMode(Ogre::SO_GOURAUD);
+                    pass1->setShadingMode(Ogre::SO_GOURAUD);
+                    mat->compile();
+
+                }
+
+
+
                 offsetNode->attachObject(entity);
                 offsetNode->setScale(scale);
                 offsetNode->setPosition(offset_position);
@@ -308,9 +356,11 @@ namespace superviewer
                 {
                     Ogre::SubEntity* sub = entity->getSubEntity(i);
 
-                    sub->setMaterialName(objectName + " Material" + ss.str());
+                    sub->setMaterialName(objectName + " Material" + iterSS.str());
 
                 }
+
+
             }
         }
     }

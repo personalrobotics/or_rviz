@@ -4,7 +4,7 @@
 #include <sstream>
 #include <boost/thread/thread.hpp>
 #include <boost/bind.hpp>
-#include "SuperViewer.h"
+#include "OpenRaveRviz.h"
 #include <qapplication.h>
 
 using namespace OpenRAVE;
@@ -16,11 +16,13 @@ void OpenraveThread(EnvironmentBasePtr penv, std::string scenefilename)
     penv->Load(scenefilename); // load the scene
     sleep(2);
 
+    /*
     std::vector<OpenRAVE::RobotBasePtr> robots;
     penv->GetRobots(robots);
     OpenRAVE::RobotBasePtr robot = robots[0];
 
     OpenRAVE::KinBodyPtr mug = penv->GetKinBody("plasticmugb1");
+
 
     float theta = 0;
     while(true)
@@ -46,14 +48,15 @@ void OpenraveThread(EnvironmentBasePtr penv, std::string scenefilename)
             RAVELOG_INFO("NO solution\n");
         }
     }
+    */
 }
 
 int main(int argc, char ** argv)
 {
     //int num = 1;
-    QApplication app(argc, argv);
-    ros::init(argc, argv, "superviewer", ros::init_options::AnonymousName);
-    string scenefilename = "data/wam_cabinet.env.xml";
+    //QApplication app(argc, argv);
+    //ros::init(argc, argv, "superviewer", ros::init_options::AnonymousName);
+    string scenefilename = "/homes/mklingen/prdev/herb_description/ordata/robots/herb.robot.xml";
     string viewername = "superviewer";
     // parse the command line options
     int i = 1;

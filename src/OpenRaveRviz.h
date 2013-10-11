@@ -13,14 +13,14 @@
 #include <map>
 
 
-namespace superviewer
+namespace or_rviz
 {
-    class SuperViewer : public QMainWindow, public OpenRAVE::ViewerBase
+    class OpenRaveRviz : public QMainWindow, public OpenRAVE::ViewerBase
     {
         Q_OBJECT
         public:
-            SuperViewer(OpenRAVE::EnvironmentBasePtr env, QWidget * parent = 0, Qt::WindowFlags flags = 0);
-            virtual ~SuperViewer();
+            OpenRaveRviz(OpenRAVE::EnvironmentBasePtr env, QWidget * parent = 0, Qt::WindowFlags flags = 0);
+            virtual ~OpenRaveRviz();
 
 
             // OPENRAVE API overriding

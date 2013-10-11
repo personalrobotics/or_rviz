@@ -19,7 +19,7 @@ namespace Ogre
     class MeshPtr;
 }
 
-namespace superviewer
+namespace or_rviz
 {
     class KinBodyVisual;
     class LinkVisual

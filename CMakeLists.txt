@@ -15,7 +15,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 #QT Stuff
 find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
-SET(QT_USE_QTOPENGL TRUE)
 include(${QT_USE_FILE})
 add_definitions(-DQT_NO_KEYWORDS)
 
@@ -25,25 +24,27 @@ include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
 qt4_wrap_cpp(MOC_FILES
-  src/SuperViewer.h
+  src/OpenRaveRviz.h
 )
 
 
 set(SOURCE_FILES
-  src/SuperViewer.cpp
+  src/OpenRaveRviz.cpp
   src/Plugins/KinBodyDisplay.cpp
   src/Plugins/KinBodyVisual.cpp
   src/Plugins/LinkVisual.cpp
   ${MOC_FILES})
 
 #Building the viewer
-rosbuild_add_library(${PROJECT_NAME} ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} default_plugin)
+link_directories(${OPENRAVE_LINK_DIRS})
+rosbuild_add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
+target_link_libraries(${PROJECT_NAME} ${OpenRAVE_LIBRARIES} ${QT_LIBRARIES} default_plugin)
 
-rosbuild_add_executable(test_superviewer src/TestSuperviewer.cpp)
-target_link_libraries(test_superviewer ${PROJECT_NAME})
-
+rosbuild_add_executable(test_or_rviz src/TestOrRviz.cpp)
+target_link_libraries(test_or_rviz ${PROJECT_NAME})
+#install(TARGETS ${PROJECT_NAME} DESTINATION ${OPENRAVE_PLUGINS_INSTALL_DIR} COMPONENT ${COMPONENT_PREFIX}plugin-qtosgrave)
 #Ensure we are linking to OPENGL
-target_link_libraries(${PROJECT_NAME} GL)
+#target_link_libraries(${PROJECT_NAME} GL)
 
 

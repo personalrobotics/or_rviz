@@ -15,7 +15,7 @@
 
 #include "LinkVisual.h"
 
-namespace superviewer
+namespace or_rviz
 {
 
     KinBodyVisual::KinBodyVisual(Ogre::SceneManager* sceneManager, Ogre::SceneNode* parentNode, OpenRAVE::KinBodyPtr kinBody) :
