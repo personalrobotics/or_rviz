@@ -34,9 +34,9 @@ namespace or_rviz
             m_rvizManager(NULL),
             m_mainRenderPanel(NULL),
             m_autoSync(false),
-            m_name("Superviewer")
+            m_name("or_rviz")
     {
-        setWindowTitle("SuperViewer!");
+        setWindowTitle("Openrave Rviz Viewer");
         m_mainRenderPanel = new rviz::RenderPanel();
 
         m_rvizManager = new rviz::VisualizationManager(m_mainRenderPanel);
@@ -196,7 +196,7 @@ namespace or_rviz
         {
             if(!HasKinBody(bodies[i]->GetName()))
             {
-                rviz::DisplayWrapper* displayWrapper = m_rvizManager->createDisplay("superviewer/KinBody", bodies[i]->GetName(), true);
+                rviz::DisplayWrapper* displayWrapper = m_rvizManager->createDisplay("or_rviz/KinBody", bodies[i]->GetName(), true);
                 KinBodyDisplay* display = dynamic_cast<KinBodyDisplay*>(displayWrapper->getDisplay());
                 display->CreateVisual(bodies[i], m_rvizManager->getSceneManager());
                         //new KinBodyDisplay(bodies[i], m_rvizManager->getSceneManager());
@@ -370,12 +370,12 @@ namespace or_rviz
 
 OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, const std::string& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
-    if( type == OpenRAVE::PT_Viewer && interfacename == "superviewer" )
+    if( type == OpenRAVE::PT_Viewer && interfacename == "or_rviz" )
     {
-    RAVELOG_INFO("Creating superviewer");
+    RAVELOG_INFO("Creating or_rviz");
     char** argv = NULL;
     int argc = 0;
-    ros::init(argc, argv, "superviewer", ros::init_options::AnonymousName);
+    ros::init(argc, argv, "or_rviz", ros::init_options::AnonymousName);
     QApplication* app = new QApplication(argc, argv);
         RAVELOG_INFO("success\n");
         return OpenRAVE::InterfaceBasePtr(new or_rviz::OpenRaveRviz(penv));
@@ -386,7 +386,7 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type
 
 void GetPluginAttributesValidated(OpenRAVE::PLUGININFO& info)
 {
-    info.interfacenames[  OpenRAVE::PT_Viewer].push_back("superviewer");
+    info.interfacenames[  OpenRAVE::PT_Viewer].push_back("or_rviz");
 }
 
 OPENRAVE_PLUGIN_API void DestroyPlugin()

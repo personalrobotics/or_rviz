@@ -57,7 +57,7 @@ int main(int argc, char ** argv)
     //QApplication app(argc, argv);
     //ros::init(argc, argv, "superviewer", ros::init_options::AnonymousName);
     string scenefilename = "/homes/mklingen/prdev/herb_description/ordata/robots/herb.robot.xml";
-    string viewername = "superviewer";
+    string viewername = "or_rviz";
     // parse the command line options
     int i = 1;
     while (i < argc)
@@ -85,8 +85,8 @@ int main(int argc, char ** argv)
 
     EnvironmentBasePtr penv = RaveCreateEnvironment(); // create the main environment
     RaveSetDebugLevel(Level_Verbose);
-    RaveLoadPlugin("./lib/superviewer.so");
-    ViewerBasePtr viewer = RaveCreateViewer(penv, "superviewer");
+    RaveLoadPlugin("./lib/or_rviz.so");
+    ViewerBasePtr viewer = RaveCreateViewer(penv, "or_rviz");
     penv->Add(viewer);
 
     boost::thread threadRave(boost::bind(OpenraveThread,penv,scenefilename));
