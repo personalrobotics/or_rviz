@@ -28,18 +28,24 @@ qt4_wrap_cpp(MOC_FILES
 )
 
 
-set(SOURCE_FILES
-  src/OpenRaveRviz.cpp
+set(RVIZ_PLUGIN_FILES
   src/Plugins/KinBodyDisplay.cpp
   src/Plugins/KinBodyVisual.cpp
   src/Plugins/LinkVisual.cpp
+  )
+
+set(SOURCE_FILES
+  src/OpenRaveRviz.cpp
   ${MOC_FILES})
+
+
 
 #Building the viewer
 #link_directories(${OPENRAVE_LINK_DIRS})
+rosbuild_add_library("${PROJECTNAME}_rvizplugin" SHARED ${RVIZ_PLUGIN_FILES})
 rosbuild_add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 #set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
-target_link_libraries(${PROJECT_NAME}  ${QT_LIBRARIES} default_plugin)
+target_link_libraries(${PROJECT_NAME}  ${QT_LIBRARIES} "${PROJECTNAME}_rvizplugin" default_plugin)
 
 rosbuild_add_executable(test_or_rviz src/TestOrRviz.cpp)
 target_link_libraries(test_or_rviz ${PROJECT_NAME})

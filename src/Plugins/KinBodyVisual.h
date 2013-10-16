@@ -29,7 +29,7 @@ namespace or_rviz
             KinBodyVisual(Ogre::SceneManager* sceneManager, Ogre::SceneNode* parentNode, OpenRAVE::KinBodyPtr kinBody);
             virtual ~KinBodyVisual();
 
-            inline OpenRAVE::KinBodyPtr GetKinBody() { return m_kinBody; }
+            inline OpenRAVE::KinBodyPtr GetKinBody() { return m_kinBody.lock(); }
             inline void SetKinBody(OpenRAVE::KinBodyPtr value) { m_kinBody = value; }
 
             inline Ogre::SceneManager* GetSceneManager() { return m_sceneManager; }
@@ -46,7 +46,7 @@ namespace or_rviz
             void CreateParts();
 
         protected:
-            OpenRAVE::KinBodyPtr m_kinBody;
+            OpenRAVE::KinBodyWeakPtr m_kinBody;
             Ogre::SceneManager* m_sceneManager;
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;

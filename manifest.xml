@@ -1,7 +1,7 @@
 <package>
-  <description brief="superviewer">
+  <description brief="or_rviz">
 
-     superviewer is a new viewer meant to replace OpenRAVEs other viewers while providing more functionality and being faster, and all around cooler.
+     or_rviz is a new viewer meant to replace OpenRAVEs other viewers while providing more functionality and being faster, and all around cooler, by integrating with RVIZ.
 
   </description>
 

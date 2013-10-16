@@ -19,8 +19,9 @@
 #include <openrave/plugin.h>
 #include <rviz/displays_panel.h>
 #include <rviz/tool_properties_panel.h>
-
-
+#include <QFileDialog>
+#include <QMenuBar>
+#include <QMessageBox>
 
 using namespace OpenRAVE;
 using namespace rviz;
@@ -32,38 +33,15 @@ namespace or_rviz
 
 
     OpenRaveRviz::OpenRaveRviz(OpenRAVE::EnvironmentBasePtr env, QWidget * parent, Qt::WindowFlags flags) :
-            QMainWindow(parent, flags),
+            VisualizationFrame(parent),
             OpenRAVE::ViewerBase(env),
             m_rvizManager(NULL),
             m_mainRenderPanel(NULL),
             m_autoSync(false),
             m_name("or_rviz")
     {
-        setWindowTitle("Openrave Rviz Viewer");
-        m_mainRenderPanel = new rviz::RenderPanel();
-
-        m_rvizManager = new rviz::VisualizationManager(m_mainRenderPanel);
-
-        setCentralWidget(m_mainRenderPanel);
-
-
-        rviz::DisplaysPanel* propertyWidget = new rviz::DisplaysPanel(this);
-        QDockWidget* dockWidgetProperties = new QDockWidget(this);
-        dockWidgetProperties->setWidget(propertyWidget);
-        addDockWidget(Qt::LeftDockWidgetArea, dockWidgetProperties);
-
-        rviz::ToolPropertiesPanel* toolWidget = new rviz::ToolPropertiesPanel(this);
-        toolWidget->initialize(m_rvizManager );
-        QDockWidget* toolWidgetDock = new QDockWidget(this);
-        toolWidgetDock->setWidget(toolWidget);
-        addDockWidget(Qt::RightDockWidgetArea, toolWidgetDock);
-
-        m_mainRenderPanel->initialize( m_rvizManager->getSceneManager(), m_rvizManager );
-        m_rvizManager->getSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
-
-        m_rvizManager->initialize();
-        propertyWidget->initialize(m_rvizManager);
-        m_rvizManager->startUpdate();
+        SetCurrentViewEnv(env);
+        setWindowTitle("Openrave Rviz Viewer[*]");
         setUpdatesEnabled(true);
 
         QTimer* timer = new QTimer(this);
@@ -73,57 +51,64 @@ namespace or_rviz
 
         connect(timer, SIGNAL(timeout()), this, SLOT(syncUpdate()));
 
+        initialize();
 
-        // Create a Grid display.
-        rviz::DisplayWrapper* wrapper = m_rvizManager->createDisplay( "rviz/Grid", "adjustable grid", true );
-        ROS_ASSERT( wrapper != NULL );
+        QMenu* openRaveMenu = new QMenu("OpenRAVE", this);
+        openRaveMenu->addAction(LoadEnvironmentAction());
+        m_environmentsMenu = openRaveMenu->addMenu("Environments");
 
+        this->menuBar()->addMenu(openRaveMenu);
 
-        // Unwrap it.
-         rviz::Display* display = wrapper->getDisplay();
-         ROS_ASSERT( display != NULL );
+        m_rvizManager = getManager();
 
-         // Downcast it to the type we think we know it is.
-         //
-         // (This is one part I would like to improve in the future.  For
-         // this to work currently, we need to link against the plugin
-         // library containing GridDisplay (libdefault_plugin.so) in addition
-         // to linking against librviz.so.  This pretty much negates the
-         // benefits of the plugin architecture.)
-         rviz::GridDisplay* grid_ = dynamic_cast<rviz::GridDisplay*>( display );
-         ROS_ASSERT( grid_ != NULL );
+        m_mainRenderPanel = this->getManager()->getRenderPanel();
 
-         // Configure the GridDisplay the way we like it.
-         grid_->setStyle( rviz::Grid::Lines); // Fat lines.
-         grid_->setColor( rviz::Color( 0.1f, 0.1f, 0.1f ));
+        m_rvizManager->getSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
 
-         Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("FillLight");
-         light->setType(Ogre::Light::LT_DIRECTIONAL);
-         light->setDiffuseColour(0.6, 0.55, 0.5);
-         light->setSpecularColour(1, 1, 1);
-         light->setDirection(0.05, 0.01, -1);
-         light->setCastShadows(true);
+        Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("FillLight");
+        light->setType(Ogre::Light::LT_DIRECTIONAL);
+        light->setDiffuseColour(0.6, 0.55, 0.5);
+        light->setSpecularColour(1, 1, 1);
+        light->setDirection(0.05, 0.01, -1);
+        light->setCastShadows(true);
 
-         Ogre::Light* light2 = m_rvizManager->getSceneManager()->createLight("Backlight");
-         light2->setType(Ogre::Light::LT_DIRECTIONAL);
-         light2->setDiffuseColour(0.2, 0.25, 0.3);
-         light2->setSpecularColour(1, 1, 1);
-         light2->setDirection(-0.1, -0.1, 0.05);
-         light2->setCastShadows(false);
+        Ogre::Light* light2 = m_rvizManager->getSceneManager()->createLight("Backlight");
+        light2->setType(Ogre::Light::LT_DIRECTIONAL);
+        light2->setDiffuseColour(0.2, 0.25, 0.3);
+        light2->setSpecularColour(1, 1, 1);
+        light2->setDirection(-0.1, -0.1, 0.05);
+        light2->setCastShadows(false);
 
-         Ogre::Light* light3 = m_rvizManager->getSceneManager()->createLight("Keylight");
-         light3->setType(Ogre::Light::LT_DIRECTIONAL);
-         light3->setDiffuseColour(0.4, 0.4, 0.4);
-         light3->setSpecularColour(1, 1, 1);
-         light3->setDirection(0.1, 0.1, -0.05);
-         light3->setCastShadows(false);
+        Ogre::Light* light3 = m_rvizManager->getSceneManager()->createLight("Keylight");
+        light3->setType(Ogre::Light::LT_DIRECTIONAL);
+        light3->setDiffuseColour(0.4, 0.4, 0.4);
+        light3->setSpecularColour(1, 1, 1);
+        light3->setDirection(0.1, 0.1, -0.05);
+        light3->setCastShadows(false);
 
-         m_rvizManager->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
-         m_rvizManager->getSceneManager()->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
+        m_rvizManager->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
+        m_rvizManager->getSceneManager()->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
 
-         SetBkgndColor(OpenRAVE::Vector(1, 1, 1));
     }
 
+    QAction* OpenRaveRviz::LoadEnvironmentAction()
+    {
+        QAction* toReturn = new QAction("Load", this);
+        connect(toReturn, SIGNAL(triggered(bool)), this, SLOT(loadEnvironment()));
+        return toReturn;
+    }
+
+    void OpenRaveRviz::loadEnvironment()
+    {
+        QString file = QFileDialog::getOpenFileName(this, "Load", ".");
+        if(file.count() > 0)
+        {
+            if(!GetCurrentViewEnv()->Load(file.toStdString()))
+            {
+                QMessageBox::warning(this, "Load", "Failed to load objects!");
+            }
+        }
+    }
 
     OpenRaveRviz::~OpenRaveRviz()
     {
@@ -160,7 +145,7 @@ namespace or_rviz
 
     void OpenRaveRviz::SetBkgndColor(const OpenRAVE::RaveVector<float> &color)
     {
-        m_mainRenderPanel->setBackgroundColor(Ogre::ColourValue(color.x, color.y, color.z));
+        getManager()->getRenderPanel()->setBackgroundColor(Ogre::ColourValue(color.x, color.y, color.z));
     }
 
     // registers a function with the viewer that gets called everytime mouse button is clicked
@@ -192,25 +177,76 @@ namespace or_rviz
     }
 
 
+    std::string OpenRaveRviz::GetEnvironmentHash(OpenRAVE::EnvironmentBasePtr env)
+    {
+        std::stringstream ss;
+        ss << RaveGetEnvironmentId(env);
+        return ss.str();
+    }
+
+    void OpenRaveRviz::setEnvironment(bool checked)
+    {
+        if(!checked)
+        {
+            return;
+        }
+
+        QAction* action = dynamic_cast<QAction*>(sender());
+
+        if(action)
+        {
+            EnvironmentBasePtr environmentBase = RaveGetEnvironment(action->text().toInt());
+
+            if(environmentBase && environmentBase != GetCurrentViewEnv())
+            {
+                Clear();
+                environmentBase->GetMutex().lock();
+                SetCurrentViewEnv(environmentBase);
+                environmentBase->GetMutex().unlock();
+
+
+            }
+        }
+
+    }
+
     // forces synchronization with the environment, returns when the environment is fully synchronized.
     void OpenRaveRviz::EnvironmentSync()
     {
-        GetEnv()->GetMutex().lock();
+        setWindowTitle("Openrave Rviz Viewer[*]");
+        GetCurrentViewEnv()->GetMutex().lock();
 
         std::vector<OpenRAVE::KinBodyPtr> bodies;
-        GetEnv()->GetBodies(bodies);
+        GetCurrentViewEnv()->GetBodies(bodies);
 
         for(size_t i = 0; i < bodies.size(); i++)
         {
             if(!HasKinBody(bodies[i]->GetName()))
             {
-                rviz::DisplayWrapper* displayWrapper = m_rvizManager->createDisplay("or_rviz/KinBody", bodies[i]->GetName(), true);
-                KinBodyDisplay* display = dynamic_cast<KinBodyDisplay*>(displayWrapper->getDisplay());
-                display->CreateVisual(bodies[i], m_rvizManager->getSceneManager());
-                        //new KinBodyDisplay(bodies[i], m_rvizManager->getSceneManager());
-                display->setFixedFrame("World");
+                if(getManager())
+                {
+                    rviz::DisplayWrapper* displayWrapper = getManager()->getDisplayWrapper(bodies[i]->GetName());
 
-                m_kinBodies[bodies[i]->GetName()] = display;
+                    if(!displayWrapper)
+                    {
+                        displayWrapper = getManager()->createDisplay("or_rviz/KinBody", bodies[i]->GetName(), true);
+                    }
+
+                    if(!displayWrapper)
+                    {
+                        continue;
+                    }
+
+                    KinBodyDisplay* display = dynamic_cast<KinBodyDisplay*>(displayWrapper->getDisplay());
+
+                    if(!display)
+                    {
+                        continue;
+                    }
+
+                    display->CreateVisual(bodies[i], getManager()->getSceneManager());
+                    m_kinBodies[bodies[i]->GetName()] = display;
+                }
             }
             else
             {
@@ -218,10 +254,91 @@ namespace or_rviz
             }
         }
 
+        std::vector<std::string> removals;
+        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
+        {
+            bool containsBody = false;
+            for(size_t j = 0; j < bodies.size(); j++)
+            {
+                if(bodies[j]->GetName() == it->first)
+                {
+                    containsBody = true;
+                    break;
+                }
+            }
+
+            if(!containsBody)
+            {
+                removals.push_back(it->first);
+            }
+        }
+
+        for(size_t i = 0; i < removals.size(); i++)
+        {
+            RemoveKinBody(removals[i]);
+        }
+
+        std::list<OpenRAVE::EnvironmentBasePtr> envs;
+        RaveGetEnvironments(envs);
+
+
+        std::vector<QAction*> actionRemovals;
+        for(int j = 0; j < m_environmentsMenu->actions().count(); j++)
+        {
+            QAction* action = m_environmentsMenu->actions().at(j);
 
 
 
-        GetEnv()->GetMutex().unlock();
+            if(!RaveGetEnvironment(action->text().toInt()))
+            {
+                actionRemovals.push_back(action);
+            }
+            else
+            {
+                if(RaveGetEnvironmentId(GetCurrentViewEnv()) != action->text().toInt())
+                {
+                    action->setChecked(false);
+                }
+                else
+                {
+                    action->setChecked(true);
+                }
+            }
+        }
+
+        for(size_t j = 0; j < actionRemovals.size(); j++)
+        {
+            m_environmentsMenu->removeAction(actionRemovals.at(j));
+        }
+
+        for(std::list<OpenRAVE::EnvironmentBasePtr>::iterator it = envs.begin(); it != envs.end(); it++)
+        {
+            OpenRAVE::EnvironmentBasePtr& env = *it;
+            std::string name = GetEnvironmentHash(env);
+
+            bool hasAction = false;
+
+            for(int j = 0; j < m_environmentsMenu->actions().count(); j++)
+            {
+                QAction* action = m_environmentsMenu->actions().at(j);
+
+                if(action->text().toStdString() == name)
+                {
+                    hasAction = true;
+                    break;
+                }
+            }
+
+            if(!hasAction)
+            {
+                QAction* action = m_environmentsMenu->addAction(QString::fromStdString(name));
+                action->setCheckable(true);
+                connect(action, SIGNAL(triggered(bool)), this, SLOT(setEnvironment(bool)));
+            }
+        }
+
+        GetCurrentViewEnv()->GetMutex().unlock();
+
     }
 
     // Viewer size and position can be set outside in the
@@ -256,21 +373,23 @@ namespace or_rviz
     // Set the camera transformation.
     void OpenRaveRviz::SetCamera (const OpenRAVE::RaveTransform<float> &trans, float focalDistance)
     {
-        Ogre::Camera* camera = m_mainRenderPanel->getCamera();
+        Ogre::Camera* camera = getManager()->getRenderPanel()->getCamera();
         camera->setPosition(converters::ToOgreVector(trans.trans));
         camera->setOrientation(converters::ToOgreQuaternion(trans.rot));
         camera->setFocalLength(std::max<float>(focalDistance, 0.01f));
 
-        RAVELOG_INFO("Setting camera parameters: %f\n", focalDistance);
     }
 
     // Return the current camera transform that the viewer is rendering the environment at.
     OpenRAVE::RaveTransform<float>  OpenRaveRviz::GetCameraTransform() const
     {
         OpenRAVE::RaveTransform<float> toReturn;
-        Ogre::Camera* camera = m_mainRenderPanel->getCamera();
-        toReturn.trans = converters::ToRaveVector(camera->getPosition());
-        toReturn.rot = converters::ToRaveQuaternion(camera->getOrientation());
+        if(m_rvizManager)
+        {
+            Ogre::Camera* camera = m_rvizManager->getRenderPanel()->getCamera();
+            toReturn.trans = converters::ToRaveVector(camera->getPosition());
+            toReturn.rot = converters::ToRaveQuaternion(camera->getOrientation());
+        }
         return toReturn;
     }
 
@@ -278,7 +397,7 @@ namespace or_rviz
     OpenRAVE::geometry::RaveCameraIntrinsics<float> OpenRaveRviz::GetCameraIntrinsics()
     {
         OpenRAVE::geometry::RaveCameraIntrinsics<float> toReturn;
-        Ogre::Camera* camera = m_mainRenderPanel->getCamera();
+        Ogre::Camera* camera = getManager()->getRenderPanel()->getCamera();
         Ogre::Matrix4 projectionMatrix = camera->getProjectionMatrix();
         toReturn.focal_length = camera->getFocalLength();
         toReturn.fx = projectionMatrix[0][0];
@@ -364,10 +483,29 @@ namespace or_rviz
         return OpenRAVE::GraphHandlePtr();
     }
 
+    void OpenRaveRviz::Clear()
+    {
+        std::vector<std::string> removals;
+        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
+         {
+            removals.push_back(it->first);
+         }
+
+        for(size_t i = 0; i < removals.size(); i++)
+        {
+            RemoveKinBody(removals.at(i));
+        }
+    }
+
+    void OpenRaveRviz::RemoveKinBody(const std::string& bodyName)
+    {
+        m_kinBodies.erase(bodyName);
+        getManager()->removeDisplay(bodyName);
+    }
+
     void OpenRaveRviz::RemoveKinBody(OpenRAVE::KinBodyPtr kinBody)
     {
-        delete m_kinBodies[kinBody->GetName()];
-        m_kinBodies.erase(kinBody->GetName());
+        RemoveKinBody(kinBody->GetName());
     }
 
     void OpenRaveRviz::syncUpdate()
@@ -379,6 +517,7 @@ namespace or_rviz
 static char* argv[1] = {const_cast<char *>("or_rviz")};
 static int argc = 1;
 
+
 OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, const std::string& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
     if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
@@ -386,18 +525,16 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type
 
         if (!ros::isInitialized())
         {
-            int argc = 0;
             ros::init(argc, argv, "or_rviz", ros::init_options::AnonymousName);
         }
         else
         {
             RAVELOG_DEBUG("Using existing ROS node '%s'\n", ros::this_node::getName().c_str());
         }
-
-
-        QApplication* app = new QApplication(argc, argv);
+        new QApplication(argc, argv);
         return OpenRAVE::InterfaceBasePtr(new or_rviz::OpenRaveRviz(penv));
     }
+
     return OpenRAVE::InterfaceBasePtr();
 }
 

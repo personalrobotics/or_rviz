@@ -33,6 +33,7 @@ namespace or_rviz
 
     KinBodyDisplay::~KinBodyDisplay()
     {
+        // Gets deleted by RVIZ
         delete m_visual;
     }
 

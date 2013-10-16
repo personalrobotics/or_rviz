@@ -28,7 +28,7 @@ namespace or_rviz
             LinkVisual(KinBodyVisual* kinBody, OpenRAVE::KinBody::LinkPtr link, Ogre::SceneNode* parent, Ogre::SceneManager* sceneManager);
             virtual ~LinkVisual();
 
-            inline OpenRAVE::KinBody::LinkPtr GetLink() { return m_link; }
+            inline OpenRAVE::KinBody::LinkPtr GetLink() { return m_link.lock(); }
             inline void SetLink(OpenRAVE::KinBody::LinkPtr value) { m_link = value; }
 
             inline Ogre::SceneNode* GetSceneNode() { return m_sceneNode; }
@@ -42,7 +42,7 @@ namespace or_rviz
 
         protected:
             KinBodyVisual* m_kinBody;
-            OpenRAVE::KinBody::LinkPtr m_link;
+            OpenRAVE::KinBody::LinkWeakPtr m_link;
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
             Ogre::SceneManager* m_sceneManager;

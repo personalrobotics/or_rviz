@@ -212,7 +212,7 @@ namespace or_rviz
 
     void LinkVisual::CreateParts()
     {
-        std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = m_link->GetGeometries();
+        std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries =GetLink()->GetGeometries();
         static int id = 0;
 
         for (size_t i = 0; i < geometries.size(); i++)
@@ -241,7 +241,7 @@ namespace or_rviz
                 offset_orientation = converters::ToOgreQuaternion(geom->GetTransform().rot);
             }
 
-            std::string objectName = m_link->GetName() + " " + m_kinBody->GetKinBody()->GetName();
+            std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
 
             switch (geom->GetType())
             {

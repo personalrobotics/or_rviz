@@ -7,6 +7,7 @@
 #include <QMainWindow>
 #include <rviz/visualization_manager.h>
 #include <rviz/render_panel.h>
+#include <rviz/visualization_frame.h>
 #include "Plugins/KinBodyDisplay.h"
 #include "Plugins/KinBodyVisual.h"
 #include "Plugins/LinkVisual.h"
@@ -15,7 +16,7 @@
 
 namespace or_rviz
 {
-    class OpenRaveRviz : public QMainWindow, public OpenRAVE::ViewerBase
+    class OpenRaveRviz : public rviz::VisualizationFrame, public OpenRAVE::ViewerBase
     {
         Q_OBJECT
         public:
@@ -80,16 +81,28 @@ namespace or_rviz
 
             inline bool HasKinBody(std::string name) { return m_kinBodies.find(name) != m_kinBodies.end(); }
 
+            void RemoveKinBody(const std::string& bodyName);
+
+            void Clear();
+            std::string GetEnvironmentHash(OpenRAVE::EnvironmentBasePtr env);
+
+            OpenRAVE::EnvironmentBasePtr GetCurrentViewEnv() { return m_currentViewEnv; }
+            void SetCurrentViewEnv(OpenRAVE::EnvironmentBasePtr value) {  m_currentViewEnv = value; }
 
             public Q_SLOTS:
                  void syncUpdate();
+                 void loadEnvironment();
+                 void setEnvironment(bool checked);
 
         protected:
 
             rviz::VisualizationManager* m_rvizManager;
             rviz::RenderPanel* m_mainRenderPanel;
             std::map<std::string, KinBodyDisplay*> m_kinBodies;
+            QAction* LoadEnvironmentAction();
+            QMenu* m_environmentsMenu;
 
+            OpenRAVE::EnvironmentBasePtr m_currentViewEnv;
 
             bool m_autoSync;
             std::string m_name;

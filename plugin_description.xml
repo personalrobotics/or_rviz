@@ -1,4 +1,4 @@
-<library path="lib/libor_rviz">
+<library path="lib/lib_rvizplugin">
   <class name="or_rviz/KinBody"
          type="or_rviz::KinBodyDisplay"
          base_class_type="rviz::Display">
