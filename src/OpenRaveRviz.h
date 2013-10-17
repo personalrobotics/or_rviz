@@ -8,9 +8,7 @@
 #include <rviz/visualization_manager.h>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_frame.h>
-#include "Plugins/KinBodyDisplay.h"
-#include "Plugins/KinBodyVisual.h"
-#include "Plugins/LinkVisual.h"
+#include "Plugins/EnvironmentDisplay.h"
 #include <map>
 
 
@@ -77,11 +75,6 @@ namespace or_rviz
             inline bool IsAutoSyncEnabled() { return m_autoSync; }
             inline void SetAutoSync(bool value) { m_autoSync = value; }
 
-            virtual void RemoveKinBody(OpenRAVE::KinBodyPtr kinBody);
-
-            inline bool HasKinBody(std::string name) { return m_kinBodies.find(name) != m_kinBodies.end(); }
-
-            void RemoveKinBody(const std::string& bodyName);
 
             void Clear();
             std::string GetEnvironmentHash(OpenRAVE::EnvironmentBasePtr env);
@@ -98,7 +91,7 @@ namespace or_rviz
 
             rviz::VisualizationManager* m_rvizManager;
             rviz::RenderPanel* m_mainRenderPanel;
-            std::map<std::string, KinBodyDisplay*> m_kinBodies;
+            EnvironmentDisplay* m_envDisplay;
             QAction* LoadEnvironmentAction();
             QMenu* m_environmentsMenu;
 

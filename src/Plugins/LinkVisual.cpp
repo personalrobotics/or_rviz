@@ -86,7 +86,7 @@ namespace or_rviz
 
         if(existingMesh.get())
         {
-            RAVELOG_INFO("Mesh %s exists. returning.\n", name.c_str());
+            RAVELOG_DEBUG("Mesh %s exists. returning.\n", name.c_str());
             return existingMesh;
         }
 
@@ -197,9 +197,9 @@ namespace or_rviz
         subMesh->indexData->indexStart = 0;
 
 
-        RAVELOG_INFO("Mesh %s\n", name.c_str());
-        RAVELOG_INFO("Min: %f %f %f\n", min.x, min.y, min.z);
-        RAVELOG_INFO("Max: %f %f %f\n", max.x, max.y, max.z);
+        RAVELOG_DEBUG("Mesh %s\n", name.c_str());
+        RAVELOG_DEBUG("Min: %f %f %f\n", min.x, min.y, min.z);
+        RAVELOG_DEBUG("Max: %f %f %f\n", max.x, max.y, max.z);
 
         /* set the bounds of the mesh */
         mesh->_setBounds(Ogre::AxisAlignedBox(min.x, min.y, min.z, max.x, max.y, max.z));
@@ -283,12 +283,12 @@ namespace or_rviz
                     }
                     catch (Ogre::Exception& e)
                     {
-                        RAVELOG_WARN("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
+                        RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
                     }
 
                     if(!mesh.get())
                     {
-                        RAVELOG_WARN("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
+                        RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
                         boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
                         myMesh.reset(new OpenRAVE::TriMesh());
                         m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
@@ -300,7 +300,7 @@ namespace or_rviz
                     }
                     else
                     {
-                        RAVELOG_INFO("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
+                        RAVELOG_DEBUG("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
                     }
 
 
@@ -315,7 +315,7 @@ namespace or_rviz
                 }
                 default:
                 {
-                    RAVELOG_WARN("Unrecognized geometry type.");
+                    RAVELOG_DEBUG("Unrecognized geometry type.");
                     break;
                 }
             }

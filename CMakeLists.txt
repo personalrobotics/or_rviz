@@ -29,7 +29,7 @@ qt4_wrap_cpp(MOC_FILES
 
 
 set(RVIZ_PLUGIN_FILES
-  src/Plugins/KinBodyDisplay.cpp
+  src/Plugins/EnvironmentDisplay.cpp
   src/Plugins/KinBodyVisual.cpp
   src/Plugins/LinkVisual.cpp
   )

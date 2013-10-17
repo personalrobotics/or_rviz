@@ -37,6 +37,7 @@ namespace or_rviz
             OpenRAVE::ViewerBase(env),
             m_rvizManager(NULL),
             m_mainRenderPanel(NULL),
+            m_envDisplay(NULL),
             m_autoSync(false),
             m_name("or_rviz")
     {
@@ -112,12 +113,7 @@ namespace or_rviz
 
     OpenRaveRviz::~OpenRaveRviz()
     {
-        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
-        {
-            delete it->second;
-        }
-
-        m_kinBodies.clear();
+        m_rvizManager->removeAllDisplays();
     }
 
     int OpenRaveRviz::main(bool showWindow)
@@ -139,13 +135,14 @@ namespace or_rviz
 
     void OpenRaveRviz::Reset()
     {
-
+        m_rvizManager->removeDisplay(m_envDisplay->getName());
+        m_envDisplay = NULL;
     }
 
 
     void OpenRaveRviz::SetBkgndColor(const OpenRAVE::RaveVector<float> &color)
     {
-        getManager()->getRenderPanel()->setBackgroundColor(Ogre::ColourValue(color.x, color.y, color.z));
+        m_rvizManager->setBackgroundColor(rviz::Color(color.x, color.y, color.z));
     }
 
     // registers a function with the viewer that gets called everytime mouse button is clicked
@@ -216,67 +213,29 @@ namespace or_rviz
         setWindowTitle("Openrave Rviz Viewer[*]");
         GetCurrentViewEnv()->GetMutex().lock();
 
-        std::vector<OpenRAVE::KinBodyPtr> bodies;
-        GetCurrentViewEnv()->GetBodies(bodies);
 
-        for(size_t i = 0; i < bodies.size(); i++)
+        if(!m_envDisplay)
         {
-            if(!HasKinBody(bodies[i]->GetName()))
+            rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
+
+            if(!wrapper)
             {
-                if(getManager())
-                {
-                    rviz::DisplayWrapper* displayWrapper = getManager()->getDisplayWrapper(bodies[i]->GetName());
-
-                    if(!displayWrapper)
-                    {
-                        displayWrapper = getManager()->createDisplay("or_rviz/KinBody", bodies[i]->GetName(), true);
-                    }
-
-                    if(!displayWrapper)
-                    {
-                        continue;
-                    }
-
-                    KinBodyDisplay* display = dynamic_cast<KinBodyDisplay*>(displayWrapper->getDisplay());
-
-                    if(!display)
-                    {
-                        continue;
-                    }
-
-                    display->CreateVisual(bodies[i], getManager()->getSceneManager());
-                    m_kinBodies[bodies[i]->GetName()] = display;
-                }
+                wrapper = m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true);
             }
-            else
-            {
-                m_kinBodies[bodies[i]->GetName()]->UpdateTransforms();
-            }
+
+            m_envDisplay = dynamic_cast<EnvironmentDisplay*>(wrapper->getDisplay());
         }
 
-        std::vector<std::string> removals;
-        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
+        if(m_envDisplay)
         {
-            bool containsBody = false;
-            for(size_t j = 0; j < bodies.size(); j++)
+            if(m_envDisplay->GetEnvironment() != GetCurrentViewEnv())
             {
-                if(bodies[j]->GetName() == it->first)
-                {
-                    containsBody = true;
-                    break;
-                }
+                m_envDisplay->SetEnvironment(GetCurrentViewEnv());
             }
 
-            if(!containsBody)
-            {
-                removals.push_back(it->first);
-            }
+            m_envDisplay->UpdateObjects();
         }
 
-        for(size_t i = 0; i < removals.size(); i++)
-        {
-            RemoveKinBody(removals[i]);
-        }
 
         std::list<OpenRAVE::EnvironmentBasePtr> envs;
         RaveGetEnvironments(envs);
@@ -485,27 +444,7 @@ namespace or_rviz
 
     void OpenRaveRviz::Clear()
     {
-        std::vector<std::string> removals;
-        for(std::map<std::string, KinBodyDisplay*>::iterator it = m_kinBodies.begin(); it != m_kinBodies.end(); it++)
-         {
-            removals.push_back(it->first);
-         }
-
-        for(size_t i = 0; i < removals.size(); i++)
-        {
-            RemoveKinBody(removals.at(i));
-        }
-    }
-
-    void OpenRaveRviz::RemoveKinBody(const std::string& bodyName)
-    {
-        m_kinBodies.erase(bodyName);
-        getManager()->removeDisplay(bodyName);
-    }
-
-    void OpenRaveRviz::RemoveKinBody(OpenRAVE::KinBodyPtr kinBody)
-    {
-        RemoveKinBody(kinBody->GetName());
+        m_envDisplay->Clear();
     }
 
     void OpenRaveRviz::syncUpdate()
