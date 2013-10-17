@@ -34,7 +34,9 @@ namespace or_rviz
             void Clear();
 
             std::string GetFrame() { return m_frame; }
-            void SetFrame(const std::string& value) { m_frame = value; }
+            void SetFrame(const std::string& value) { m_frame = value; fixedFrameChanged(); }
+
+            void RemoveKinBody(const std::string& name);
 
             virtual void onInitialize();
             virtual void fixedFrameChanged();
@@ -53,6 +55,7 @@ namespace or_rviz
 
             std::string m_frame;
             rviz::TFFramePropertyWPtr m_frameProperty;
+            rviz::CategoryPropertyWPtr m_kinbodiesCategory;
 
 
 

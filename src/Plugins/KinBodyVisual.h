@@ -11,6 +11,8 @@
 #include <openrave/openrave.h>
 #include <openrave/kinbody.h>
 #include <vector>
+#include <rviz/properties/property.h>
+#include <OgreSceneNode.h>
 
 namespace Ogre
 {
@@ -23,6 +25,7 @@ namespace or_rviz
 {
 
     class LinkVisual;
+
     class KinBodyVisual
     {
         public:
@@ -45,12 +48,21 @@ namespace or_rviz
 
             void CreateParts();
 
+            void SetCategory(rviz::CategoryPropertyWPtr category) { m_category = category; }
+            rviz::CategoryPropertyWPtr GetCategory() { return m_category; }
+
+            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value;}
+            bool IsVisible() { return m_visible; }
+
+
         protected:
             OpenRAVE::KinBodyWeakPtr m_kinBody;
             Ogre::SceneManager* m_sceneManager;
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
             std::vector<LinkVisual*> m_links;
+            rviz::CategoryPropertyWPtr m_category;
+            bool m_visible;
 
     };
 

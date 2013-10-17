@@ -9,13 +9,14 @@
 #include <rviz/frame_manager.h>
 #include <rviz/properties/property_manager.h>
 
+
 namespace or_rviz
 {
 
     EnvironmentDisplay::EnvironmentDisplay() :
             m_frameProperty()
     {
-        m_frame = "/openrave";
+        m_frame = "/map";
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
@@ -40,6 +41,16 @@ namespace or_rviz
             {
                 KinBodyVisual* visual = new KinBodyVisual(m_sceneManager, m_sceneNode, bodies.at(i));
                 m_bodyVisuals[bodies[i]->GetName()] = visual;
+
+
+                visual->SetCategory(
+                        property_manager_->createCheckboxCategory(bodies.at(i)->GetName(),
+                                                                 bodies.at(i)->GetName(),
+                                                                 property_prefix_,
+                                                                 boost::bind(&KinBodyVisual::IsVisible, visual),
+                                                                 boost::bind(&KinBodyVisual::SetVisible, visual, _1),
+                                                                 m_kinbodiesCategory, visual));
+
             }
             else
             {
@@ -68,10 +79,16 @@ namespace or_rviz
 
         for(size_t i = 0; i < removals.size(); i++)
         {
-            delete m_bodyVisuals.at(removals[i]);
-            m_bodyVisuals.erase(removals[i]);
+            RemoveKinBody(removals.at(i));
         }
 
+    }
+
+    void EnvironmentDisplay::RemoveKinBody(const std::string& name)
+    {
+        property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
+        delete m_bodyVisuals.at(name);
+        m_bodyVisuals.erase(name);
     }
 
     void EnvironmentDisplay::Clear()
@@ -84,8 +101,7 @@ namespace or_rviz
 
         for(size_t i = 0; i < removals.size(); i++)
         {
-            delete m_bodyVisuals.at(removals[i]);
-            m_bodyVisuals.erase(removals[i]);
+            RemoveKinBody(removals.at(i));
         }
 
         removals.clear();
@@ -123,16 +139,29 @@ namespace or_rviz
                 boost::bind( &EnvironmentDisplay::GetFrame, this ),
                 boost::bind( &EnvironmentDisplay::SetFrame, this, _1 ),
                 parent_category_);
+
+        m_kinbodiesCategory = property_manager_->createCategory("Kinbodies", property_prefix_, parent_category_, NULL);
+
     }
 
     void EnvironmentDisplay::onEnable()
     {
         m_sceneNode->setVisible(true, true);
+
+        for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
+         {
+            it->second->SetVisible(true);
+         }
     }
 
     void EnvironmentDisplay::onDisable()
     {
         m_sceneNode->setVisible(false, true);
+
+        for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
+         {
+            it->second->SetVisible(false);
+         }
     }
 
 } /* namespace superviewer */
