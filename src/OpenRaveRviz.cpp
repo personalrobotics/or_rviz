@@ -507,9 +507,10 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
 
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
@@ -527,9 +528,9 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
-
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
@@ -549,9 +550,10 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
 
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
@@ -571,9 +573,10 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
 
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
@@ -593,9 +596,9 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
-
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
@@ -615,9 +618,10 @@ namespace or_rviz
         }
 
 
-        sceneNode->attachObject(manualObject);
 
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
@@ -640,13 +644,10 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color)
     {
-        RAVELOG_INFO("Drawing trimesh...\n");
-
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
-
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
 
         if (pIndices != NULL)
         {
@@ -660,25 +661,22 @@ namespace or_rviz
         }
         else
         {
-            if (stride != sizeof(float) * 3)
+
+            for (int i = 0; i < 3 * numTriangles; ++i)
             {
-                for (int i = 0; i < 3 * numTriangles; ++i)
-                {
-                    manualObject->position(ppoints[0], ppoints[1], ppoints[2]);
-                    ppoints = (float*) ((char*) ppoints + stride);
-                    manualObject->colour(color.x, color.y, color.z, color.w);
-                    manualObject->index(i);
-                }
+                manualObject->position(ppoints[0], ppoints[1], ppoints[2]);
+                ppoints = (float*) ((char*) ppoints + stride);
+                manualObject->colour(color.x, color.y, color.z, color.w);
+                manualObject->index(i);
             }
+
 
         }
 
-        manualObject->end();
 
-
-        sceneNode->attachObject(manualObject);
-
-        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
+         OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+         m_graphsToInitialize.push_back(ptr);
+         return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors)
