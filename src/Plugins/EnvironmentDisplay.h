@@ -19,7 +19,6 @@
 
 namespace or_rviz
 {
-
     class EnvironmentDisplay : public rviz::Display
     {
         public:
@@ -35,6 +34,8 @@ namespace or_rviz
 
             std::string GetFrame() { return m_frame; }
             void SetFrame(const std::string& value) { m_frame = value; fixedFrameChanged(); }
+
+            Ogre::SceneNode* GetNode() { return m_sceneNode; }
 
             void RemoveKinBody(const std::string& name);
 

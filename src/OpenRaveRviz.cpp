@@ -22,6 +22,10 @@
 #include <QFileDialog>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <OgrePixelFormat.h>
+#include <OgreManualObject.h>
+#include <OgreRenderWindow.h>
+
 
 using namespace OpenRAVE;
 using namespace rviz;
@@ -89,6 +93,15 @@ namespace or_rviz
 
         m_rvizManager->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
         m_rvizManager->getSceneManager()->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
+        installEventFilter(this);
+
+        rviz::RenderPanel* offScreenPanel = new rviz::RenderPanel(this);
+
+        offScreenPanel->setVisible(false);
+
+        m_offscreenRenderer = (offScreenPanel)->getRenderWindow();
+        m_offscreenRenderer->setVisible(false);
+        m_offscreenRenderer->setHidden(true);
 
     }
 
@@ -133,6 +146,76 @@ namespace or_rviz
         qApp->quit();
     }
 
+
+    uchar* OpenRaveRviz::OffscreenRender(int desiredWidth, int desiredHeight, int desiredDepth)
+    {
+        m_offscreenRenderer->getViewport(0)->setDimensions(0, 0, desiredWidth, desiredHeight);
+        int left, top, width, height;
+        m_offscreenRenderer->getViewport(0)->getActualDimensions(left, top, width, height);
+
+        Ogre::PixelFormat format = Ogre::PF_BYTE_RGBA;
+        int outWidth = width;
+        int outHeight = height;
+        int depth = Ogre::PixelUtil::getNumElemBytes(format);
+
+
+        unsigned char *data = new unsigned char [outWidth * outHeight * depth];
+        Ogre::Box extents(left, top, left + width, top + height);
+        Ogre::PixelBox pb(extents, format, data);
+
+        m_offscreenRenderer->copyContentsToMemory(pb, Ogre::RenderTarget::FB_AUTO);
+
+
+        return data;
+    }
+
+    uchar* OpenRaveRviz::WriteCurrentView(int& width, int& height, int& depth)
+    {
+        int left, top;
+        render_panel_->getViewport()->getActualDimensions(left, top, width, height);
+
+        Ogre::PixelFormat format = Ogre::PF_BYTE_RGBA;
+        int outWidth = width;
+        int outHeight = height;
+        depth = Ogre::PixelUtil::getNumElemBytes(format);
+
+
+        unsigned char *data = new unsigned char [outWidth * outHeight * depth];
+        Ogre::Box extents(left, top, left + width, top + height);
+        Ogre::PixelBox pb(extents, format, data);
+
+        render_panel_->getRenderWindow()->copyContentsToMemory(pb, Ogre::RenderTarget::FB_AUTO);
+
+
+        return data;
+    }
+
+    void  OpenRaveRviz::paintEvent(QPaintEvent* e)
+    {
+        rviz::VisualizationFrame::paintEvent(e);
+    }
+
+    bool OpenRaveRviz::eventFilter(QObject *o, QEvent *e)
+    {
+        if (e->type() == QEvent::Paint)
+        {
+            paintEvent((QPaintEvent *) e);
+
+            if(m_renderCallbacks.size() > 0)
+            {
+                int width, height, outBytesPerPixel;
+                unsigned char *data = WriteCurrentView(width, height, outBytesPerPixel);
+
+                for(std::map<size_t, ViewerImageCallbackFn>::iterator it = m_renderCallbacks.begin(); it != m_renderCallbacks.end(); it++)
+                {
+                    ViewerImageCallbackFn& fn = it->second;
+                    fn(data, width, height, outBytesPerPixel);
+                }
+            }
+        }
+        return rviz::VisualizationFrame::eventFilter(o, e);
+    }
+
     void OpenRaveRviz::Reset()
     {
         m_rvizManager->removeDisplay(m_envDisplay->getName());
@@ -148,23 +231,29 @@ namespace or_rviz
     // registers a function with the viewer that gets called everytime mouse button is clicked
     OpenRAVE::UserDataPtr OpenRaveRviz::RegisterItemSelectionCallback(const ItemSelectionCallbackFn &fncallback)
     {
-        // TODO: Implement
-        return OpenRAVE::UserDataPtr();
+        static size_t maxID = 0;
+        maxID++;
+        m_itemCallbacks[maxID] = fncallback;
+        return  OpenRAVE::UserDataPtr((new SelectCallbackRegistry(maxID, &m_itemCallbacks)));
     }
 
     // registers a function with the viewer that gets called for every new image rendered.
     OpenRAVE::UserDataPtr OpenRaveRviz::RegisterViewerImageCallback(const ViewerImageCallbackFn &fncallback)
     {
-        //TODO: Implement
-        return OpenRAVE::UserDataPtr();
+        static size_t maxID = 0;
+        maxID++;
+        m_renderCallbacks[maxID] = fncallback;
+        return  OpenRAVE::UserDataPtr((new ViewerCallbackRegistry(maxID, &m_renderCallbacks)));
     }
 
 
     // registers a function with the viewer that gets called in the viewer's GUI thread for every cycle the viewer refreshes at
     OpenRAVE::UserDataPtr OpenRaveRviz::RegisterViewerThreadCallback(const ViewerThreadCallbackFn &fncallback)
     {
-        //TODO: Implement
-        return OpenRAVE::UserDataPtr();
+        static size_t maxID = 0;
+        maxID++;
+        m_syncCallbacks[maxID] = fncallback;
+        return  OpenRAVE::UserDataPtr((new SyncCallbackRegistry(maxID, &m_syncCallbacks)));
     }
 
     // controls whether the viewer synchronizes with the newest environment automatically
@@ -207,18 +296,13 @@ namespace or_rviz
 
     }
 
-    // forces synchronization with the environment, returns when the environment is fully synchronized.
-    void OpenRaveRviz::EnvironmentSync()
+    void OpenRaveRviz::UpdateDisplay()
     {
-        setWindowTitle("Openrave Rviz Viewer[*]");
-        GetCurrentViewEnv()->GetMutex().lock();
-
-
-        if(!m_envDisplay)
+        if (!m_envDisplay)
         {
             rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
 
-            if(!wrapper)
+            if (!wrapper)
             {
                 wrapper = m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true);
             }
@@ -226,9 +310,9 @@ namespace or_rviz
             m_envDisplay = dynamic_cast<EnvironmentDisplay*>(wrapper->getDisplay());
         }
 
-        if(m_envDisplay)
+        if (m_envDisplay)
         {
-            if(m_envDisplay->GetEnvironment() != GetCurrentViewEnv())
+            if (m_envDisplay->GetEnvironment() != GetCurrentViewEnv())
             {
                 m_envDisplay->SetEnvironment(GetCurrentViewEnv());
             }
@@ -237,24 +321,31 @@ namespace or_rviz
         }
 
 
+        for(size_t i = 0; i < m_graphsToInitialize.size(); i++)
+        {
+            dynamic_cast<RvizGraphHandle*>(m_graphsToInitialize[i].get())->Initialize();
+        }
+
+        m_graphsToInitialize.clear();
+    }
+
+    void OpenRaveRviz::HandleMenus()
+    {
         std::list<OpenRAVE::EnvironmentBasePtr> envs;
         RaveGetEnvironments(envs);
 
-
         std::vector<QAction*> actionRemovals;
-        for(int j = 0; j < m_environmentsMenu->actions().count(); j++)
+        for (int j = 0; j < m_environmentsMenu->actions().count(); j++)
         {
             QAction* action = m_environmentsMenu->actions().at(j);
 
-
-
-            if(!RaveGetEnvironment(action->text().toInt()))
+            if (!RaveGetEnvironment(action->text().toInt()))
             {
                 actionRemovals.push_back(action);
             }
             else
             {
-                if(RaveGetEnvironmentId(GetCurrentViewEnv()) != action->text().toInt())
+                if (RaveGetEnvironmentId(GetCurrentViewEnv()) != action->text().toInt())
                 {
                     action->setChecked(false);
                 }
@@ -265,38 +356,53 @@ namespace or_rviz
             }
         }
 
-        for(size_t j = 0; j < actionRemovals.size(); j++)
+        for (size_t j = 0; j < actionRemovals.size(); j++)
         {
             m_environmentsMenu->removeAction(actionRemovals.at(j));
         }
 
-        for(std::list<OpenRAVE::EnvironmentBasePtr>::iterator it = envs.begin(); it != envs.end(); it++)
+        for (std::list<OpenRAVE::EnvironmentBasePtr>::iterator it = envs.begin(); it != envs.end(); it++)
         {
             OpenRAVE::EnvironmentBasePtr& env = *it;
             std::string name = GetEnvironmentHash(env);
 
             bool hasAction = false;
 
-            for(int j = 0; j < m_environmentsMenu->actions().count(); j++)
+            for (int j = 0; j < m_environmentsMenu->actions().count(); j++)
             {
                 QAction* action = m_environmentsMenu->actions().at(j);
 
-                if(action->text().toStdString() == name)
+                if (action->text().toStdString() == name)
                 {
                     hasAction = true;
                     break;
                 }
             }
 
-            if(!hasAction)
+            if (!hasAction)
             {
                 QAction* action = m_environmentsMenu->addAction(QString::fromStdString(name));
                 action->setCheckable(true);
                 connect(action, SIGNAL(triggered(bool)), this, SLOT(setEnvironment(bool)));
             }
         }
+    }
+
+    // forces synchronization with the environment, returns when the environment is fully synchronized.
+    void OpenRaveRviz::EnvironmentSync()
+    {
+        setWindowTitle("Openrave Rviz Viewer[*]");
+        GetCurrentViewEnv()->GetMutex().lock();
+
+        UpdateDisplay();
+        HandleMenus();
 
         GetCurrentViewEnv()->GetMutex().unlock();
+
+        for(std::map<size_t, ViewerThreadCallbackFn>::iterator it = m_syncCallbacks.begin(); it != m_syncCallbacks.end(); it++)
+        {
+            it->second();
+        }
 
     }
 
@@ -370,46 +476,148 @@ namespace or_rviz
     // Renders a 24bit RGB image of dimensions width and height from the current scene.
     bool OpenRaveRviz::GetCameraImage(std::vector<uint8_t> &memory, int width, int height, const OpenRAVE::RaveTransform<float> &t, const OpenRAVE::SensorBase::CameraIntrinsics &intrinsics)
     {
-        //TODO: Implement
-        return false;
+
+        OpenRAVE::Transform oldTransform = GetCameraTransform();
+        float oldFocalLength = GetCameraIntrinsics().focal_length;
+        SetCamera(t, intrinsics.focal_length);
+
+
+        uint8_t* data = (uint8_t*)OffscreenRender(width, height, 24);
+        memory = std::vector<uint8_t>(data, data + sizeof(data) / sizeof(data[0]) );
+
+        SetCamera(oldTransform, oldFocalLength);
+
+        return true;
     }
 
 
     // Overloading OPENRAVE drawing functions....
     OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
+
+        for(int i = 0; i < numPoints; i++)
+        {
+            manualObject->colour(color.x, color.y, color.z, color.w);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
+
+        for(int i = 0; i < numPoints; i++)
+        {
+            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_STRIP);
+
+        for(int i = 0; i < numPoints - 1; i++)
+        {
+            manualObject->colour(color.x, color.y, color.z, color.w);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            manualObject->colour(color.x, color.y, color.z, color.w);
+            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_STRIP);
+
+        for(int i = 0; i < numPoints - 1; i++)
+        {
+            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            manualObject->colour(colors[(i + 1) * 4 + 0], colors[(i + 1) * 4 + 1], colors[(i + 1) * 4 + 2], colors[(i + 1) * 4 + 3]);
+            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_LIST);
+
+        for(int i = 0; i < numPoints; i++)
+        {
+            manualObject->colour(color.x, color.y, color.z, color.w);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            manualObject->colour(color.x, color.y, color.z, color.w);
+            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_LIST);
+
+        for(int i = 0; i < numPoints; i++)
+        {
+            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            manualObject->colour(colors[(i + 1) * 4 + 0], colors[(i + 1) * 4 + 1], colors[(i + 1) * 4 + 2], colors[(i + 1) * 4 + 3]);
+            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+        }
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
@@ -432,14 +640,83 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        RAVELOG_INFO("Drawing trimesh...\n");
+
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
+
+        if (pIndices != NULL)
+        {
+            for (int i = 0; i < 3 * numTriangles; ++i)
+            {
+                float* p = (float*) ((char*) ppoints + stride * pIndices[i]);
+                manualObject->position(p[0], p[1], p[2]);
+                manualObject->colour(color.x, color.y, color.z, color.w);
+                manualObject->index(i);
+            }
+        }
+        else
+        {
+            if (stride != sizeof(float) * 3)
+            {
+                for (int i = 0; i < 3 * numTriangles; ++i)
+                {
+                    manualObject->position(ppoints[0], ppoints[1], ppoints[2]);
+                    ppoints = (float*) ((char*) ppoints + stride);
+                    manualObject->colour(color.x, color.y, color.z, color.w);
+                    manualObject->index(i);
+                }
+            }
+
+        }
+
+        manualObject->end();
+
+
+        sceneNode->attachObject(manualObject);
+
+        return OpenRAVE::GraphHandlePtr(new RvizGraphHandle(sceneNode, manualObject));
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+        Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
+        manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+
+        if (pIndices != NULL)
+        {
+            for (int i = 0; i < 3 * numTriangles; ++i)
+            {
+                float* p = (float*) ((char*) ppoints + stride * pIndices[i]);
+                manualObject->position(p[0], p[1], p[2]);
+                manualObject->colour((float)colors[i][0], (float)(colors[i][1]), (float)colors[i][2], 1.0f);
+                manualObject->index(i);
+            }
+        }
+        else
+        {
+
+            for (int i = 0; i < 3 * numTriangles; ++i)
+            {
+                manualObject->position(ppoints[0], ppoints[1], ppoints[2]);
+                ppoints = (float*) ((char*) ppoints + stride);
+                manualObject->colour((float)colors[i][0], (float)(colors[i][1]), (float)colors[i][2], 1.0f);
+                manualObject->index(i);
+            }
+
+
+        }
+
+
+         OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
+         m_graphsToInitialize.push_back(ptr);
+         return ptr;
     }
 
     void OpenRaveRviz::Clear()
@@ -450,6 +727,51 @@ namespace or_rviz
     void OpenRaveRviz::syncUpdate()
     {
         EnvironmentSync();
+    }
+
+
+
+    RvizGraphHandle::RvizGraphHandle()
+    {
+        m_object = NULL;
+        m_node = NULL;
+    }
+
+    RvizGraphHandle::RvizGraphHandle(Ogre::SceneNode* node, Ogre::ManualObject* object)
+    {
+        m_node = node;
+        m_object = object;
+    }
+
+    RvizGraphHandle::~RvizGraphHandle()
+    {
+        if(m_node)
+        {
+            delete m_node;
+        }
+    }
+
+    void  RvizGraphHandle::SetShow(bool show)
+    {
+        m_node->setVisible(show, true);
+    }
+
+    void  RvizGraphHandle::SetTransform(const OpenRAVE::RaveTransform<float>& transform)
+    {
+        m_node->setPosition(transform.trans.x, transform.trans.y, transform.trans.z);
+        m_node->setOrientation(converters::ToOgreQuaternion(transform.rot));
+    }
+
+    void  RvizGraphHandle::Initialize()
+    {
+        Ogre::ManualObject* manual = dynamic_cast<Ogre::ManualObject*>(m_object);
+
+        if(manual)
+        {
+            manual->end();
+        }
+
+        m_node->attachObject(m_object);
     }
 }
 

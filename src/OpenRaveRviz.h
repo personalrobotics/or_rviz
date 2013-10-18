@@ -14,6 +14,68 @@
 
 namespace or_rviz
 {
+
+    /////
+    // These classes need to exist to make OpenRAVEs callback stuff work.
+    // They are classes which just erase references to themselves in a map.
+    // When the caller deletes the shared pointer to them, they are erased from
+    // the callback registry.
+    // Basically follows qtcoinviewer's registry stuff, but
+    /////-----------
+    class ViewerCallbackRegistry: public OpenRAVE::UserData
+    {
+        public:
+            ViewerCallbackRegistry(size_t index, std::map<size_t, OpenRAVE::ViewerBase::ViewerImageCallbackFn>* callbacks) { m_index = index; m_callbacks = callbacks; }
+            virtual ~ViewerCallbackRegistry() { m_callbacks->erase(m_index); }
+            size_t m_index;
+            std::map<size_t, OpenRAVE::ViewerBase::ViewerImageCallbackFn>* m_callbacks;
+    };
+
+    class SyncCallbackRegistry: public OpenRAVE::UserData
+    {
+        public:
+            SyncCallbackRegistry(size_t index, std::map<size_t, OpenRAVE::ViewerBase::ViewerThreadCallbackFn>* callbacks) { m_index = index; m_callbacks = callbacks; }
+            virtual ~SyncCallbackRegistry() { m_callbacks->erase(m_index); }
+            size_t m_index;
+            std::map<size_t, OpenRAVE::ViewerBase::ViewerThreadCallbackFn>* m_callbacks;
+    };
+
+    class SelectCallbackRegistry : public OpenRAVE::UserData
+    {
+        public:
+            SelectCallbackRegistry(size_t index, std::map<size_t, OpenRAVE::ViewerBase::ItemSelectionCallbackFn>* callbacks) { m_index = index; m_callbacks = callbacks; }
+            virtual ~SelectCallbackRegistry() { m_callbacks->erase(m_index); }
+            size_t m_index;
+            std::map<size_t, OpenRAVE::ViewerBase::ItemSelectionCallbackFn>* m_callbacks;
+    };
+
+
+    ////--------- Callback classes
+
+    ////
+    // This class allows the viewer to register "graphs" with OpenRAVE. They are implemented in RVIZ as ogre dynamic objects.
+    //
+    class RvizGraphHandle : public OpenRAVE::GraphHandle
+    {
+        public:
+            RvizGraphHandle();
+            RvizGraphHandle(Ogre::SceneNode* node, Ogre::ManualObject* object);
+            virtual ~RvizGraphHandle();
+
+            inline Ogre::MovableObject* GetObject() { return m_object;}
+            inline void SetObject(Ogre::MovableObject* object) { m_object = object; }
+
+            virtual void SetShow(bool show);
+            virtual void SetTransform(const OpenRAVE::RaveTransform<float>& transform);
+
+            void Initialize();
+
+        protected:
+            Ogre::MovableObject* m_object;
+            Ogre::SceneNode* m_node;
+
+    };
+
     class OpenRaveRviz : public rviz::VisualizationFrame, public OpenRAVE::ViewerBase
     {
         Q_OBJECT
@@ -82,6 +144,9 @@ namespace or_rviz
             OpenRAVE::EnvironmentBasePtr GetCurrentViewEnv() { return m_currentViewEnv; }
             void SetCurrentViewEnv(OpenRAVE::EnvironmentBasePtr value) {  m_currentViewEnv = value; }
 
+            uchar* OffscreenRender(int width, int height, int depth);
+            uchar* WriteCurrentView(int& width, int& height, int& depth);
+
             public Q_SLOTS:
                  void syncUpdate();
                  void loadEnvironment();
@@ -91,9 +156,21 @@ namespace or_rviz
 
             rviz::VisualizationManager* m_rvizManager;
             rviz::RenderPanel* m_mainRenderPanel;
+            Ogre::RenderWindow* m_offscreenRenderer;
             EnvironmentDisplay* m_envDisplay;
-            QAction* LoadEnvironmentAction();
             QMenu* m_environmentsMenu;
+            std::map<size_t, ViewerImageCallbackFn> m_renderCallbacks;
+            std::map<size_t, ViewerThreadCallbackFn> m_syncCallbacks;
+            std::map<size_t, ItemSelectionCallbackFn> m_itemCallbacks;
+
+            std::vector<OpenRAVE::GraphHandlePtr> m_graphsToInitialize;
+
+            QAction* LoadEnvironmentAction();
+            void UpdateDisplay();
+            void HandleMenus();
+            virtual void paintEvent(QPaintEvent* e);
+            virtual bool eventFilter(QObject *o, QEvent *e);
+
 
             OpenRAVE::EnvironmentBasePtr m_currentViewEnv;
 
