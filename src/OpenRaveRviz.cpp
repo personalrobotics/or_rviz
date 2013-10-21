@@ -25,6 +25,7 @@
 #include <OgrePixelFormat.h>
 #include <OgreManualObject.h>
 #include <OgreRenderWindow.h>
+#include <rviz/default_plugin/pose_display.h>
 
 
 using namespace OpenRAVE;
@@ -626,19 +627,107 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
+        static size_t id = 0;
+        std::stringstream arrowName;
+        arrowName << "Arrow" << id;
+        id++;
+        rviz::DisplayWrapper* wrapper = manager_->createDisplay( "rviz/Pose", arrowName.str(), true );
+        rviz:
         //TODO: Implement
         return OpenRAVE::GraphHandlePtr();
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawbox (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents)
     {
-        //TODO: Implement
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+        Ogre::ManualObject* cube = render_panel_->getManager()->getSceneManager()->createManualObject();
+        cube->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+
+        // This is probably the worst way to draw a cube in the world, sorry.
+
+        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->normal(0.408248, -0.816497, 0.408248);
+        cube->textureCoord(1, 0);
+        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(-0.408248, -0.816497, -0.408248);
+        cube->textureCoord(0, 1);
+        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(0.666667, -0.333333, -0.666667);
+        cube->textureCoord(1, 1);
+        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->normal(-0.666667, -0.333333, 0.666667);
+        cube->textureCoord(0, 0);
+        cube->position(vextents.x, vextents.y,  vextents.z);
+        cube->normal(0.666667, 0.333333, 0.666667);
+        cube->textureCoord(1, 0);
+        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->normal(-0.666667, -0.333333, 0.666667);
+        cube->textureCoord(0, 1);
+        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->normal(0.408248, -0.816497, 0.408248);
+        cube->textureCoord(1, 1);
+        cube->position(-vextents.x, vextents.y,  vextents.z);
+        cube->normal(-0.408248, 0.816497, 0.408248);
+        cube->textureCoord(0, 0);
+        cube->position(-vextents.x, vextents.y,  -vextents.z);
+        cube->normal(-0.666667, 0.333333, -0.666667);
+        cube->textureCoord(0, 1);
+        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(-0.408248, -0.816497, -0.408248);
+        cube->textureCoord(1, 1);
+        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->normal(-0.666667, -0.333333, 0.666667);
+        cube->textureCoord(1, 0);
+        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(0.666667, -0.333333, -0.666667);
+        cube->textureCoord(0, 1);
+        cube->position(vextents.x, vextents.y,  -vextents.z);
+        cube->normal(0.408248, 0.816497, -0.408248);
+        cube->textureCoord(1, 1);
+        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->normal(0.408248, -0.816497, 0.408248);
+        cube->textureCoord(0, 0);
+        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(0.666667, -0.333333, -0.666667);
+        cube->textureCoord(1, 0);
+        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->normal(-0.408248, -0.816497, -0.408248);
+        cube->textureCoord(0, 0);
+        cube->position(-vextents.x, vextents.y,  vextents.z);
+        cube->normal(-0.408248, 0.816497, 0.408248);
+        cube->textureCoord(1, 0);
+        cube->position(vextents.x, vextents.y,  -vextents.z);
+        cube->normal(0.408248, 0.816497, -0.408248);
+        cube->textureCoord(0, 1);
+        cube->position(-vextents.x, vextents.y,  -vextents.z);
+        cube->normal(-0.666667, 0.333333, -0.666667);
+        cube->textureCoord(1, 1);
+        cube->position(vextents.x, vextents.y,  vextents.z);
+        cube->normal(0.666667, 0.333333, 0.666667);
+        cube->textureCoord(0, 0);
+
+        cube->triangle(0, 1, 2);
+        cube->triangle(3, 1, 0);
+        cube->triangle(4, 5, 6);
+        cube->triangle(4, 7, 5);
+        cube->triangle(8, 9, 10);
+        cube->triangle(10, 7, 8);
+        cube->triangle(4, 11, 12);
+        cube->triangle(4, 13, 11);
+        cube->triangle(14, 8, 12);
+        cube->triangle(14, 15, 8);
+        cube->triangle(16, 17, 18);
+        cube->triangle(16, 19, 17);
+
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, cube));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture)
     {
-        //TODO: Implement
+        // This is not yet implemented
         return OpenRAVE::GraphHandlePtr();
     }
 
