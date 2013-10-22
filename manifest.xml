@@ -16,6 +16,7 @@
   <depend package="openrave"/>
   <depend package="rviz"/>
   <depend package="ogre_tools"/>
+  <depend package="interactive_markers"/>
   <rosdep name="eigen"/>
 	<export>
 	<cpp cflags="`pkg-config --cflags eigen3` -I${prefix}/include"/>

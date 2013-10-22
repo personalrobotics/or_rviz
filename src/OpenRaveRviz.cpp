@@ -46,6 +46,7 @@ namespace or_rviz
             m_autoSync(false),
             m_name("or_rviz")
     {
+
         SetCurrentViewEnv(env);
         setWindowTitle("Openrave Rviz Viewer[*]");
         setUpdatesEnabled(true);
@@ -627,13 +628,6 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
-        static size_t id = 0;
-        std::stringstream arrowName;
-        arrowName << "Arrow" << id;
-        id++;
-        rviz::DisplayWrapper* wrapper = manager_->createDisplay( "rviz/Pose", arrowName.str(), true );
-        rviz:
-        //TODO: Implement
         return OpenRAVE::GraphHandlePtr();
     }
 
@@ -870,6 +864,10 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type
 {
     if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
     {
+
+        // Hack to prevent screen printing from RVIZ!
+        Ogre::LogManager* logger = new Ogre::LogManager();
+        logger->createLog("ogre_log.log", true, false, false);
 
         if (!ros::isInitialized())
         {

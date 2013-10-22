@@ -51,7 +51,7 @@ namespace or_rviz
             void SetCategory(rviz::CategoryPropertyWPtr category) { m_category = category; }
             rviz::CategoryPropertyWPtr GetCategory() { return m_category; }
 
-            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value;}
+            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; GetKinBody()->SetVisible(value); }
             bool IsVisible() { return m_visible; }
 
 

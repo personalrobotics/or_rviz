@@ -8,7 +8,10 @@
 #include "EnvironmentDisplay.h"
 #include <rviz/frame_manager.h>
 #include <rviz/properties/property_manager.h>
+#include "../Converters.h"
 
+using namespace interactive_markers;
+using namespace visualization_msgs;
 
 namespace or_rviz
 {
@@ -17,12 +20,141 @@ namespace or_rviz
             m_frameProperty()
     {
         m_frame = "/map";
+        m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers");
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
     {
         m_sceneManager->destroySceneNode(m_sceneNode);
+        delete m_markerServer;
         Clear();
+    }
+
+    void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        std::string objectName = feedback->marker_name;
+
+        MenuHandler::EntryHandle handle = feedback->menu_entry_id;
+        MenuHandler::CheckState state;
+        GetMenu(objectName).getCheckState( handle, state );
+
+        if(state == MenuHandler::CHECKED)
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::UNCHECKED);
+        }
+        else
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
+        }
+
+        GetEnvironment()->GetKinBody(objectName)->SetVisible(state == MenuHandler::UNCHECKED);
+        GetMenu(objectName).apply(*m_markerServer, objectName);
+    }
+
+    void EnvironmentDisplay::OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        std::string objectName = feedback->marker_name;
+        GetEnvironment()->Remove(GetEnvironment()->GetKinBody(objectName));
+        RAVELOG_INFO("Deleting %s\n", objectName.c_str());
+    }
+
+
+    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual)
+    {
+        MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
+
+
+
+        menu = MenuHandler();
+        menu.setCheckState(menu.insert("Visible",
+                boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
+                MenuHandler::CHECKED);
+        menu.insert("Delete",
+                        boost::bind(&EnvironmentDisplay::OnKinbodyMenuDelete, this, _1));
+
+
+        InteractiveMarker int_marker;
+        int_marker.header.frame_id = m_frame;
+        int_marker.name = visual->GetKinBody()->GetName();
+
+
+        InteractiveMarkerControl menuControl;
+        menuControl.interaction_mode = InteractiveMarkerControl::MENU;
+        menuControl.name = visual->GetKinBody()->GetName();
+        menuControl.description = visual->GetKinBody()->GetName();
+
+        int_marker.controls.push_back(menuControl);
+
+
+        OpenRAVE::AABB aabb = visual->GetKinBody()->ComputeAABB();
+
+        int_marker.scale = sqrt((aabb.extents * 1.5).lengthsqr3());
+
+        OpenRAVE::Transform transform = visual->GetKinBody()->GetTransform();
+        transform.trans = aabb.pos;
+        int_marker.pose = converters::ToGeomMsgPose(transform);
+
+        InteractiveMarkerControl control;
+
+        control.orientation.w = 1;
+        control.orientation.x = 1;
+        control.orientation.y = 0;
+        control.orientation.z = 0;
+        control.name = "rotate_x";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_x";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 1;
+        control.orientation.z = 0;
+        control.name = "rotate_z";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_z";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 0;
+        control.orientation.z = 1;
+        control.name = "rotate_y";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_y";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+
+        m_markerServer->insert(int_marker);
+        m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
+        menu.apply(*m_markerServer, int_marker.name);
+
+        m_markerServer->applyChanges();
+
+    }
+
+    void  EnvironmentDisplay::OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        std::string objectName = feedback->marker_name;
+        GetEnvironment()->GetKinBody(objectName)->SetTransform(converters::ToRaveTransform(feedback->pose));
+    }
+
+    void EnvironmentDisplay::CreateRvizPropertyMenu(KinBodyVisual* visual)
+    {
+        visual->SetCategory(
+                property_manager_->createCheckboxCategory(visual->GetKinBody()->GetName(),
+                                                          visual->GetKinBody()->GetName(),
+                                                         property_prefix_,
+                                                         boost::bind(&KinBodyVisual::IsVisible, visual),
+                                                         boost::bind(&KinBodyVisual::SetVisible, visual, _1),
+                                                         m_kinbodiesCategory, visual));
     }
 
     void EnvironmentDisplay::UpdateObjects()
@@ -40,21 +172,24 @@ namespace or_rviz
             if(!HasKinBody(bodies[i]->GetName()))
             {
                 KinBodyVisual* visual = new KinBodyVisual(m_sceneManager, m_sceneNode, bodies.at(i));
+                visual->SetVisible(true);
+
                 m_bodyVisuals[bodies[i]->GetName()] = visual;
 
 
-                visual->SetCategory(
-                        property_manager_->createCheckboxCategory(bodies.at(i)->GetName(),
-                                                                 bodies.at(i)->GetName(),
-                                                                 property_prefix_,
-                                                                 boost::bind(&KinBodyVisual::IsVisible, visual),
-                                                                 boost::bind(&KinBodyVisual::SetVisible, visual, _1),
-                                                                 m_kinbodiesCategory, visual));
+                CreateRvizPropertyMenu(visual);
+                CreateControls(visual);
 
             }
             else
             {
+                if(m_bodyVisuals[bodies[i]->GetName()]->IsVisible() != bodies[i]->IsVisible())
+                {
+                    m_bodyVisuals[bodies[i]->GetName()]->SetVisible(bodies[i]->IsVisible());
+                }
+
                 m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
+                m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
             }
         }
 
@@ -82,6 +217,9 @@ namespace or_rviz
             RemoveKinBody(removals.at(i));
         }
 
+        m_markerServer->applyChanges();
+
+
     }
 
     void EnvironmentDisplay::RemoveKinBody(const std::string& name)
@@ -89,6 +227,7 @@ namespace or_rviz
         property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
         delete m_bodyVisuals.at(name);
         m_bodyVisuals.erase(name);
+        m_markerServer->erase(name);
     }
 
     void EnvironmentDisplay::Clear()
