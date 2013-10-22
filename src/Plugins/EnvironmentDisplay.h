@@ -44,7 +44,7 @@ namespace or_rviz
 
             void RemoveKinBody(const std::string& name);
 
-            void CreateControls(KinBodyVisual* visual);
+            void CreateControls(KinBodyVisual* visual, bool poseControl);
             void CreateRvizPropertyMenu(KinBodyVisual* visual);
 
             inline interactive_markers::MenuHandler& GetMenu(std::string name) { return m_menus[name]; }
@@ -61,7 +61,7 @@ namespace or_rviz
             void OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
-
+            void OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
 
             OpenRAVE::EnvironmentBaseWeakPtr m_env;
             std::map<std::string, KinBodyVisual*> m_bodyVisuals;

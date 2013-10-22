@@ -30,6 +30,26 @@ namespace or_rviz
         Clear();
     }
 
+    void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        std::string objectName = feedback->marker_name;
+        MenuHandler::EntryHandle handle = feedback->menu_entry_id;
+        MenuHandler::CheckState state;
+        GetMenu(objectName).getCheckState( handle, state );
+
+        if(state == MenuHandler::CHECKED)
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::UNCHECKED);
+        }
+        else
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
+        }
+
+        CreateControls(m_bodyVisuals[objectName], state == MenuHandler::UNCHECKED );
+        GetMenu(objectName).apply(*m_markerServer, objectName);
+    }
+
     void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
         std::string objectName = feedback->marker_name;
@@ -59,16 +79,20 @@ namespace or_rviz
     }
 
 
-    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual)
+    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, bool poseControl)
     {
         MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
 
 
 
         menu = MenuHandler();
+
         menu.setCheckState(menu.insert("Visible",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
                 MenuHandler::CHECKED);
+        menu.setCheckState(menu.insert("Move",
+                boost::bind(&EnvironmentDisplay::OnKinbodyMenuMoveChanged, this, _1)),
+                (!poseControl) ? MenuHandler::UNCHECKED : MenuHandler::CHECKED);
         menu.insert("Delete",
                         boost::bind(&EnvironmentDisplay::OnKinbodyMenuDelete, this, _1));
 
@@ -94,43 +118,46 @@ namespace or_rviz
         transform.trans = aabb.pos;
         int_marker.pose = converters::ToGeomMsgPose(transform);
 
-        InteractiveMarkerControl control;
+        if(poseControl)
+        {
+            InteractiveMarkerControl control;
 
-        control.orientation.w = 1;
-        control.orientation.x = 1;
-        control.orientation.y = 0;
-        control.orientation.z = 0;
-        control.name = "rotate_x";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+            control.orientation.w = 1;
+            control.orientation.x = 1;
+            control.orientation.y = 0;
+            control.orientation.z = 0;
+            control.name = "rotate_x";
+            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+            int_marker.controls.push_back(control);
 
-        control.name = "move_x";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
+            control.name = "move_x";
+            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+            int_marker.controls.push_back(control);
 
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 1;
-        control.orientation.z = 0;
-        control.name = "rotate_z";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+            control.orientation.w = 1;
+            control.orientation.x = 0;
+            control.orientation.y = 1;
+            control.orientation.z = 0;
+            control.name = "rotate_z";
+            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+            int_marker.controls.push_back(control);
 
-        control.name = "move_z";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
+            control.name = "move_z";
+            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+            int_marker.controls.push_back(control);
 
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 0;
-        control.orientation.z = 1;
-        control.name = "rotate_y";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        int_marker.controls.push_back(control);
+            control.orientation.w = 1;
+            control.orientation.x = 0;
+            control.orientation.y = 0;
+            control.orientation.z = 1;
+            control.name = "rotate_y";
+            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+            int_marker.controls.push_back(control);
 
-        control.name = "move_y";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        int_marker.controls.push_back(control);
+            control.name = "move_y";
+            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+            int_marker.controls.push_back(control);
+        }
 
         m_markerServer->insert(int_marker);
         m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
@@ -178,7 +205,7 @@ namespace or_rviz
 
 
                 CreateRvizPropertyMenu(visual);
-                CreateControls(visual);
+                CreateControls(visual, false);
 
             }
             else
