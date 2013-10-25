@@ -243,85 +243,81 @@ namespace or_rviz
 
             std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
 
-            switch (geom->GetType())
+            // If there is a render mesh we will ignore all of the other geometry.
+            if(!geom->GetInfo()._filenamerender.empty())
             {
-                case OpenRAVE::GT_Box:
+                Ogre::MeshPtr mesh;
+
+                try
                 {
-                    entity = rviz::Shape::createEntity("Box" + objectName + ss.str(), rviz::Shape::Cube, m_sceneManager);
-                    scale = converters::ToOgreVector(geom->GetBoxExtents() * 2);
-                    break;
+                    mesh = rviz::loadMeshFromResource ("file://" + geom->GetInfo()._filenamerender);
                 }
-                case OpenRAVE::GT_Cylinder:
+                catch (Ogre::Exception& e)
                 {
-                    Ogre::Quaternion rotX;
-                    rotX.FromAngleAxis(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
-                    offset_orientation = offset_orientation * rotX;
-
-                    entity = rviz::Shape::createEntity("Cylinder" + objectName + ss.str(), rviz::Shape::Cylinder, m_sceneManager);
-                    scale = Ogre::Vector3(geom->GetCylinderRadius() * 2, geom->GetCylinderHeight(), geom->GetCylinderRadius() * 2);
-                    break;
+                    RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
                 }
-                case OpenRAVE::GT_Sphere:
+
+                if(!mesh.get())
                 {
-                    entity = rviz::Shape::createEntity("Sphere" + objectName + ss.str(), rviz::Shape::Sphere, m_sceneManager);
-                    scale = Ogre::Vector3(geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2);
-                    break;
+                    RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
+                    boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
+                    myMesh.reset(new OpenRAVE::TriMesh());
+                    m_kinBody->GetKinBody()->GetEnv()->ReadTurimeshFile(myMesh, geom->GetRenderFilename());
+
+                    if(myMesh && myMesh->vertices.size() >= 3)
+                    {
+                        mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
+                    }
                 }
-                case OpenRAVE::GT_TriMesh:
+                else
                 {
-
-                    if(geom->GetInfo()._filenamerender.size() == 0)
-                    {
-                       break;
-                    }
-
-                    Ogre::MeshPtr mesh;
-
-                    try
-                    {
-                        mesh = rviz::loadMeshFromResource ("file://" + geom->GetInfo()._filenamerender);
-                    }
-                    catch (Ogre::Exception& e)
-                    {
-                        RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
-                    }
-
-                    if(!mesh.get())
-                    {
-                        RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
-                        boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
-                        myMesh.reset(new OpenRAVE::TriMesh());
-                        m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
-
-                        if(myMesh && myMesh->vertices.size() >= 3)
-                        {
-                            mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
-                        }
-                    }
-                    else
-                    {
-                        RAVELOG_DEBUG("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
-                    }
-
-
-                    if(mesh.get())
-                    {
-                        entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
-                        entity->setVisible(true);
-                        scale = converters::ToOgreVector(geom->GetRenderScale());
-                    }
-
-                    break;
+                    RAVELOG_DEBUG("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
                 }
-                default:
+
+
+                if(mesh.get())
                 {
-                    RAVELOG_DEBUG("Unrecognized geometry type.");
-                    break;
+                    entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
+                    entity->setVisible(true);
+                    scale = converters::ToOgreVector(geom->GetRenderScale());
+                }
+            } else {
+                switch (geom->GetType())
+                {
+                    case OpenRAVE::GT_Box:
+                    {
+                        entity = rviz::Shape::createEntity("Box" + objectName + ss.str(), rviz::Shape::Cube, m_sceneManager);
+                        scale = converters::ToOgreVector(geom->GetBoxExtents() * 2);
+                        break;
+                    }
+                    case OpenRAVE::GT_Cylinder:
+                    {
+                        Ogre::Quaternion rotX;
+                        rotX.FromAngleAxis(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
+                        offset_orientation = offset_orientation * rotX;
+
+                        entity = rviz::Shape::createEntity("Cylinder" + objectName + ss.str(), rviz::Shape::Cylinder, m_sceneManager);
+                        scale = Ogre::Vector3(geom->GetCylinderRadius() * 2, geom->GetCylinderHeight(), geom->GetCylinderRadius() * 2);
+                        break;
+                    }
+                    case OpenRAVE::GT_Sphere:
+                    {
+                        entity = rviz::Shape::createEntity("Sphere" + objectName + ss.str(), rviz::Shape::Sphere, m_sceneManager);
+                        scale = Ogre::Vector3(geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2);
+                        break;
+                    }
+                    case OpenRAVE::GT_TriMesh:
+                    {
+                        RAVELOG_WARN("Attempted to load TriMesh with no render filename. This is unsupported.");
+                        break;
+                    }
+                    default:
+                    {
+                        RAVELOG_DEBUG("Unrecognized geometry type.");
+                        break;
+                    }
                 }
             }
-
-
-
 
             if (entity)
             {
