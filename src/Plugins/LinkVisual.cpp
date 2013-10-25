@@ -262,7 +262,7 @@ namespace or_rviz
                     RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
                     boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
                     myMesh.reset(new OpenRAVE::TriMesh());
-                    m_kinBody->GetKinBody()->GetEnv()->ReadTurimeshFile(myMesh, geom->GetRenderFilename());
+                    m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
 
                     if(myMesh && myMesh->vertices.size() >= 3)
                     {
