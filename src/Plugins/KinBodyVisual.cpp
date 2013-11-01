@@ -25,6 +25,7 @@ namespace or_rviz
         m_sceneNode->setPosition(GetKinBody()->GetTransform().trans.x, GetKinBody()->GetTransform().trans.y, GetKinBody()->GetTransform().trans.z);
         m_sceneNode->setOrientation(converters::ToOgreQuaternion(kinBody->GetTransform().rot));
         CreateParts();
+        m_renderMode = LinkVisual::VisualMesh;
     }
 
     KinBodyVisual::~KinBodyVisual()
@@ -65,6 +66,16 @@ namespace or_rviz
         {
             LinkVisual* linkVisual = new LinkVisual(this, GetKinBody()->GetLinks().at(i), m_sceneNode, m_sceneManager);
             m_links.push_back(linkVisual);
+        }
+    }
+
+    void KinBodyVisual::SetRenderMode(LinkVisual::RenderMode mode)
+    {
+        m_renderMode = mode;
+
+        for(size_t i = 0; i < m_links.size(); i++)
+        {
+            m_links[i]->SetRenderMode(mode);
         }
     }
 

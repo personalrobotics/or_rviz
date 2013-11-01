@@ -25,6 +25,13 @@ namespace or_rviz
     class LinkVisual
     {
         public:
+
+            enum RenderMode
+            {
+                CollisionMesh,
+                VisualMesh
+            };
+
             LinkVisual(KinBodyVisual* kinBody, OpenRAVE::KinBody::LinkPtr link, Ogre::SceneNode* parent, Ogre::SceneManager* sceneManager);
             virtual ~LinkVisual();
 
@@ -38,6 +45,9 @@ namespace or_rviz
             inline void SetKinBody(KinBodyVisual* value) { m_kinBody = value; }
             Ogre::MeshPtr meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name);
 
+            inline void SetRenderMode(RenderMode mode) { m_renderMode = mode; CreateParts(); }
+            inline RenderMode GetRenderMode() { return m_renderMode; }
+
             void CreateParts();
 
         protected:
@@ -46,6 +56,7 @@ namespace or_rviz
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
             Ogre::SceneManager* m_sceneManager;
+            RenderMode m_renderMode;
 
     };
 

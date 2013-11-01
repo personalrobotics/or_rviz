@@ -13,6 +13,7 @@
 using namespace interactive_markers;
 using namespace visualization_msgs;
 
+
 namespace or_rviz
 {
 
@@ -20,18 +21,20 @@ namespace or_rviz
             m_frameProperty()
     {
         m_frame = "/map";
-        m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers");
+        m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
+
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
     {
+        Clear();
         m_sceneManager->destroySceneNode(m_sceneNode);
         delete m_markerServer;
-        Clear();
     }
 
     void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
+
         std::string objectName = feedback->marker_name;
         MenuHandler::EntryHandle handle = feedback->menu_entry_id;
         MenuHandler::CheckState state;
@@ -46,13 +49,21 @@ namespace or_rviz
             GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
         }
 
-        CreateControls(m_bodyVisuals[objectName], state == MenuHandler::UNCHECKED );
+        CreateControls(m_bodyVisuals[objectName], state == MenuHandler::UNCHECKED, false);
         GetMenu(objectName).apply(*m_markerServer, objectName);
+
     }
 
     void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
+
         std::string objectName = feedback->marker_name;
+        OpenRAVE::KinBodyPtr body = GetEnvironment()->GetKinBody(objectName);
+
+        if(!body.get())
+        {
+            return;
+        }
 
         MenuHandler::EntryHandle handle = feedback->menu_entry_id;
         MenuHandler::CheckState state;
@@ -69,20 +80,64 @@ namespace or_rviz
 
         GetEnvironment()->GetKinBody(objectName)->SetVisible(state == MenuHandler::UNCHECKED);
         GetMenu(objectName).apply(*m_markerServer, objectName);
+
     }
 
     void EnvironmentDisplay::OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
+
         std::string objectName = feedback->marker_name;
-        GetEnvironment()->Remove(GetEnvironment()->GetKinBody(objectName));
-        RAVELOG_INFO("Deleting %s\n", objectName.c_str());
+        OpenRAVE::KinBodyPtr body = GetEnvironment()->GetKinBody(objectName);
+
+        if(body.get())
+        {
+            GetEnvironment()->Remove(body);
+            RAVELOG_INFO("Deleting %s\n", objectName.c_str());
+        }
+
     }
 
-
-    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, bool poseControl)
+    void  EnvironmentDisplay::OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
-        MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
+        std::string objectName = feedback->marker_name;
+        MenuHandler::EntryHandle handle = feedback->menu_entry_id;
+        MenuHandler::CheckState state;
+        GetMenu(objectName).getCheckState( handle, state );
 
+        if(state == MenuHandler::CHECKED)
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::UNCHECKED);
+        }
+        else
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
+        }
+
+        if(HasKinBody(objectName))
+        {
+            m_bodyVisuals[objectName]->SetRenderMode(state == MenuHandler::CHECKED ? LinkVisual::CollisionMesh : LinkVisual::VisualMesh);
+        }
+
+        GetMenu(objectName).apply(*m_markerServer, objectName);
+    }
+
+    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, bool poseControl, bool immediate)
+    {
+        if(!visual || !m_markerServer)
+        {
+            return;
+        }
+
+        if(!immediate)
+        {
+            ControlHandle controlHandle;
+            controlHandle.createPose = poseControl;
+            controlHandle.name = visual->GetKinBody()->GetName();
+            m_controlBuffer.push_back(controlHandle);
+            return;
+        }
+
+        MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
 
 
         menu = MenuHandler();
@@ -90,6 +145,13 @@ namespace or_rviz
         menu.setCheckState(menu.insert("Visible",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
                 MenuHandler::CHECKED);
+
+        /*
+        menu.setCheckState(menu.insert("Collision Mesh",
+                boost::bind(&EnvironmentDisplay::OnKinbodyMenuCollisionChanged, this, _1)),
+                MenuHandler::UNCHECKED);
+                */
+
         menu.setCheckState(menu.insert("Move",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuMoveChanged, this, _1)),
                 (!poseControl) ? MenuHandler::UNCHECKED : MenuHandler::CHECKED);
@@ -102,12 +164,13 @@ namespace or_rviz
         int_marker.name = visual->GetKinBody()->GetName();
 
 
+
         InteractiveMarkerControl menuControl;
         menuControl.interaction_mode = InteractiveMarkerControl::MENU;
         menuControl.name = visual->GetKinBody()->GetName();
         menuControl.description = visual->GetKinBody()->GetName();
-
         int_marker.controls.push_back(menuControl);
+
 
 
         OpenRAVE::AABB aabb = visual->GetKinBody()->ComputeAABB();
@@ -163,14 +226,16 @@ namespace or_rviz
         m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
         menu.apply(*m_markerServer, int_marker.name);
 
-        m_markerServer->applyChanges();
-
     }
 
     void  EnvironmentDisplay::OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
         std::string objectName = feedback->marker_name;
-        GetEnvironment()->GetKinBody(objectName)->SetTransform(converters::ToRaveTransform(feedback->pose));
+
+        if(GetEnvironment()->GetKinBody(objectName).get())
+        {
+            GetEnvironment()->GetKinBody(objectName)->SetTransform(converters::ToRaveTransform(feedback->pose));
+        }
     }
 
     void EnvironmentDisplay::CreateRvizPropertyMenu(KinBodyVisual* visual)
@@ -205,7 +270,7 @@ namespace or_rviz
 
 
                 CreateRvizPropertyMenu(visual);
-                CreateControls(visual, false);
+                CreateControls(visual, false, false);
 
             }
             else
@@ -244,8 +309,21 @@ namespace or_rviz
             RemoveKinBody(removals.at(i));
         }
 
-        m_markerServer->applyChanges();
 
+        for(size_t i =0 ; i < m_controlBuffer.size(); i++)
+        {
+            ControlHandle& controlHandle = m_controlBuffer.at(i);
+
+            if(HasKinBody(controlHandle.name))
+            {
+                CreateControls(m_bodyVisuals[controlHandle.name], controlHandle.createPose, true);
+            }
+
+        }
+
+        m_controlBuffer.clear();
+
+        m_markerServer->applyChanges();
 
     }
 
@@ -277,7 +355,6 @@ namespace or_rviz
     {
         m_sceneManager = this->scene_manager_;
         m_sceneNode = m_sceneManager->getRootSceneNode()->createChildSceneNode();
-        RAVELOG_INFO("initialized\n");
     }
 
     void  EnvironmentDisplay::fixedFrameChanged()

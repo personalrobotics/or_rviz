@@ -19,11 +19,25 @@
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
 
+
+
+
 namespace or_rviz
 {
+
+    struct ControlHandle
+    {
+            std::string name;
+            bool createPose;
+    };
+
+
+
     class EnvironmentDisplay : public rviz::Display
     {
+
         public:
+
             EnvironmentDisplay();
             virtual ~EnvironmentDisplay();
 
@@ -44,7 +58,7 @@ namespace or_rviz
 
             void RemoveKinBody(const std::string& name);
 
-            void CreateControls(KinBodyVisual* visual, bool poseControl);
+            void CreateControls(KinBodyVisual* visual, bool poseControl, bool immediate);
             void CreateRvizPropertyMenu(KinBodyVisual* visual);
 
             inline interactive_markers::MenuHandler& GetMenu(std::string name) { return m_menus[name]; }
@@ -62,6 +76,7 @@ namespace or_rviz
             void OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+            void OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
 
             OpenRAVE::EnvironmentBaseWeakPtr m_env;
             std::map<std::string, KinBodyVisual*> m_bodyVisuals;
@@ -75,6 +90,7 @@ namespace or_rviz
             rviz::CategoryPropertyWPtr m_kinbodiesCategory;
 
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
+            std::vector<ControlHandle> m_controlBuffer;
 
 
 

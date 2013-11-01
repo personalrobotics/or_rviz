@@ -98,7 +98,7 @@ namespace or_rviz
         std::vector<Ogre::Vector3> verts;
         std::vector<int> index;
 
-        DeleteRepeatedVertices(trimesh, verts, index, false);
+        DeleteRepeatedVertices(trimesh, verts, index, true);
 
         std::vector<Ogre::Vector3> normals(verts.size(), Ogre::Vector3(0, 0, 0));
 
@@ -212,6 +212,9 @@ namespace or_rviz
 
     void LinkVisual::CreateParts()
     {
+
+
+
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries =GetLink()->GetGeometries();
         static int id = 0;
 

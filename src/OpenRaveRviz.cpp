@@ -26,6 +26,7 @@
 #include <OgreManualObject.h>
 #include <OgreRenderWindow.h>
 #include <rviz/default_plugin/pose_display.h>
+#include <rviz/default_plugin/interactive_marker_display.h>
 
 
 using namespace OpenRAVE;
@@ -104,6 +105,8 @@ namespace or_rviz
         m_offscreenRenderer = (offScreenPanel)->getRenderWindow();
         m_offscreenRenderer->setVisible(false);
         m_offscreenRenderer->setHidden(true);
+
+
 
     }
 
@@ -300,6 +303,11 @@ namespace or_rviz
 
     void OpenRaveRviz::UpdateDisplay()
     {
+        if(!m_rvizManager)
+        {
+            return;
+        }
+
         if (!m_envDisplay)
         {
             rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
@@ -310,6 +318,17 @@ namespace or_rviz
             }
 
             m_envDisplay = dynamic_cast<EnvironmentDisplay*>(wrapper->getDisplay());
+
+
+
+            rviz::DisplayWrapper* interactiveWrapper = m_rvizManager->getDisplayWrapper("OpenRAVEInteraction");
+
+            if (!interactiveWrapper)
+            {
+                interactiveWrapper = m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true);
+            }
+            rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(interactiveWrapper->getDisplay());
+            markerDisplay->setMarkerUpdateTopic("openrave_markers/update");
         }
 
         if (m_envDisplay)
@@ -393,6 +412,11 @@ namespace or_rviz
     // forces synchronization with the environment, returns when the environment is fully synchronized.
     void OpenRaveRviz::EnvironmentSync()
     {
+        if(!initialized_)
+        {
+            return;
+        }
+
         setWindowTitle("Openrave Rviz Viewer[*]");
         GetCurrentViewEnv()->GetMutex().lock();
 
@@ -405,6 +429,8 @@ namespace or_rviz
         {
             it->second();
         }
+
+        ros::spinOnce();
 
     }
 
@@ -868,6 +894,7 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type
         // Hack to prevent screen printing from RVIZ!
         Ogre::LogManager* logger = new Ogre::LogManager();
         logger->createLog("ogre_log.log", true, false, false);
+
 
         if (!ros::isInitialized())
         {

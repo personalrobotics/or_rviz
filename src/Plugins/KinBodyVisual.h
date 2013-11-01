@@ -13,6 +13,7 @@
 #include <vector>
 #include <rviz/properties/property.h>
 #include <OgreSceneNode.h>
+#include "LinkVisual.h"
 
 namespace Ogre
 {
@@ -23,8 +24,6 @@ namespace Ogre
 
 namespace or_rviz
 {
-
-    class LinkVisual;
 
     class KinBodyVisual
     {
@@ -54,6 +53,9 @@ namespace or_rviz
             void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; GetKinBody()->SetVisible(value); }
             bool IsVisible() { return m_visible; }
 
+            inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }
+            void SetRenderMode(LinkVisual::RenderMode mode);
+
 
         protected:
             OpenRAVE::KinBodyWeakPtr m_kinBody;
@@ -63,6 +65,7 @@ namespace or_rviz
             std::vector<LinkVisual*> m_links;
             rviz::CategoryPropertyWPtr m_category;
             bool m_visible;
+            LinkVisual::RenderMode m_renderMode;
 
     };
 
