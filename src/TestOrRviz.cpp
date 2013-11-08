@@ -19,7 +19,7 @@ void OpenraveThread(EnvironmentBasePtr penv, std::string scenefilename)
 
 int main(int argc, char ** argv)
 {
-    string scenefilename = "/homes/mklingen/prdev/herb_description/ordata/robots/herb.robot.xml";
+    string scenefilename = "/opt/pr/herb_description/ordata/robots/herb.robot.xml";
     string viewername = "or_rviz";
 
     RaveInitialize(true);
