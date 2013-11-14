@@ -437,7 +437,7 @@ namespace or_rviz
             it->second();
         }
 
-        ros::spinOnce();
+        //ros::spinOnce();
 
     }
 

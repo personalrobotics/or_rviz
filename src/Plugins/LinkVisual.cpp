@@ -218,9 +218,6 @@ namespace or_rviz
         subMesh->indexData->indexCount = index.size();
         subMesh->indexData->indexStart = 0;
 
-        RAVELOG_DEBUG("Mesh %s\n", name.c_str());
-        RAVELOG_DEBUG("Min: %f %f %f\n", min.x, min.y, min.z);
-        RAVELOG_DEBUG("Max: %f %f %f\n", max.x, max.y, max.z);
 
         /* set the bounds of the mesh */
         mesh->_setBounds(Ogre::AxisAlignedBox(min.x, min.y, min.z, max.x, max.y, max.z));
@@ -240,22 +237,17 @@ namespace or_rviz
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = GetLink()->GetGeometries();
         static int id = 0;
 
-        RAVELOG_DEBUG("Render mode is: %s\n", m_renderMode == LinkVisual::VisualMesh ? "Visual" : "Collision");
-
         for (size_t i = 0; i < geometries.size(); i++)
         {
 
-            RAVELOG_INFO("Creating geometry %lu for link %s\n", i, GetLink()->GetName().c_str());
             OpenRAVE::KinBody::Link::GeometryPtr geom = geometries.at(i);
 
             if (m_renderMode == LinkVisual::VisualMesh && !geom->IsVisible())
             {
-                RAVELOG_INFO("Skipping. Not visual.\n");
                 continue;
             }
             else if(m_renderMode == LinkVisual::CollisionMesh && geom->IsVisible())
             {
-                RAVELOG_INFO("Skipping. Not collision.\n");
                 continue;
             }
 
@@ -277,6 +269,7 @@ namespace or_rviz
 
             std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
             std::string fileName = m_renderMode == CollisionMesh ? geom->GetInfo()._filenamecollision : geom->GetInfo()._filenamerender;
+
             // If there is a render mesh we will ignore all of the other geometry.
             if (fileName.size() > 0)
             {
@@ -350,7 +343,6 @@ namespace or_rviz
                     }
                     case OpenRAVE::GT_TriMesh:
                     {
-                        RAVELOG_INFO("Creating mesh from openrave geometry\n");
                         Ogre::MeshPtr mesh;
                         const OpenRAVE::TriMesh& myMesh = geom->GetCollisionMesh();
 
@@ -368,11 +360,9 @@ namespace or_rviz
 
                         if (mesh.get())
                         {
-                            RAVELOG_INFO("Creating entity.\n");
                             entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
                             entity->setVisible(true);
                             scale = converters::ToOgreVector(geom->GetRenderScale());
-                            RAVELOG_INFO("Done.\n");
                         }
 
                         break;
