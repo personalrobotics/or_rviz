@@ -89,7 +89,7 @@ namespace or_rviz
             // OpenRAVE calls on us to run the main loop...
             virtual int main(bool show=true);
             virtual void quitmainloop();
-
+            virtual void RemoveKinBody (OpenRAVE::KinBodyPtr pbody);
             virtual void Reset();
 
             // OpenRAVE API can set the background color for us...

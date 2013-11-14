@@ -28,9 +28,34 @@
 namespace or_rviz
 {
 
+    void destroyAllAttachedMovableObjects(Ogre::SceneNode* node)
+    {
+        if (!node)
+            return;
+
+        // Destroy all the attached objects
+        Ogre::SceneNode::ObjectIterator itObject = node->getAttachedObjectIterator();
+
+        while (itObject.hasMoreElements())
+        {
+            node->getCreator()->destroyMovableObject(itObject.getNext());
+        }
+
+        // Recurse to child SceneNodes
+        Ogre::SceneNode::ChildNodeIterator itChild = node->getChildIterator();
+
+        while (itChild.hasMoreElements())
+        {
+            Ogre::SceneNode* pChildNode = static_cast<Ogre::SceneNode*>(itChild.getNext());
+            destroyAllAttachedMovableObjects(pChildNode);
+        }
+    }
+
+
     LinkVisual::LinkVisual(KinBodyVisual* kinBody, OpenRAVE::KinBody::LinkPtr link, Ogre::SceneNode* parent, Ogre::SceneManager* sceneManager) :
             m_kinBody(kinBody), m_link(link), m_parentNode(parent), m_sceneManager(sceneManager)
     {
+        m_renderMode = VisualMesh;
         m_sceneNode = m_parentNode->createChildSceneNode();
         CreateParts();
     }
@@ -42,23 +67,23 @@ namespace or_rviz
 
     void DeleteRepeatedVertices(const OpenRAVE::TriMesh& trimesh, std::vector<Ogre::Vector3>& verts, std::vector<int>& indices, bool remove)
     {
-        for(size_t i = 0; i < trimesh.indices.size(); i++)
+        for (size_t i = 0; i < trimesh.indices.size(); i++)
         {
             indices.push_back(trimesh.indices.at(i));
         }
 
         float epsilon = 0.0001;
-        for(size_t i = 0; i < trimesh.vertices.size(); i++)
+        for (size_t i = 0; i < trimesh.vertices.size(); i++)
         {
             Ogre::Vector3 vec = converters::ToOgreVector(trimesh.vertices.at(i));
 
             bool copyFound = false;
 
-            if(remove)
+            if (remove)
             {
-                for(size_t j = 0; j < verts.size(); j++)
+                for (size_t j = 0; j < verts.size(); j++)
                 {
-                    if(fabs(vec.x - verts[j].x) < epsilon && fabs(vec.y - verts[j].y) < epsilon && fabs(vec.z - verts[j].z) < epsilon)
+                    if (fabs(vec.x - verts[j].x) < epsilon && fabs(vec.y - verts[j].y) < epsilon && fabs(vec.z - verts[j].z) < epsilon)
                     {
                         copyFound = true;
                         indices[i] = j;
@@ -67,44 +92,44 @@ namespace or_rviz
                 }
             }
 
-            if(copyFound)
+            if (copyFound)
             {
                 continue;
             }
 
-            if(remove)
+            if (remove)
             {
-                indices[i] = (int)verts.size();
+                indices[i] = (int) verts.size();
             }
             verts.push_back(vec);
         }
+
     }
 
     Ogre::MeshPtr LinkVisual::meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name)
     {
         Ogre::MeshPtr existingMesh = Ogre::ResourceGroupManager::getSingleton()._getResourceManager("Mesh")->getByName(name, "General");
 
-        if(existingMesh.get())
+        if (existingMesh.get())
         {
             RAVELOG_DEBUG("Mesh %s exists. returning.\n", name.c_str());
             return existingMesh;
         }
 
-
         Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "General");
         Ogre::SubMesh* subMesh = mesh->createSubMesh();
-
 
         std::vector<Ogre::Vector3> verts;
         std::vector<int> index;
 
-        DeleteRepeatedVertices(trimesh, verts, index, true);
+        DeleteRepeatedVertices(trimesh, verts, index, false);
 
         std::vector<Ogre::Vector3> normals(verts.size(), Ogre::Vector3(0, 0, 0));
 
         for (std::vector<int>::const_iterator i = index.begin(); i != index.end(); std::advance(i, 3))
         {
-            Ogre::Vector3 v[3] = { (verts.at(*i)), (verts.at(*(i + 1))), ((verts.at(*(i + 2)))) };
+            Ogre::Vector3 v[3] =
+            { (verts.at(*i)), (verts.at(*(i + 1))), ((verts.at(*(i + 2)))) };
             Ogre::Vector3 normal = (v[1] - v[0]).crossProduct(v[2] - v[0]);
 
             for (int j = 0; j < 3; ++j)
@@ -121,7 +146,6 @@ namespace or_rviz
         {
             normals.at(i).normalise();
         }
-
 
         /* create the vertex data structure */
         mesh->sharedVertexData = new Ogre::VertexData;
@@ -157,7 +181,6 @@ namespace or_rviz
             vertices[i * 6 + 4] = normals[i].y;
             vertices[i * 6 + 5] = normals[i].z;
 
-
             min.x = fmin(it->x, min.x);
             min.y = fmin(it->y, min.y);
             min.z = fmin(it->z, min.z);
@@ -170,7 +193,6 @@ namespace or_rviz
 
         /* unlock the buffer */
         vertexBuffer->unlock();
-
 
         /* create the index buffer */
         Ogre::HardwareIndexBufferSharedPtr indexBuffer = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(Ogre::HardwareIndexBuffer::IT_16BIT, trimesh.indices.size(), Ogre::HardwareBuffer::HBU_STATIC);
@@ -196,7 +218,6 @@ namespace or_rviz
         subMesh->indexData->indexCount = index.size();
         subMesh->indexData->indexStart = 0;
 
-
         RAVELOG_DEBUG("Mesh %s\n", name.c_str());
         RAVELOG_DEBUG("Min: %f %f %f\n", min.x, min.y, min.z);
         RAVELOG_DEBUG("Max: %f %f %f\n", max.x, max.y, max.z);
@@ -213,18 +234,28 @@ namespace or_rviz
     void LinkVisual::CreateParts()
     {
 
+        destroyAllAttachedMovableObjects(m_sceneNode);
+        m_sceneNode->removeAllChildren();
 
-
-        std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries =GetLink()->GetGeometries();
+        std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = GetLink()->GetGeometries();
         static int id = 0;
+
+        RAVELOG_DEBUG("Render mode is: %s\n", m_renderMode == LinkVisual::VisualMesh ? "Visual" : "Collision");
 
         for (size_t i = 0; i < geometries.size(); i++)
         {
 
+            RAVELOG_INFO("Creating geometry %lu for link %s\n", i, GetLink()->GetName().c_str());
             OpenRAVE::KinBody::Link::GeometryPtr geom = geometries.at(i);
 
-            if(!geom->IsVisible())
+            if (m_renderMode == LinkVisual::VisualMesh && !geom->IsVisible())
             {
+                RAVELOG_INFO("Skipping. Not visual.\n");
+                continue;
+            }
+            else if(m_renderMode == LinkVisual::CollisionMesh && geom->IsVisible())
+            {
+                RAVELOG_INFO("Skipping. Not collision.\n");
                 continue;
             }
 
@@ -245,46 +276,54 @@ namespace or_rviz
             }
 
             std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
-
+            std::string fileName = m_renderMode == CollisionMesh ? geom->GetInfo()._filenamecollision : geom->GetInfo()._filenamerender;
             // If there is a render mesh we will ignore all of the other geometry.
-            if(!geom->GetInfo()._filenamerender.empty())
+            if (fileName.size() > 0)
             {
                 Ogre::MeshPtr mesh;
 
                 try
                 {
-                    mesh = rviz::loadMeshFromResource ("file://" + geom->GetInfo()._filenamerender);
+                    mesh = rviz::loadMeshFromResource("file://" + fileName);
                 }
                 catch (Ogre::Exception& e)
                 {
-                    RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", geom->GetInfo()._filenamerender.c_str(), e.what());
+                    RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", fileName.c_str(), e.what());
                 }
 
-                if(!mesh.get())
+                if (!mesh.get())
                 {
-                    RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", geom->GetInfo()._filenamerender.c_str());
+                    RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", fileName.c_str());
                     boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
                     myMesh.reset(new OpenRAVE::TriMesh());
                     m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
 
-                    if(myMesh && myMesh->vertices.size() >= 3)
+                    try
                     {
-                        mesh = meshToOgre(*myMesh, geom->GetInfo()._filenamerender);
+                        if (myMesh && myMesh->vertices.size() >= 3)
+                        {
+                            mesh = meshToOgre(*myMesh, fileName);
+                        }
+                    }
+                    catch(Ogre::InternalErrorException& ex)
+                    {
+                        RAVELOG_ERROR(ex.what());
                     }
                 }
                 else
                 {
-                    RAVELOG_DEBUG("Successfully loaded mesh: %s\n", geom->GetInfo()._filenamerender.c_str());
+                    RAVELOG_DEBUG("Successfully loaded mesh: %s\n", fileName.c_str());
                 }
 
-
-                if(mesh.get())
+                if (mesh.get())
                 {
                     entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
                     entity->setVisible(true);
                     scale = converters::ToOgreVector(geom->GetRenderScale());
                 }
-            } else {
+            }
+            else
+            {
                 switch (geom->GetType())
                 {
                     case OpenRAVE::GT_Box:
@@ -311,7 +350,31 @@ namespace or_rviz
                     }
                     case OpenRAVE::GT_TriMesh:
                     {
-                        RAVELOG_WARN("Attempted to load TriMesh with no render filename. This is unsupported.");
+                        RAVELOG_INFO("Creating mesh from openrave geometry\n");
+                        Ogre::MeshPtr mesh;
+                        const OpenRAVE::TriMesh& myMesh = geom->GetCollisionMesh();
+
+                        try
+                        {
+                            if (myMesh.vertices.size() >= 3)
+                            {
+                                mesh = meshToOgre(myMesh, fileName);
+                            }
+                        }
+                        catch(Ogre::InternalErrorException& ex)
+                        {
+                            RAVELOG_ERROR(ex.what());
+                        }
+
+                        if (mesh.get())
+                        {
+                            RAVELOG_INFO("Creating entity.\n");
+                            entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
+                            entity->setVisible(true);
+                            scale = converters::ToOgreVector(geom->GetRenderScale());
+                            RAVELOG_INFO("Done.\n");
+                        }
+
                         break;
                     }
                     default:
@@ -325,12 +388,13 @@ namespace or_rviz
             if (entity)
             {
 
+                RAVELOG_DEBUG("Entity created.\n");
 
                 Ogre::MaterialManager &matMgr = Ogre::MaterialManager::getSingleton();
                 Ogre::ResourceManager::ResourceCreateOrRetrieveResult result = matMgr.createOrRetrieve(objectName + " Material" + iterSS.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
-                if(result.second)
+                if (result.second)
                 {
-                    Ogre::MaterialPtr mat = (Ogre::MaterialPtr)result.first;
+                    Ogre::MaterialPtr mat = (Ogre::MaterialPtr) result.first;
                     mat->setReceiveShadows(true);
 
                     mat->createTechnique();
@@ -344,8 +408,6 @@ namespace or_rviz
 
                 }
 
-
-
                 offsetNode->attachObject(entity);
                 offsetNode->setScale(scale);
                 offsetNode->setPosition(offset_position);
@@ -358,7 +420,6 @@ namespace or_rviz
                     sub->setMaterialName(objectName + " Material" + iterSS.str());
 
                 }
-
 
             }
         }

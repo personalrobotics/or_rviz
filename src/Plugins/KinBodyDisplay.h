@@ -16,6 +16,7 @@
 namespace or_rviz
 {
 
+
     class KinBodyDisplay : public rviz::Display
     {
         public:

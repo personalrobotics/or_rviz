@@ -78,7 +78,7 @@ namespace or_rviz
             GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
         }
 
-        GetEnvironment()->GetKinBody(objectName)->SetVisible(state == MenuHandler::UNCHECKED);
+        m_bodyVisuals[objectName]->SetVisible(state == MenuHandler::UNCHECKED);
         GetMenu(objectName).apply(*m_markerServer, objectName);
 
     }
@@ -101,6 +101,7 @@ namespace or_rviz
     {
         std::string objectName = feedback->marker_name;
         MenuHandler::EntryHandle handle = feedback->menu_entry_id;
+
         MenuHandler::CheckState state;
         GetMenu(objectName).getCheckState( handle, state );
 
@@ -115,7 +116,11 @@ namespace or_rviz
 
         if(HasKinBody(objectName))
         {
-            m_bodyVisuals[objectName]->SetRenderMode(state == MenuHandler::CHECKED ? LinkVisual::CollisionMesh : LinkVisual::VisualMesh);
+            BodyUpdateEvent updateEvent;
+            updateEvent.bodyName = objectName;
+            updateEvent.renderMode = state == MenuHandler::UNCHECKED ? LinkVisual::CollisionMesh : LinkVisual::VisualMesh;
+            updateEvent.updateType = BodyUpdateRenderMode;
+            m_updateBuffer.push_back(updateEvent);
         }
 
         GetMenu(objectName).apply(*m_markerServer, objectName);
@@ -146,11 +151,11 @@ namespace or_rviz
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
                 MenuHandler::CHECKED);
 
-        /*
+
         menu.setCheckState(menu.insert("Collision Mesh",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuCollisionChanged, this, _1)),
                 MenuHandler::UNCHECKED);
-                */
+
 
         menu.setCheckState(menu.insert("Move",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuMoveChanged, this, _1)),
@@ -249,6 +254,72 @@ namespace or_rviz
                                                          m_kinbodiesCategory, visual));
     }
 
+
+    void EnvironmentDisplay::HandleControlBufferEvents()
+    {
+        for(size_t i =0 ; i < m_controlBuffer.size(); i++)
+        {
+            ControlHandle& controlHandle = m_controlBuffer.at(i);
+
+            if(HasKinBody(controlHandle.name))
+            {
+                CreateControls(m_bodyVisuals[controlHandle.name], controlHandle.createPose, true);
+            }
+
+        }
+        m_controlBuffer.clear();
+    }
+
+    void EnvironmentDisplay::HandleBodyUpdateEvents()
+    {
+        for(size_t i = 0; i < m_updateBuffer.size(); i++)
+        {
+            BodyUpdateEvent& updateEvent= m_updateBuffer.at(i);
+
+            switch(updateEvent.updateType)
+            {
+                case BodyUpdateRenderMode:
+                    if(HasKinBody(updateEvent.bodyName))
+                    {
+                        m_bodyVisuals[updateEvent.bodyName]->SetRenderMode(updateEvent.renderMode);
+                    }
+                    break;
+            }
+
+        }
+
+        m_updateBuffer.clear();
+    }
+
+
+    void EnvironmentDisplay::RemoveDeadBodies(std::vector<OpenRAVE::KinBodyPtr>& bodies)
+    {
+        std::vector<std::string> removals;
+        for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
+        {
+          bool containsBody = false;
+          for(size_t j = 0; j < bodies.size(); j++)
+          {
+              if(bodies[j]->GetName() == it->first)
+              {
+                  containsBody = true;
+                  break;
+              }
+          }
+
+          if(!containsBody)
+          {
+              removals.push_back(it->first);
+          }
+        }
+
+        for(size_t i = 0; i < removals.size(); i++)
+        {
+            RemoveKinBody(removals.at(i));
+        }
+
+    }
+
     void EnvironmentDisplay::UpdateObjects()
     {
         if(!GetEnvironment())
@@ -275,53 +346,22 @@ namespace or_rviz
             }
             else
             {
+                /*
                 if(m_bodyVisuals[bodies[i]->GetName()]->IsVisible() != bodies[i]->IsVisible())
                 {
                     m_bodyVisuals[bodies[i]->GetName()]->SetVisible(bodies[i]->IsVisible());
                 }
+                */
 
                 m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
                 m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
             }
         }
 
-        std::vector<std::string> removals;
-        for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
-        {
-          bool containsBody = false;
-          for(size_t j = 0; j < bodies.size(); j++)
-          {
-              if(bodies[j]->GetName() == it->first)
-              {
-                  containsBody = true;
-                  break;
-              }
-          }
+        RemoveDeadBodies(bodies);
+        HandleControlBufferEvents();
+        HandleBodyUpdateEvents();
 
-          if(!containsBody)
-          {
-              removals.push_back(it->first);
-          }
-        }
-
-        for(size_t i = 0; i < removals.size(); i++)
-        {
-            RemoveKinBody(removals.at(i));
-        }
-
-
-        for(size_t i =0 ; i < m_controlBuffer.size(); i++)
-        {
-            ControlHandle& controlHandle = m_controlBuffer.at(i);
-
-            if(HasKinBody(controlHandle.name))
-            {
-                CreateControls(m_bodyVisuals[controlHandle.name], controlHandle.createPose, true);
-            }
-
-        }
-
-        m_controlBuffer.clear();
 
         m_markerServer->applyChanges();
 

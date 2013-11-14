@@ -36,8 +36,6 @@ using namespace rviz;
 namespace or_rviz
 {
 
-
-
     OpenRaveRviz::OpenRaveRviz(OpenRAVE::EnvironmentBasePtr env, QWidget * parent, Qt::WindowFlags flags) :
             VisualizationFrame(parent),
             OpenRAVE::ViewerBase(env),
@@ -299,6 +297,15 @@ namespace or_rviz
             }
         }
 
+    }
+
+
+    void OpenRaveRviz::RemoveKinBody (OpenRAVE::KinBodyPtr pbody)
+    {
+        if(pbody.get() && m_envDisplay)
+        {
+            m_envDisplay->RemoveKinBody(pbody->GetName());
+        }
     }
 
     void OpenRaveRviz::UpdateDisplay()
@@ -920,4 +927,5 @@ OPENRAVE_PLUGIN_API void DestroyPlugin()
 {
     return;
 }
+
 

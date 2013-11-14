@@ -25,6 +25,18 @@ namespace Ogre
 namespace or_rviz
 {
 
+    enum BodyUpdateType
+    {
+        BodyUpdateRenderMode
+    };
+
+    struct BodyUpdateEvent
+    {
+            std::string bodyName;
+            BodyUpdateType updateType;
+            LinkVisual::RenderMode renderMode;
+    };
+
     class KinBodyVisual
     {
         public:
@@ -50,7 +62,7 @@ namespace or_rviz
             void SetCategory(rviz::CategoryPropertyWPtr category) { m_category = category; }
             rviz::CategoryPropertyWPtr GetCategory() { return m_category; }
 
-            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; GetKinBody()->SetVisible(value); }
+            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; }
             bool IsVisible() { return m_visible; }
 
             inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }

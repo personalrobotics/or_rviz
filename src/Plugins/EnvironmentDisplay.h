@@ -25,6 +25,8 @@
 namespace or_rviz
 {
 
+
+
     struct ControlHandle
     {
             std::string name;
@@ -37,7 +39,6 @@ namespace or_rviz
     {
 
         public:
-
             EnvironmentDisplay();
             virtual ~EnvironmentDisplay();
 
@@ -63,20 +64,29 @@ namespace or_rviz
 
             inline interactive_markers::MenuHandler& GetMenu(std::string name) { return m_menus[name]; }
 
+            // RVIZ callbacks.
             virtual void onInitialize();
             virtual void fixedFrameChanged();
             virtual void reset();
             virtual void createProperties();
 
         protected:
+            // RVIZ callbacks
             virtual void onEnable();
             virtual void onDisable();
 
+            // Callbacks for user input events.
             void OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+
+            // These exist for events which *can't* occur in a thread
+            // different from the GUI thread, due to openGL context.
+            void HandleControlBufferEvents();
+            void HandleBodyUpdateEvents();
+            void RemoveDeadBodies(std::vector<OpenRAVE::KinBodyPtr>& bodies);
 
             OpenRAVE::EnvironmentBaseWeakPtr m_env;
             std::map<std::string, KinBodyVisual*> m_bodyVisuals;
@@ -91,6 +101,7 @@ namespace or_rviz
 
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
             std::vector<ControlHandle> m_controlBuffer;
+            std::vector<BodyUpdateEvent> m_updateBuffer;
 
 
 
