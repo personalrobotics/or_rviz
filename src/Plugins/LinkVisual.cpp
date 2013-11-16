@@ -230,9 +230,20 @@ namespace or_rviz
 
     void LinkVisual::CreateParts()
     {
+        static std::string const default_geometry_group = "self";
+        static std::string const visual_geometry_group = "visual";
 
         destroyAllAttachedMovableObjects(m_sceneNode);
         m_sceneNode->removeAllChildren();
+
+        // Render the visual geometry group if it is present. Otherwise, we'll
+        // render the standard geometry group to mantain backwards
+        // compatability.
+        bool restore_group = false;
+        if (GetLink()->GetGroupNumGeometries(visual_geometry_group) != -1) {
+            GetLink()->SetGeometriesFromGroup(visual_geometry_group);
+            restore_group = true;
+        }
 
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = GetLink()->GetGeometries();
         static int id = 0;
@@ -412,6 +423,14 @@ namespace or_rviz
                 }
 
             }
+        }
+
+        // Restore the standard geometry group.
+        // TODO: This should restore whichever group was active before entering
+        // this function. Unfortunately, we can't get that information with the
+        // current version of OpenRAVE (see OpenRAVE bug 281).
+        if (restore_group) {
+            GetLink()->SetGeometriesFromGroup(default_geometry_group);
         }
     }
 
