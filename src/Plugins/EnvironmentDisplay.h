@@ -70,6 +70,9 @@ namespace or_rviz
             virtual void reset();
             virtual void createProperties();
 
+            bool RegisterMenuCallback(const std::string& objectName, const std::string& menuName, const std::string& pyObject);
+            bool UnRegisterMenuCallback(const std::string& objectName, const std::string& menuName);
+
         protected:
             // RVIZ callbacks
             virtual void onEnable();
@@ -102,6 +105,8 @@ namespace or_rviz
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
             std::vector<ControlHandle> m_controlBuffer;
             std::vector<BodyUpdateEvent> m_updateBuffer;
+
+            std::map<std::string, std::map<std::string, std::string> > m_pythonCallbacks;
 
 
 

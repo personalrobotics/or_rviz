@@ -20,7 +20,7 @@ namespace or_rviz
     // They are classes which just erase references to themselves in a map.
     // When the caller deletes the shared pointer to them, they are erased from
     // the callback registry.
-    // Basically follows qtcoinviewer's registry stuff, but
+    // Basically follows qtcoinviewer's registry stuff.
     /////-----------
     class ViewerCallbackRegistry: public OpenRAVE::UserData
     {
@@ -59,6 +59,7 @@ namespace or_rviz
     {
         public:
             RvizGraphHandle();
+            RvizGraphHandle(Ogre::SceneNode* node);
             RvizGraphHandle(Ogre::SceneNode* node, Ogre::ManualObject* object);
             virtual ~RvizGraphHandle();
 
@@ -146,6 +147,11 @@ namespace or_rviz
 
             uchar* OffscreenRender(int width, int height, int depth);
             uchar* WriteCurrentView(int& width, int& height, int& depth);
+
+
+            // RAVE Commands
+            bool RegisterMenuCallback(std::ostream& sout, std::istream& sinput);
+            bool UnRegisterMenuCallback(std::ostream& sout, std::istream& sinput);
 
             public Q_SLOTS:
                  void syncUpdate();

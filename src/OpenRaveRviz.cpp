@@ -27,7 +27,7 @@
 #include <OgreRenderWindow.h>
 #include <rviz/default_plugin/pose_display.h>
 #include <rviz/default_plugin/interactive_marker_display.h>
-
+#include <rviz/ogre_helpers/arrow.h>
 
 using namespace OpenRAVE;
 using namespace rviz;
@@ -104,9 +104,38 @@ namespace or_rviz
         m_offscreenRenderer->setVisible(false);
         m_offscreenRenderer->setHidden(true);
 
+        RegisterCommand("register", boost::bind(&OpenRaveRviz::RegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] [pointer] Registers a python object with the given pointer (as a string) to the menu of a kinbody.");
+        RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
 
 
     }
+
+    bool OpenRaveRviz::RegisterMenuCallback(std::ostream& sout, std::istream& sinput)
+    {
+        std::string objectName;
+        sinput >> objectName;
+
+        std::string menuName;
+        sinput >> menuName;
+
+        std::string pyFunctionPtr;
+        sinput >> pyFunctionPtr;
+
+        return m_envDisplay->RegisterMenuCallback(objectName, menuName, pyFunctionPtr);
+    }
+
+    bool OpenRaveRviz::UnRegisterMenuCallback(std::ostream& sout, std::istream& sinput)
+    {
+
+        std::string objectName;
+        sinput >> objectName;
+
+        std::string menuName;
+        sinput >> menuName;
+
+        return m_envDisplay->UnRegisterMenuCallback(objectName, menuName);
+    }
+
 
     QAction* OpenRaveRviz::LoadEnvironmentAction()
     {
@@ -527,18 +556,38 @@ namespace or_rviz
 
 
     // Overloading OPENRAVE drawing functions....
+    // Note: line width and point size are unsupported in Ogre
     OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle)
     {
+        if(numPoints <= 0)
+        {
+            return  OpenRAVE::GraphHandlePtr();
+        }
+
+        if(fPointSize > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support point size.\n");
+        }
+
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
-
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
 
-        for(int i = 0; i < numPoints; i++)
+
+        std::vector<float> mypoints(numPoints * 3);
+        for(int i = 0; i < numPoints; ++i)
         {
+            mypoints[3 * i + 0] = ppoints[0];
+            mypoints[3 * i + 1] = ppoints[1];
+            mypoints[3 * i + 2] = ppoints[2];
+            ppoints = (float*)((char*)ppoints + stride);
+        }
+
+        for(int i = 0; i < numPoints; ++i)
+        {
+            manualObject->position(mypoints[3 * i + 0], mypoints[3 * i + 1], mypoints[3 * i + 2]);
             manualObject->colour(color.x, color.y, color.z, color.w);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
         }
 
 
@@ -548,26 +597,68 @@ namespace or_rviz
         return ptr;
     }
 
+    // Note: line width and point size are unsupported in Ogre
     OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
     {
+        if(numPoints <= 0)
+        {
+            return  OpenRAVE::GraphHandlePtr();
+        }
+
+        if(fPointSize > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support point size.\n");
+        }
+
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
-
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_POINT_LIST);
 
-        for(int i = 0; i < numPoints; i++)
+
+        std::vector<float> mypoints(numPoints * 3);
+
+
+        int colorSize = bhasalpha ? 4 : 3;
+
+        std::vector<float> myColors(numPoints * colorSize);
+        for(int i = 0; i < numPoints; ++i)
         {
-            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            mypoints[3 * i + 0] = ppoints[0];
+            mypoints[3 * i + 1] = ppoints[1];
+            mypoints[3 * i + 2] = ppoints[2];
+            myColors[colorSize * i + 0] = colors[0];
+            myColors[colorSize * i + 1] = colors[1];
+            myColors[colorSize * i + 2] = colors[2];
+
+            if(bhasalpha)
+            {
+                myColors[colorSize * i + 3] = colors[3];
+            }
+
+            ppoints = (float*)((char*)ppoints + stride);
+            colors = (float*)((char*)colors + colorSize * sizeof(float));
         }
 
+        for(int i = 0; i < numPoints; ++i)
+        {
+            manualObject->position(mypoints[3 * i + 0], mypoints[3 * i + 1], mypoints[3 * i + 2]);
+            if(bhasalpha)
+            {
+                manualObject->colour(myColors[4 * i + 0], myColors[4 * i + 1], myColors[4 * i + 2], myColors[4 * i + 3]);
+            }
+            else
+            {
+                manualObject->colour(myColors[3 * i + 0], myColors[3 * i + 1], myColors[3 * i + 2]);
+            }
+        }
 
         OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
         m_graphsToInitialize.push_back(ptr);
         return ptr;
     }
 
+    // Note: line width and point size are unsupported in Ogre
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
@@ -576,12 +667,35 @@ namespace or_rviz
 
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_STRIP);
 
+
+        if(fwidth > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support line width.\n");
+        }
+
+        std::vector<float> mypoints((numPoints - 1) * 6);
+        float* next;
+        for (int i = 0; i < numPoints - 1; ++i)
+        {
+            next = (float*) ((char*) ppoints + stride);
+
+            mypoints[6 * i + 0] = ppoints[0];
+            mypoints[6 * i + 1] = ppoints[1];
+            mypoints[6 * i + 2] = ppoints[2];
+            mypoints[6 * i + 3] = next[0];
+            mypoints[6 * i + 4] = next[1];
+            mypoints[6 * i + 5] = next[2];
+
+            ppoints = next;
+        }
+
+
         for(int i = 0; i < numPoints - 1; i++)
         {
+            manualObject->position(mypoints[6 * i + 0], mypoints[6 * i + 1], mypoints[6 * i + 2]);
             manualObject->colour(color.x, color.y, color.z, color.w);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
+            manualObject->position(mypoints[6 * i + 3], mypoints[6 * i + 4], mypoints[6 * i + 5]);
             manualObject->colour(color.x, color.y, color.z, color.w);
-            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
         }
 
 
@@ -599,13 +713,42 @@ namespace or_rviz
 
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_STRIP);
 
+        if(fwidth > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support line width.\n");
+        }
+
+        std::vector<float> mypoints((numPoints - 1) * 6), mycolors((numPoints - 1) * 6);
+        float* next;
+        for (int i = 0; i < numPoints - 1; ++i)
+        {
+            next = (float*) ((char*) ppoints + stride);
+
+            mypoints[6 * i + 0] = ppoints[0];
+            mypoints[6 * i + 1] = ppoints[1];
+            mypoints[6 * i + 2] = ppoints[2];
+            mypoints[6 * i + 3] = next[0];
+            mypoints[6 * i + 4] = next[1];
+            mypoints[6 * i + 5] = next[2];
+
+            mycolors[6 * i + 0] = colors[3 * i + 0];
+            mycolors[6 * i + 1] = colors[3 * i + 1];
+            mycolors[6 * i + 2] = colors[3 * i + 2];
+            mycolors[6 * i + 3] = colors[3 * i + 3];
+            mycolors[6 * i + 4] = colors[3 * i + 4];
+            mycolors[6 * i + 5] = colors[3 * i + 5];
+
+            ppoints = next;
+        }
+
         for(int i = 0; i < numPoints - 1; i++)
         {
-            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
-            manualObject->colour(colors[(i + 1) * 4 + 0], colors[(i + 1) * 4 + 1], colors[(i + 1) * 4 + 2], colors[(i + 1) * 4 + 3]);
-            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+            manualObject->position(mypoints[6 * i + 0], mypoints[6 * i + 1], mypoints[6 * i + 2]);
+            manualObject->colour(mycolors[6 * i + 0], mycolors[6 * i + 1], mycolors[6 * i + 2]);
+            manualObject->position(mypoints[6 * i + 3], mypoints[6 * i + 4], mypoints[6 * i + 5]);
+            manualObject->colour(mycolors[6 * i + 3], mycolors[6 * i + 4], mycolors[6 * i + 5]);
         }
+
 
 
 
@@ -622,12 +765,26 @@ namespace or_rviz
 
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_LIST);
 
+        if(fwidth > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support line width.\n");
+        }
+
+
+        std::vector<float> mypoints(numPoints * 3);
+        for(int i = 0; i < numPoints; ++i)
+        {
+            mypoints[3*i+0] = ppoints[0];
+            mypoints[3*i+1] = ppoints[1];
+            mypoints[3*i+2] = ppoints[2];
+            ppoints = (float*)((char*)ppoints + stride);
+        }
+
+
         for(int i = 0; i < numPoints; i++)
         {
+            manualObject->position(mypoints[3 * i + 0], mypoints[3 * i + 1], mypoints[3 * i + 2]);
             manualObject->colour(color.x, color.y, color.z, color.w);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
-            manualObject->colour(color.x, color.y, color.z, color.w);
-            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
         }
 
 
@@ -644,13 +801,38 @@ namespace or_rviz
 
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_LIST);
 
+
+        if(fwidth > 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support line width.\n");
+        }
+
+
+        boost::multi_array<float,2> vcolors;
+        vcolors.resize(boost::extents[numPoints][3]);
+
+        for(int i = 0; i < numPoints; ++i)
+        {
+            vcolors[i][0] = colors[3 * i + 0];
+            vcolors[i][1] = colors[3 * i + 1];
+            vcolors[i][2] = colors[3 * i + 2];
+        }
+
+        std::vector<float> mypoints(numPoints*3);
+        for(int i = 0; i < numPoints; ++i)
+        {
+            mypoints[3*i+0] = ppoints[0];
+            mypoints[3*i+1] = ppoints[1];
+            mypoints[3*i+2] = ppoints[2];
+            ppoints = (float*)((char*)ppoints + stride);
+        }
+
         for(int i = 0; i < numPoints; i++)
         {
-            manualObject->colour(colors[i * 4 + 0], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
-            manualObject->position(ppoints[i * stride + 0], ppoints[i * stride + 1], ppoints[i * stride + 2]);
-            manualObject->colour(colors[(i + 1) * 4 + 0], colors[(i + 1) * 4 + 1], colors[(i + 1) * 4 + 2], colors[(i + 1) * 4 + 3]);
-            manualObject->position(ppoints[(i + 1) * stride + 0], ppoints[(i + 1) * stride + 1], ppoints[(i + 1) * stride + 2]);
+            manualObject->position(mypoints[3 * i + 0], mypoints[3 * i + 1], mypoints[3 * i + 2]);
+            manualObject->colour(vcolors[i][0], vcolors[i][1], vcolors[i][2], 1);
         }
+
 
 
 
@@ -661,7 +843,17 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
-        return OpenRAVE::GraphHandlePtr();
+        Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
+
+        float len = (p2 - p1).lengthsqr3();
+        //  float shaft_length = 1.0f, float shaft_radius = 0.1f, float head_length = 0.3f, float head_radius =  0.2f
+        rviz::Arrow* arrow = new rviz::Arrow(getManager()->getSceneManager(), sceneNode, len, fwidth,  0.3 * len, fwidth * 1.25);
+        arrow->setColor(Ogre::ColourValue(color.x, color.y, color.z, color.w));
+        arrow->setDirection(converters::ToOgreVector(p2 - p1).normalisedCopy());
+        arrow->setPosition(converters::ToOgreVector(p1));
+        OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode));
+        m_graphsToInitialize.push_back(ptr);
+        return ptr;
     }
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawbox (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents)
@@ -673,64 +865,64 @@ namespace or_rviz
 
         // This is probably the worst way to draw a cube in the world, sorry.
 
-        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(0.408248, -0.816497, 0.408248);
         cube->textureCoord(1, 0);
-        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(-0.408248, -0.816497, -0.408248);
         cube->textureCoord(0, 1);
-        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(0.666667, -0.333333, -0.666667);
         cube->textureCoord(1, 1);
-        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(-0.666667, -0.333333, 0.666667);
         cube->textureCoord(0, 0);
-        cube->position(vextents.x, vextents.y,  vextents.z);
+        cube->position(vextents.x + vpos.x, vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(0.666667, 0.333333, 0.666667);
         cube->textureCoord(1, 0);
-        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(-0.666667, -0.333333, 0.666667);
         cube->textureCoord(0, 1);
-        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(0.408248, -0.816497, 0.408248);
         cube->textureCoord(1, 1);
-        cube->position(-vextents.x, vextents.y,  vextents.z);
+        cube->position(-vextents.x + vpos.x, vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(-0.408248, 0.816497, 0.408248);
         cube->textureCoord(0, 0);
-        cube->position(-vextents.x, vextents.y,  -vextents.z);
+        cube->position(-vextents.x + vpos.x, vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(-0.666667, 0.333333, -0.666667);
         cube->textureCoord(0, 1);
-        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(-0.408248, -0.816497, -0.408248);
         cube->textureCoord(1, 1);
-        cube->position(-vextents.x, -vextents.y,  vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(-0.666667, -0.333333, 0.666667);
         cube->textureCoord(1, 0);
-        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(0.666667, -0.333333, -0.666667);
         cube->textureCoord(0, 1);
-        cube->position(vextents.x, vextents.y,  -vextents.z);
+        cube->position(vextents.x + vpos.x, vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(0.408248, 0.816497, -0.408248);
         cube->textureCoord(1, 1);
-        cube->position(vextents.x, -vextents.y,  vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(0.408248, -0.816497, 0.408248);
         cube->textureCoord(0, 0);
-        cube->position(vextents.x, -vextents.y,  -vextents.z);
+        cube->position(vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(0.666667, -0.333333, -0.666667);
         cube->textureCoord(1, 0);
-        cube->position(-vextents.x, -vextents.y,  -vextents.z);
+        cube->position(-vextents.x + vpos.x, -vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(-0.408248, -0.816497, -0.408248);
         cube->textureCoord(0, 0);
-        cube->position(-vextents.x, vextents.y,  vextents.z);
+        cube->position(-vextents.x + vpos.x, vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(-0.408248, 0.816497, 0.408248);
         cube->textureCoord(1, 0);
-        cube->position(vextents.x, vextents.y,  -vextents.z);
+        cube->position(vextents.x + vpos.x, vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(0.408248, 0.816497, -0.408248);
         cube->textureCoord(0, 1);
-        cube->position(-vextents.x, vextents.y,  -vextents.z);
+        cube->position(-vextents.x + vpos.x, vextents.y + vpos.y,  -vextents.z + vpos.z);
         cube->normal(-0.666667, 0.333333, -0.666667);
         cube->textureCoord(1, 1);
-        cube->position(vextents.x, vextents.y,  vextents.z);
+        cube->position(vextents.x + vpos.x, vextents.y + vpos.y,  vextents.z + vpos.z);
         cube->normal(0.666667, 0.333333, 0.666667);
         cube->textureCoord(0, 0);
 
@@ -754,6 +946,7 @@ namespace or_rviz
 
     OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture)
     {
+        RAVELOG_WARN("or_rviz does not yet support planes.\n");
         // This is not yet implemented
         return OpenRAVE::GraphHandlePtr();
     }
@@ -764,6 +957,11 @@ namespace or_rviz
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
+
+        if(color.w < 1)
+        {
+            RAVELOG_WARN("or_rviz does not yet support alpha-blended trimeshes.\n");
+        }
 
         if (pIndices != NULL)
         {
@@ -851,6 +1049,12 @@ namespace or_rviz
         m_node = NULL;
     }
 
+    RvizGraphHandle::RvizGraphHandle(Ogre::SceneNode* node)
+    {
+        m_node = node;
+        m_object = NULL;
+    }
+
     RvizGraphHandle::RvizGraphHandle(Ogre::SceneNode* node, Ogre::ManualObject* object)
     {
         m_node = node;
@@ -883,10 +1087,12 @@ namespace or_rviz
         if(manual)
         {
             manual->end();
+            m_node->attachObject(m_object);
         }
 
-        m_node->attachObject(m_object);
     }
+
+
 }
 
 static char* argv[1] = {const_cast<char *>("or_rviz")};

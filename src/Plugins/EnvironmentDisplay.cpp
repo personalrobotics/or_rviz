@@ -9,6 +9,8 @@
 #include <rviz/frame_manager.h>
 #include <rviz/properties/property_manager.h>
 #include "../Converters.h"
+//#include "../PythonInterface/PyCallbacks.h"
+
 
 using namespace interactive_markers;
 using namespace visualization_msgs;
@@ -31,6 +33,19 @@ namespace or_rviz
         m_sceneManager->destroySceneNode(m_sceneNode);
         delete m_markerServer;
     }
+
+    bool  EnvironmentDisplay::RegisterMenuCallback(const std::string& objectName, const std::string& menuName, const std::string& pyObject)
+    {
+        m_pythonCallbacks[objectName][menuName] = pyObject;
+        return true;
+    }
+
+    bool  EnvironmentDisplay::UnRegisterMenuCallback(const std::string& objectName, const std::string& menuName)
+    {
+        m_pythonCallbacks[objectName].erase(menuName);
+        return true;
+    }
+
 
     void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
