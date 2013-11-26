@@ -47,6 +47,28 @@ namespace or_rviz
     }
 
 
+    void EnvironmentDisplay::OnKinbodyMenuJointControlChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        std::string objectName = feedback->marker_name;
+        MenuHandler::EntryHandle handle = feedback->menu_entry_id;
+        MenuHandler::CheckState state;
+        GetMenu(objectName).getCheckState( handle, state );
+
+        if(state == MenuHandler::CHECKED)
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::UNCHECKED);
+        }
+        else
+        {
+            GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
+        }
+
+        control_mode::ControlMode type = (state == MenuHandler::UNCHECKED) ?  control_mode::JointControl : control_mode::NoControl;
+
+        CreateControls(m_bodyVisuals[objectName], type, false);
+        GetMenu(objectName).apply(*m_markerServer, objectName);
+    }
+
     void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
 
@@ -64,7 +86,9 @@ namespace or_rviz
             GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
         }
 
-        CreateControls(m_bodyVisuals[objectName], state == MenuHandler::UNCHECKED, false);
+        control_mode::ControlMode type = (state == MenuHandler::UNCHECKED) ?  control_mode::PoseControl : control_mode::NoControl;
+
+        CreateControls(m_bodyVisuals[objectName], type, false);
         GetMenu(objectName).apply(*m_markerServer, objectName);
 
     }
@@ -141,7 +165,156 @@ namespace or_rviz
         GetMenu(objectName).apply(*m_markerServer, objectName);
     }
 
-    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, bool poseControl, bool immediate)
+    void EnvironmentDisplay::CreateJointControl(visualization_msgs::InteractiveMarker& marker, OpenRAVE::KinBody::JointPtr& joint)
+    {
+        marker.scale = fmax(fmin((joint->GetHierarchyParentLink()->ComputeAABB().extents * 0.5).lengthsqr3(), 0.5), 0.2);
+        if(joint->GetType() == OpenRAVE::KinBody::Joint::JointRevolute ||joint->GetType() == OpenRAVE::KinBody::Joint::JointPrismatic )
+        {
+            CreateJointDOFControl(marker, joint->GetAxis(0), joint->GetDOFIndex(), 0, joint->GetType());
+        }
+        else
+        {
+            int numDofs = joint->GetInfo()._vaxes.size();
+            for(int i = 0; i < numDofs; i++)
+            {
+                bool revolute = joint->IsRevolute(i);
+                bool prismatic = joint->IsPrismatic(i);
+                OpenRAVE::Vector axis = joint->GetAxis(i);
+
+                OpenRAVE::KinBody::Joint::JointType type;
+
+                if(revolute)
+                {
+                    type = OpenRAVE::KinBody::Joint::JointRevolute;
+                }
+                else if(prismatic)
+                {
+                    type = OpenRAVE::KinBody::Joint::JointPrismatic;
+                }
+                else
+                {
+                    continue;
+                }
+
+                CreateJointDOFControl(marker, axis, joint->GetDOFIndex(), i, type);
+            }
+        }
+
+
+    }
+
+    void EnvironmentDisplay::CreateJointDOFControl(visualization_msgs::InteractiveMarker& int_marker, const OpenRAVE::Vector& axis,  int jointID, int dofID,  OpenRAVE::KinBody::Joint::JointType type)
+    {
+        std::stringstream ss;
+        ss << jointID << "," << dofID;
+
+        RAVELOG_INFO("ID: %s" , ss.str().c_str());
+
+        OpenRAVE::Vector axisAngle;
+        axisAngle = axis;
+        axisAngle.w = 0;
+
+        OpenRAVE::Vector v = OpenRAVE::geometry::quatFromAxisAngle(axisAngle);
+        Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(v);
+        ogreQuat.w = 1;
+        ogreQuat.x = axis.x;
+        ogreQuat.y = -axis.z;
+        ogreQuat.z = axis.y;
+
+        if(type == OpenRAVE::KinBody::Joint::JointRevolute)
+        {
+            InteractiveMarkerControl control;
+            control.orientation.w = ogreQuat.w;
+            control.orientation.x = ogreQuat.x;
+            control.orientation.y = ogreQuat.y;
+            control.orientation.z = ogreQuat.z;
+            control.name = ss.str();
+
+            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+            int_marker.controls.push_back(control);
+        }
+        else if(type == OpenRAVE::KinBody::Joint::JointPrismatic)
+        {
+            InteractiveMarkerControl control;
+            control.orientation.w = ogreQuat.w;
+            control.orientation.x = ogreQuat.x;
+            control.orientation.y = ogreQuat.y;
+            control.orientation.z = ogreQuat.z;
+            control.name = ss.str();
+
+
+
+            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+            int_marker.controls.push_back(control);
+        }
+        else
+        {
+            RAVELOG_WARN("Unrecognized joint type %d\n", (int)type);
+        }
+
+    }
+
+    void EnvironmentDisplay::CreatePoseControl(visualization_msgs::InteractiveMarker& int_marker)
+    {
+        InteractiveMarkerControl control;
+
+        control.orientation.w = 1;
+        control.orientation.x = 1;
+        control.orientation.y = 0;
+        control.orientation.z = 0;
+        control.name = "rotate_x";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_x";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 1;
+        control.orientation.z = 0;
+        control.name = "rotate_z";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_z";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 0;
+        control.orientation.z = 1;
+        control.name = "rotate_y";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        int_marker.controls.push_back(control);
+
+        control.name = "move_y";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        int_marker.controls.push_back(control);
+    }
+
+    void EnvironmentDisplay::UpdateJointControlPoses(KinBodyVisual* visual)
+    {
+        for(size_t i = 0; i < visual->GetKinBody()->GetJoints().size(); i++)
+        {
+            OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
+            InteractiveMarker joint_marker;
+            joint_marker.header.frame_id = m_frame;
+            joint_marker.pose.orientation.w = 1;
+            joint_marker.pose.position.x = joint->GetAnchor().x;
+            joint_marker.pose.position.y = joint->GetAnchor().y;
+            joint_marker.pose.position.z = joint->GetAnchor().z;
+
+            joint_marker.name = visual->GetKinBody()->GetName() + " " + joint->GetName();
+
+            m_markerServer->setPose(joint_marker.name, joint_marker.pose);
+
+        }
+    }
+
+    void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::ControlMode mode, bool immediate)
     {
         if(!visual || !m_markerServer)
         {
@@ -151,7 +324,7 @@ namespace or_rviz
         if(!immediate)
         {
             ControlHandle controlHandle;
-            controlHandle.createPose = poseControl;
+            controlHandle.mode = mode;
             controlHandle.name = visual->GetKinBody()->GetName();
             m_controlBuffer.push_back(controlHandle);
             return;
@@ -164,17 +337,24 @@ namespace or_rviz
 
         menu.setCheckState(menu.insert("Visible",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
-                MenuHandler::CHECKED);
+                visual->IsVisible() ?  MenuHandler::CHECKED : MenuHandler::UNCHECKED);
 
 
         menu.setCheckState(menu.insert("Collision Mesh",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuCollisionChanged, this, _1)),
-                MenuHandler::UNCHECKED);
+                visual->GetRenderMode() == LinkVisual::CollisionMesh ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
 
 
         menu.setCheckState(menu.insert("Move",
                 boost::bind(&EnvironmentDisplay::OnKinbodyMenuMoveChanged, this, _1)),
-                (!poseControl) ? MenuHandler::UNCHECKED : MenuHandler::CHECKED);
+                mode == control_mode::PoseControl ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
+
+
+        menu.setCheckState(menu.insert("Joints",
+                boost::bind(&EnvironmentDisplay::OnKinbodyMenuJointControlChanged, this, _1)),
+                mode == control_mode::JointControl ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
+
+
         menu.insert("Delete",
                         boost::bind(&EnvironmentDisplay::OnKinbodyMenuDelete, this, _1));
 
@@ -201,50 +381,103 @@ namespace or_rviz
         transform.trans = aabb.pos;
         int_marker.pose = converters::ToGeomMsgPose(transform);
 
-        if(poseControl)
+        if(mode == control_mode::PoseControl)
         {
-            InteractiveMarkerControl control;
+            CreatePoseControl(int_marker);
+        }
 
-            control.orientation.w = 1;
-            control.orientation.x = 1;
-            control.orientation.y = 0;
-            control.orientation.z = 0;
-            control.name = "rotate_x";
-            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-            int_marker.controls.push_back(control);
+        if(mode == control_mode::JointControl)
+        {
 
-            control.name = "move_x";
-            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-            int_marker.controls.push_back(control);
+            for(size_t i = 0; i < visual->GetKinBody()->GetJoints().size(); i++)
+            {
+                OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
+                InteractiveMarker joint_marker;
+                joint_marker.header.frame_id = m_frame;
+                joint_marker.pose.orientation.w = 1;
+                joint_marker.pose.position.x = joint->GetAnchor().x;
+                joint_marker.pose.position.y = joint->GetAnchor().y;
+                joint_marker.pose.position.z = joint->GetAnchor().z;
 
-            control.orientation.w = 1;
-            control.orientation.x = 0;
-            control.orientation.y = 1;
-            control.orientation.z = 0;
-            control.name = "rotate_z";
-            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-            int_marker.controls.push_back(control);
+                joint_marker.name = visual->GetKinBody()->GetName() + " " + joint->GetName();
 
-            control.name = "move_z";
-            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-            int_marker.controls.push_back(control);
-
-            control.orientation.w = 1;
-            control.orientation.x = 0;
-            control.orientation.y = 0;
-            control.orientation.z = 1;
-            control.name = "rotate_y";
-            control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-            int_marker.controls.push_back(control);
-
-            control.name = "move_y";
-            control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-            int_marker.controls.push_back(control);
+                CreateJointControl(joint_marker, joint);
+                m_markerServer->insert(joint_marker);
+                m_markerServer->setCallback(joint_marker.name, boost::bind(&EnvironmentDisplay::OnJointMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
+            }
+        }
+        else
+        {
+            for(size_t i = 0; i < visual->GetKinBody()->GetJoints().size(); i++)
+            {
+                OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
+                m_markerServer->erase(visual->GetKinBody()->GetName() + " " + joint->GetName());
+            }
         }
 
         m_markerServer->insert(int_marker);
         m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
         menu.apply(*m_markerServer, int_marker.name);
+
+    }
+
+    void EnvironmentDisplay::OnJointMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+
+        std::string markerName = feedback->marker_name;
+        std::vector<std::string> tokens;
+        std::istringstream iss(markerName);
+        std::copy(std::istream_iterator<std::string>(iss),
+                std::istream_iterator<std::string>(),
+                std::back_inserter<std::vector<std::string> >(tokens));
+
+        std::string kinbodyName = tokens[0];
+        std::string jointName = tokens[1];
+
+        std::string dofName = feedback->control_name;
+
+        int index = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetDOFIndex();
+        double currentValue = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetValue(0);
+
+
+        OpenRAVE::KinBody::JointPtr joint = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName);
+
+        InteractiveMarker joint_marker;
+        joint_marker.header.frame_id = m_frame;
+        joint_marker.pose.orientation.w = 1;
+        joint_marker.pose.position.x = joint->GetAnchor().x;
+        joint_marker.pose.position.y = joint->GetAnchor().y;
+        joint_marker.pose.position.z = joint->GetAnchor().z;
+
+        OpenRAVE::Transform prevPose = converters::ToRaveTransform(joint_marker.pose);
+        OpenRAVE::Transform newPose = converters::ToRaveTransform(feedback->pose);
+        OpenRAVE::Transform prevToNew = newPose.inverse() * prevPose;
+
+        float change = 0;
+        if(joint->GetType() == OpenRAVE::KinBody::JointRevolute)
+        {
+            OpenRAVE::Vector axisAngle = OpenRAVE::geometry::axisAngleFromQuat(prevToNew.rot);
+
+            float diff = axisAngle.lengthsqr3();
+            axisAngle /= (axisAngle.lengthsqr3() + 0.001f);
+            float sign = axisAngle.dot(joint->GetAxis(0));
+            float alpha = -0.1;
+
+            change = diff * sign * alpha;
+        }
+        else
+        {
+            change = prevToNew.trans.lengthsqr3();
+        }
+
+        std::vector<double> values;
+        values.push_back(currentValue + change);
+        std::vector<int> indecies;
+        indecies.push_back(index);
+
+        GetEnvironment()->GetKinBody(kinbodyName)->SetDOFValues(values, true, indecies);
+
+        UpdateJointControlPoses(m_bodyVisuals[kinbodyName]);
 
     }
 
@@ -278,7 +511,7 @@ namespace or_rviz
 
             if(HasKinBody(controlHandle.name))
             {
-                CreateControls(m_bodyVisuals[controlHandle.name], controlHandle.createPose, true);
+                CreateControls(m_bodyVisuals[controlHandle.name], controlHandle.mode, true);
             }
 
         }
@@ -356,7 +589,7 @@ namespace or_rviz
 
 
                 CreateRvizPropertyMenu(visual);
-                CreateControls(visual, false, false);
+                CreateControls(visual, control_mode::NoControl, false);
 
             }
             else

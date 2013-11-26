@@ -27,10 +27,20 @@ namespace or_rviz
 
 
 
+    namespace control_mode
+    {
+        enum ControlMode
+        {
+            NoControl,
+            PoseControl,
+            JointControl
+        };
+    }
+
     struct ControlHandle
     {
             std::string name;
-            bool createPose;
+            control_mode::ControlMode mode;
     };
 
 
@@ -59,7 +69,7 @@ namespace or_rviz
 
             void RemoveKinBody(const std::string& name);
 
-            void CreateControls(KinBodyVisual* visual, bool poseControl, bool immediate);
+            void CreateControls(KinBodyVisual* visual, control_mode::ControlMode mode, bool immediate);
             void CreateRvizPropertyMenu(KinBodyVisual* visual);
 
             inline interactive_markers::MenuHandler& GetMenu(std::string name) { return m_menus[name]; }
@@ -80,16 +90,23 @@ namespace or_rviz
 
             // Callbacks for user input events.
             void OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+            void OnJointMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+            void OnKinbodyMenuJointControlChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+            void UpdateJointControlPoses(KinBodyVisual* visual);
+
 
             // These exist for events which *can't* occur in a thread
             // different from the GUI thread, due to openGL context.
             void HandleControlBufferEvents();
             void HandleBodyUpdateEvents();
             void RemoveDeadBodies(std::vector<OpenRAVE::KinBodyPtr>& bodies);
+            void CreatePoseControl(visualization_msgs::InteractiveMarker& marker);
+            void CreateJointControl(visualization_msgs::InteractiveMarker& marker, OpenRAVE::KinBody::JointPtr& joint);
+            void CreateJointDOFControl(visualization_msgs::InteractiveMarker& marker, const OpenRAVE::Vector& axis, int jointID, int dofID, OpenRAVE::KinBody::Joint::JointType type);
 
             OpenRAVE::EnvironmentBaseWeakPtr m_env;
             std::map<std::string, KinBodyVisual*> m_bodyVisuals;
