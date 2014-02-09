@@ -1,29 +1,24 @@
 <package>
   <description brief="or_rviz">
-
-     or_rviz is a new viewer meant to replace OpenRAVEs other viewers while providing more functionality and being faster, and all around cooler, by integrating with RVIZ.
-
+     or_rviz is a new viewer meant to replace OpenRAVEs other viewers while
+     providing more functionality and being faster, and all around cooler, by
+     integrating with RVIZ.
   </description>
-
-	<export>
-	    <rviz plugin="${prefix}/plugin_description.xml"/>
-	</export>
-
   <author>Matt Klingensmith</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/superviewer</url>
+  <url>http://ros.org/wiki/or_rviz</url>
   <depend package="openrave"/>
   <depend package="rviz"/>
   <depend package="ogre_tools"/>
   <depend package="interactive_markers"/>
   <rosdep name="eigen"/>
-	<export>
-	<cpp cflags="`pkg-config --cflags eigen3` -I${prefix}/include"/>
-	</export>
-
   <rosdep name="libqt4-dev"/>
-
+  <export>
+    <openrave plugins="${prefix}/lib"/>
+    <rviz plugin="${prefix}/plugin_description.xml"/>
+    <cpp cflags="`pkg-config --cflags eigen3` -I${prefix}/include"/>
+  </export>
 </package>
 
 
