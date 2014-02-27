@@ -24,7 +24,6 @@ namespace or_rviz
     {
         m_frame = "/map";
         m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
-
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
@@ -214,12 +213,12 @@ namespace or_rviz
         axisAngle = axis;
         axisAngle.w = 0;
 
-        OpenRAVE::Vector v = OpenRAVE::geometry::quatFromAxisAngle(axisAngle);
-        Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(v);
+
+        Ogre::Quaternion ogreQuat;
         ogreQuat.w = 1;
-        ogreQuat.x = axis.x;
-        ogreQuat.y = -axis.z;
-        ogreQuat.z = axis.y;
+        ogreQuat.x = 0;
+        ogreQuat.y = 1;
+        ogreQuat.z = 0;
 
         if(type == OpenRAVE::KinBody::Joint::JointRevolute)
         {
@@ -251,6 +250,7 @@ namespace or_rviz
         {
             RAVELOG_WARN("Unrecognized joint type %d\n", (int)type);
         }
+
 
     }
 
@@ -299,10 +299,21 @@ namespace or_rviz
     {
         for(size_t i = 0; i < visual->GetKinBody()->GetJoints().size(); i++)
         {
-            OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
             InteractiveMarker joint_marker;
+            OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
+            if(!m_markerServer->get(visual->GetKinBody()->GetName() + " " + joint->GetName(), joint_marker))
+            {
+                continue;
+            }
+
             joint_marker.header.frame_id = m_frame;
-            joint_marker.pose.orientation.w = 1;
+            OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
+            Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+
+            joint_marker.pose.orientation.x = ogreQuat.x;
+            joint_marker.pose.orientation.y = ogreQuat.y;
+            joint_marker.pose.orientation.z = ogreQuat.z;
+            joint_marker.pose.orientation.w = ogreQuat.w;
             joint_marker.pose.position.x = joint->GetAnchor().x;
             joint_marker.pose.position.y = joint->GetAnchor().y;
             joint_marker.pose.position.z = joint->GetAnchor().z;
@@ -311,7 +322,46 @@ namespace or_rviz
 
             m_markerServer->setPose(joint_marker.name, joint_marker.pose);
 
+
         }
+    }
+
+    void EnvironmentDisplay::CreateTransformController(visualization_msgs::InteractiveMarker& marker, const std::string& tfFrom, const std::string& tfTo, const std::string& fixedFrame)
+    {
+        tf::StampedTransform transform;
+
+
+        bool success = false;
+
+
+        while(!success)
+        try
+        {
+            m_tfListener.lookupTransform("/calibrator", ros::Time(0), tfTo, ros::Time(0), "/calibrator", transform);
+            success = true;
+        }
+
+        catch (tf::TransformException& ex)
+        {
+            ROS_ERROR("%s",ex.what());
+        }
+
+        marker.header.frame_id = fixedFrame;
+        marker.pose.position.x = transform.getOrigin().x();
+        marker.pose.position.y = transform.getOrigin().y();
+        marker.pose.position.z = transform.getOrigin().z();
+        marker.pose.orientation.x = transform.getRotation().x();
+        marker.pose.orientation.y = transform.getRotation().y();
+        marker.pose.orientation.z = transform.getRotation().z();
+        marker.pose.orientation.w = transform.getRotation().w();
+
+        marker.name = "calibrator";
+        marker.scale = 0.5f;
+
+        CreatePoseControl(marker);
+        m_markerServer->insert(marker);
+        m_markerServer->setCallback(marker.name, boost::bind(&EnvironmentDisplay::OnCalibratorMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
+        ROS_INFO("Created calibrator");
     }
 
     void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::ControlMode mode, bool immediate)
@@ -394,12 +444,20 @@ namespace or_rviz
                 OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
                 InteractiveMarker joint_marker;
                 joint_marker.header.frame_id = m_frame;
-                joint_marker.pose.orientation.w = 1;
+
+                OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
+                transform.trans = joint->GetAnchor();
+                Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+                joint_marker.pose.orientation.x = ogreQuat.x;
+                joint_marker.pose.orientation.y = ogreQuat.y;
+                joint_marker.pose.orientation.z = ogreQuat.z;
+                joint_marker.pose.orientation.w = ogreQuat.w;
                 joint_marker.pose.position.x = joint->GetAnchor().x;
                 joint_marker.pose.position.y = joint->GetAnchor().y;
                 joint_marker.pose.position.z = joint->GetAnchor().z;
 
                 joint_marker.name = visual->GetKinBody()->GetName() + " " + joint->GetName();
+
 
                 CreateJointControl(joint_marker, joint);
                 m_markerServer->insert(joint_marker);
@@ -421,63 +479,90 @@ namespace or_rviz
 
     }
 
+    void EnvironmentDisplay::OnCalibratorMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
+    {
+        ROS_INFO("Calibrator moved");
+        geometry_msgs::Pose pose = feedback->pose;
+        tf::StampedTransform transform;
+        transform.frame_id_ = feedback->header.frame_id;
+        transform.stamp_ = ros::Time::now();
+        transform.child_frame_id_ = "/calibrator";
+        transform.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
+        transform.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w));
+        m_tfBroadcaster.sendTransform(transform);
+    }
+
     void EnvironmentDisplay::OnJointMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
     {
 
-        std::string markerName = feedback->marker_name;
-        std::vector<std::string> tokens;
-        std::istringstream iss(markerName);
-        std::copy(std::istream_iterator<std::string>(iss),
-                std::istream_iterator<std::string>(),
-                std::back_inserter<std::vector<std::string> >(tokens));
-
-        std::string kinbodyName = tokens[0];
-        std::string jointName = tokens[1];
-
-        std::string dofName = feedback->control_name;
-
-        int index = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetDOFIndex();
-        double currentValue = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetValue(0);
-
-
-        OpenRAVE::KinBody::JointPtr joint = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName);
-
-        InteractiveMarker joint_marker;
-        joint_marker.header.frame_id = m_frame;
-        joint_marker.pose.orientation.w = 1;
-        joint_marker.pose.position.x = joint->GetAnchor().x;
-        joint_marker.pose.position.y = joint->GetAnchor().y;
-        joint_marker.pose.position.z = joint->GetAnchor().z;
-
-        OpenRAVE::Transform prevPose = converters::ToRaveTransform(joint_marker.pose);
-        OpenRAVE::Transform newPose = converters::ToRaveTransform(feedback->pose);
-        OpenRAVE::Transform prevToNew = newPose.inverse() * prevPose;
-
-        float change = 0;
-        if(joint->GetType() == OpenRAVE::KinBody::JointRevolute)
+        try
         {
-            OpenRAVE::Vector axisAngle = OpenRAVE::geometry::axisAngleFromQuat(prevToNew.rot);
+            std::string markerName = feedback->marker_name;
+            std::vector<std::string> tokens;
+            std::istringstream iss(markerName);
+            std::copy(std::istream_iterator<std::string>(iss),
+                    std::istream_iterator<std::string>(),
+                    std::back_inserter<std::vector<std::string> >(tokens));
 
-            float diff = axisAngle.lengthsqr3();
-            axisAngle /= (axisAngle.lengthsqr3() + 0.001f);
-            float sign = axisAngle.dot(joint->GetAxis(0));
-            float alpha = -0.1;
+            std::string kinbodyName = tokens[0];
+            std::string jointName = tokens[1];
 
-            change = diff * sign * alpha;
+            std::string dofName = feedback->control_name;
+
+            int index = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetDOFIndex();
+            double currentValue = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName)->GetValue(0);
+
+
+            OpenRAVE::KinBody::JointPtr joint = GetEnvironment()->GetKinBody(kinbodyName)->GetJoint(jointName);
+
+            InteractiveMarker joint_marker;
+            OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
+            Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+
+            joint_marker.pose.orientation.x = ogreQuat.x;
+            joint_marker.pose.orientation.y = ogreQuat.y;
+            joint_marker.pose.orientation.z = ogreQuat.z;
+            joint_marker.pose.orientation.w = ogreQuat.w;
+            joint_marker.pose.position.x = joint->GetAnchor().x;
+            joint_marker.pose.position.y = joint->GetAnchor().y;
+            joint_marker.pose.position.z = joint->GetAnchor().z;
+
+
+            OpenRAVE::Transform prevPose = converters::ToRaveTransform(joint_marker.pose);
+            OpenRAVE::Transform newPose = converters::ToRaveTransform(feedback->pose);
+            OpenRAVE::Transform prevToNew = newPose.inverse() * prevPose;
+
+
+            float change = 0;
+            if(joint->GetType() == OpenRAVE::KinBody::JointRevolute)
+            {
+                OpenRAVE::Vector axisAngle = OpenRAVE::geometry::axisAngleFromQuat(prevToNew.rot);
+
+                float diff = axisAngle.lengthsqr3();
+                axisAngle /= (axisAngle.lengthsqr3() + 0.001f);
+                float sign = axisAngle.dot(joint->GetAxis(0));
+                float alpha = -0.1;
+
+                change = diff * sign * alpha;
+            }
+            else
+            {
+                change = prevToNew.trans.lengthsqr3();
+            }
+
+            std::vector<double> values;
+            values.push_back(currentValue + change);
+            std::vector<int> indecies;
+            indecies.push_back(index);
+
+            GetEnvironment()->GetKinBody(kinbodyName)->SetDOFValues(values, true, indecies);
+
+            UpdateJointControlPoses(m_bodyVisuals[kinbodyName]);
         }
-        else
+        catch(OpenRAVE::openrave_exception& e)
         {
-            change = prevToNew.trans.lengthsqr3();
+            RAVELOG_ERROR("%s\n", e.what());
         }
-
-        std::vector<double> values;
-        values.push_back(currentValue + change);
-        std::vector<int> indecies;
-        indecies.push_back(index);
-
-        GetEnvironment()->GetKinBody(kinbodyName)->SetDOFValues(values, true, indecies);
-
-        UpdateJointControlPoses(m_bodyVisuals[kinbodyName]);
 
     }
 
@@ -603,6 +688,9 @@ namespace or_rviz
 
                 m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
                 m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
+
+
+                UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
             }
         }
 
@@ -617,10 +705,13 @@ namespace or_rviz
 
     void EnvironmentDisplay::RemoveKinBody(const std::string& name)
     {
-        property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
-        delete m_bodyVisuals.at(name);
-        m_bodyVisuals.erase(name);
-        m_markerServer->erase(name);
+        if(HasKinBody(name))
+        {
+            property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
+            delete m_bodyVisuals.at(name);
+            m_bodyVisuals.erase(name);
+            m_markerServer->erase(name);
+        }
     }
 
     void EnvironmentDisplay::Clear()
@@ -677,6 +768,11 @@ namespace or_rviz
 
     void EnvironmentDisplay::onEnable()
     {
+        /*
+        InteractiveMarker marker;
+        CreateTransformController(marker, "/head/wam2", "/head_kinect_link", "/herb_base");
+        */
+
         m_sceneNode->setVisible(true, true);
 
         for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)

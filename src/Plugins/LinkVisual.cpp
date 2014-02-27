@@ -99,49 +99,42 @@ namespace or_rviz
 
             if (remove)
             {
-                indices[i] = (int) verts.size();
+                indices[i] = (int) (((verts.size())));
             }
             verts.push_back(vec);
         }
-
+        
     }
-
+    
     Ogre::MeshPtr LinkVisual::meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name)
     {
         Ogre::MeshPtr existingMesh = Ogre::ResourceGroupManager::getSingleton()._getResourceManager("Mesh")->getByName(name, "General");
-
         if (existingMesh.get())
         {
             RAVELOG_DEBUG("Mesh %s exists. returning.\n", name.c_str());
             return existingMesh;
         }
-
         Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, "General");
         Ogre::SubMesh* subMesh = mesh->createSubMesh();
-
-        std::vector<Ogre::Vector3> verts;
+        std::vector < Ogre::Vector3 > verts;
         std::vector<int> index;
-
         DeleteRepeatedVertices(trimesh, verts, index, false);
-
-        std::vector<Ogre::Vector3> normals(verts.size(), Ogre::Vector3(0, 0, 0));
-
+        std::vector < Ogre::Vector3 > normals(verts.size(), Ogre::Vector3(0, 0, 0));
         for (std::vector<int>::const_iterator i = index.begin(); i != index.end(); std::advance(i, 3))
         {
             Ogre::Vector3 v[3] =
             { (verts.at(*i)), (verts.at(*(i + 1))), ((verts.at(*(i + 2)))) };
-            Ogre::Vector3 normal = (v[1] - v[0]).crossProduct(v[2] - v[0]);
 
+            Ogre::Vector3 normal = (v[1] - v[0]).crossProduct(v[2] - v[0]);
             for (int j = 0; j < 3; ++j)
             {
                 Ogre::Vector3 a = v[(j + 1) % 3] - v[j];
                 Ogre::Vector3 b = v[(j + 2) % 3] - v[j];
-
                 float weight = acos(a.dotProduct(b) / (a.length() * b.length()));
                 normals[*(i + j)] += weight * normal;
             }
         }
-
+        
         for (size_t i = 0; i < normals.size(); i++)
         {
             normals.at(i).normalise();
@@ -152,13 +145,12 @@ namespace or_rviz
         mesh->sharedVertexData->vertexCount = verts.size();
 
         /* declare how the vertices will be represented */
-        Ogre::VertexDeclaration *decl = mesh->sharedVertexData->vertexDeclaration;
+        Ogre::VertexDeclaration* decl = mesh->sharedVertexData->vertexDeclaration;
         size_t offset = 0;
 
         /* the first three floats of each vertex represent the position */
         decl->addElement(0, offset, Ogre::VET_FLOAT3, Ogre::VES_POSITION);
         offset += Ogre::VertexElement::getTypeSize(Ogre::VET_FLOAT3);
-
         decl->addElement(0, offset, Ogre::VET_FLOAT3, Ogre::VES_NORMAL);
         offset += Ogre::VertexElement::getTypeSize(Ogre::VET_FLOAT3);
 
@@ -166,11 +158,9 @@ namespace or_rviz
         Ogre::HardwareVertexBufferSharedPtr vertexBuffer = Ogre::HardwareBufferManager::getSingleton().createVertexBuffer(offset, mesh->sharedVertexData->vertexCount, Ogre::HardwareBuffer::HBU_STATIC);
 
         /* lock the buffer so we can get exclusive access to its data */
-        float *vertices = static_cast<float *>(vertexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
-
+        float* vertices = static_cast<float*>(vertexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
         Ogre::Vector3 min(9999, 9999, 9999);
         Ogre::Vector3 max(-9999, -9999, -9999);
-
         size_t i = 0;
         for (std::vector<Ogre::Vector3>::const_iterator it = verts.begin(); it != verts.end(); it++)
         {
@@ -180,11 +170,9 @@ namespace or_rviz
             vertices[i * 6 + 3] = normals[i].x;
             vertices[i * 6 + 4] = normals[i].y;
             vertices[i * 6 + 5] = normals[i].z;
-
             min.x = fmin(it->x, min.x);
             min.y = fmin(it->y, min.y);
             min.z = fmin(it->z, min.z);
-
             max.x = fmax(it->x, max.x);
             max.y = fmax(it->y, max.y);
             max.z = fmax(it->z, max.z);
@@ -198,8 +186,7 @@ namespace or_rviz
         Ogre::HardwareIndexBufferSharedPtr indexBuffer = Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(Ogre::HardwareIndexBuffer::IT_16BIT, trimesh.indices.size(), Ogre::HardwareBuffer::HBU_STATIC);
 
         /* lock the buffer so we can get exclusive access to its data */
-        uint16_t *indices = static_cast<uint16_t *>(indexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
-
+        uint16_t* indices = static_cast<uint16_t*>(indexBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL));
         i = 0;
         for (std::vector<int>::const_iterator it = index.begin(); it != index.end(); it++)
         {
@@ -213,224 +200,237 @@ namespace or_rviz
         /* attach the buffers to the mesh */
         mesh->sharedVertexData->vertexBufferBinding->setBinding(0, vertexBuffer);
         subMesh->useSharedVertices = true;
-
         subMesh->indexData->indexBuffer = indexBuffer;
         subMesh->indexData->indexCount = index.size();
         subMesh->indexData->indexStart = 0;
-
 
         /* set the bounds of the mesh */
         mesh->_setBounds(Ogre::AxisAlignedBox(min.x, min.y, min.z, max.x, max.y, max.z));
 
         /* notify the mesh that we're all ready */
         mesh->load();
-
         return mesh;
+    }
+    
+    void LinkVisual::LoadRenderMesh(std::string& fileName, OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString, Ogre::Vector3& scale)
+    {
+        Ogre::MeshPtr mesh;
+        try
+        {
+            mesh = rviz::loadMeshFromResource("file://" + fileName);
+        }
+        catch (Ogre::Exception& e)
+        {
+            //RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", fileName.c_str(), e.what());
+        }
+
+        if (!mesh.get())
+        {
+            boost::shared_ptr < OpenRAVE::TriMesh > myMesh;
+            myMesh.reset(new OpenRAVE::TriMesh());
+            m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
+            
+            try
+            {
+                if (myMesh && myMesh->vertices.size() >= 3)
+                {
+                    mesh = meshToOgre(*myMesh, fileName);
+                }
+
+            }
+            catch (Ogre::InternalErrorException& ex)
+            {
+                RAVELOG_ERROR(ex.what());
+            }
+        }
+        else
+        {
+            //RAVELOG_DEBUG("Successfully loaded mesh: %s\n", fileName.c_str());
+        }
+
+        entity = m_sceneManager->createEntity("Mesh " + objectName + idString.str(), mesh->getName(), mesh->getGroup());
+        entity->setVisible(true);
+        scale = converters::ToOgreVector(geom->GetRenderScale());
+    }
+    
+    void LinkVisual::CreateCollisionGeometry(OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString, Ogre::Vector3& scale, Ogre::Quaternion& offset_orientation, std::string fileName)
+    {
+        switch (geom->GetType())
+        {
+            case OpenRAVE::GT_Box:
+            {
+                entity = rviz::Shape::createEntity("Box" + objectName + idString.str(), rviz::Shape::Cube, m_sceneManager);
+                scale = converters::ToOgreVector(geom->GetBoxExtents() * 2);
+                break;
+            }
+            case OpenRAVE::GT_Cylinder:
+            {
+                Ogre::Quaternion rotX;
+                rotX.FromAngleAxis(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
+                offset_orientation = offset_orientation * rotX;
+                
+                entity = rviz::Shape::createEntity("Cylinder" + objectName + idString.str(), rviz::Shape::Cylinder, m_sceneManager);
+                scale = Ogre::Vector3(geom->GetCylinderRadius() * 2, geom->GetCylinderHeight(), geom->GetCylinderRadius() * 2);
+                break;
+            }
+            case OpenRAVE::GT_Sphere:
+            {
+                entity = rviz::Shape::createEntity("Sphere" + objectName + idString.str(), rviz::Shape::Sphere, m_sceneManager);
+                scale = Ogre::Vector3(geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2);
+                break;
+            }
+            case OpenRAVE::GT_TriMesh:
+            {
+                Ogre::MeshPtr mesh;
+                const OpenRAVE::TriMesh& myMesh = geom->GetCollisionMesh();
+                
+                try
+                {
+                    if (myMesh.vertices.size() >= 3)
+                    {
+                        mesh = meshToOgre(myMesh, fileName);
+                    }
+                }
+                catch (Ogre::InternalErrorException& ex)
+                {
+                    RAVELOG_ERROR(ex.what());
+                }
+                
+                if (mesh.get())
+                {
+                    entity = m_sceneManager->createEntity("Mesh " + objectName + idString.str(), mesh->getName(), mesh->getGroup());
+                    entity->setVisible(true);
+                    scale = converters::ToOgreVector(geom->GetRenderScale());
+                }
+                
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+    
+    void LinkVisual::CreateMaterial(std::string& objectName, std::stringstream& idString, OpenRAVE::KinBody::Link::GeometryPtr geom)
+    {
+        Ogre::MaterialManager& matMgr = Ogre::MaterialManager::getSingleton();
+        Ogre::ResourceManager::ResourceCreateOrRetrieveResult result = matMgr.createOrRetrieve(objectName + " Material" + idString.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
+        if (result.second)
+        {
+            Ogre::MaterialPtr mat = (Ogre::MaterialPtr)(result.first);
+            mat->setReceiveShadows(true);
+
+            Ogre::Technique* technique = NULL;
+
+            if(mat->getNumTechniques() == 0)
+            {
+                technique = mat->createTechnique();
+            }
+            else
+            {
+                technique = mat->getTechnique(0);
+            }
+
+            Ogre::Pass* pass = NULL;
+
+            if(technique->getNumPasses() == 0)
+            {
+                pass = technique->createPass();
+            }
+            else
+            {
+                pass = technique->getPass(0);
+            }
+
+            pass->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
+            pass->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0f - geom->GetTransparency());
+
+            if(geom->GetTransparency() > 0.01f)
+            {
+                pass->setDepthCheckEnabled(true);
+                pass->setDepthWriteEnabled(false);
+                pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+            }
+
+            mat->compile();
+        }
+    }
+
+    void LinkVisual::CreateGeometry(OpenRAVE::KinBody::Link::GeometryPtr geom)
+    {
+        static int id = 0;
+        if (m_renderMode == LinkVisual::VisualMesh && !geom->IsVisible())
+        {
+            return;
+        }
+        else if(m_renderMode == LinkVisual::CollisionMesh && geom->IsVisible())
+        {
+            return;
+        }
+
+        std::stringstream idString;
+        idString << id;
+        id++;
+
+        Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
+        Ogre::Entity* entity = NULL;
+        Ogre::Vector3 scale(Ogre::Vector3::UNIT_SCALE);
+        Ogre::Vector3 offset_position(Ogre::Vector3::ZERO);
+        Ogre::Quaternion offset_orientation(Ogre::Quaternion::IDENTITY);
+
+        {
+            offset_position = converters::ToOgreVector(geom->GetTransform().trans);
+            offset_orientation = converters::ToOgreQuaternion(geom->GetTransform().rot);
+        }
+
+        std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
+        std::string fileName = m_renderMode == CollisionMesh ? geom->GetInfo()._filenamecollision : geom->GetInfo()._filenamerender;
+
+        // If there is a render mesh we will ignore all of the other geometry.
+        if (fileName.size() > 0)
+        {
+           LoadRenderMesh(fileName, geom, entity, objectName, idString, scale);
+        }
+        else
+        {
+            CreateCollisionGeometry(geom, entity, objectName, idString, scale, offset_orientation, fileName);
+        }
+
+        if (entity)
+        {
+
+            CreateMaterial(objectName, idString, geom);
+
+            offsetNode->attachObject(entity);
+            offsetNode->setScale(scale);
+            offsetNode->setPosition(offset_position);
+            offsetNode->setOrientation(offset_orientation);
+
+            for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
+            {
+                Ogre::SubEntity* sub = entity->getSubEntity(i);
+
+                sub->setMaterialName(objectName + " Material" + idString.str());
+
+            }
+
+        }
     }
 
     void LinkVisual::CreateParts()
     {
-        static std::string const default_geometry_group = "self";
-        static std::string const visual_geometry_group = "visual";
 
         destroyAllAttachedMovableObjects(m_sceneNode);
         m_sceneNode->removeAllChildren();
 
-        // Render the visual geometry group if it is present. Otherwise, we'll
-        // render the standard geometry group to mantain backwards
-        // compatability.
-        bool restore_group = false;
-        if (GetLink()->GetGroupNumGeometries(visual_geometry_group) != -1) {
-            GetLink()->SetGeometriesFromGroup(visual_geometry_group);
-            restore_group = true;
-        }
-
         std::vector<OpenRAVE::KinBody::Link::GeometryPtr> geometries = GetLink()->GetGeometries();
-        static int id = 0;
 
         for (size_t i = 0; i < geometries.size(); i++)
         {
 
             OpenRAVE::KinBody::Link::GeometryPtr geom = geometries.at(i);
-
-            if (m_renderMode == LinkVisual::VisualMesh && !geom->IsVisible())
-            {
-                continue;
-            }
-            else if(m_renderMode == LinkVisual::CollisionMesh && geom->IsVisible())
-            {
-                continue;
-            }
-
-            std::stringstream ss;
-            std::stringstream iterSS;
-            iterSS << i;
-            ss << id;
-            id++;
-            Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
-            Ogre::Entity* entity = NULL;
-            Ogre::Vector3 scale(Ogre::Vector3::UNIT_SCALE);
-            Ogre::Vector3 offset_position(Ogre::Vector3::ZERO);
-            Ogre::Quaternion offset_orientation(Ogre::Quaternion::IDENTITY);
-
-            {
-                offset_position = converters::ToOgreVector(geom->GetTransform().trans);
-                offset_orientation = converters::ToOgreQuaternion(geom->GetTransform().rot);
-            }
-
-            std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
-            std::string fileName = m_renderMode == CollisionMesh ? geom->GetInfo()._filenamecollision : geom->GetInfo()._filenamerender;
-
-            // If there is a render mesh we will ignore all of the other geometry.
-            if (fileName.size() > 0)
-            {
-                Ogre::MeshPtr mesh;
-
-                try
-                {
-                    mesh = rviz::loadMeshFromResource("file://" + fileName);
-                }
-                catch (Ogre::Exception& e)
-                {
-                    RAVELOG_DEBUG("Mesh %s can't be loaded by STL or .mesh loader. %s Falling back to OpenRAVE geometry.\n", fileName.c_str(), e.what());
-                }
-
-                if (!mesh.get())
-                {
-                    RAVELOG_DEBUG("Fell back to OpenRAVE geometry. Was unable to load mesh %s.\n", fileName.c_str());
-                    boost::shared_ptr<OpenRAVE::TriMesh> myMesh;
-                    myMesh.reset(new OpenRAVE::TriMesh());
-                    m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
-
-                    try
-                    {
-                        if (myMesh && myMesh->vertices.size() >= 3)
-                        {
-                            mesh = meshToOgre(*myMesh, fileName);
-                        }
-                    }
-                    catch(Ogre::InternalErrorException& ex)
-                    {
-                        RAVELOG_ERROR(ex.what());
-                    }
-                }
-                else
-                {
-                    RAVELOG_DEBUG("Successfully loaded mesh: %s\n", fileName.c_str());
-                }
-
-                if (mesh.get())
-                {
-                    entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
-                    entity->setVisible(true);
-                    scale = converters::ToOgreVector(geom->GetRenderScale());
-                }
-            }
-            else
-            {
-                switch (geom->GetType())
-                {
-                    case OpenRAVE::GT_Box:
-                    {
-                        entity = rviz::Shape::createEntity("Box" + objectName + ss.str(), rviz::Shape::Cube, m_sceneManager);
-                        scale = converters::ToOgreVector(geom->GetBoxExtents() * 2);
-                        break;
-                    }
-                    case OpenRAVE::GT_Cylinder:
-                    {
-                        Ogre::Quaternion rotX;
-                        rotX.FromAngleAxis(Ogre::Degree(90), Ogre::Vector3::UNIT_X);
-                        offset_orientation = offset_orientation * rotX;
-
-                        entity = rviz::Shape::createEntity("Cylinder" + objectName + ss.str(), rviz::Shape::Cylinder, m_sceneManager);
-                        scale = Ogre::Vector3(geom->GetCylinderRadius() * 2, geom->GetCylinderHeight(), geom->GetCylinderRadius() * 2);
-                        break;
-                    }
-                    case OpenRAVE::GT_Sphere:
-                    {
-                        entity = rviz::Shape::createEntity("Sphere" + objectName + ss.str(), rviz::Shape::Sphere, m_sceneManager);
-                        scale = Ogre::Vector3(geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2, geom->GetSphereRadius() * 2);
-                        break;
-                    }
-                    case OpenRAVE::GT_TriMesh:
-                    {
-                        Ogre::MeshPtr mesh;
-                        const OpenRAVE::TriMesh& myMesh = geom->GetCollisionMesh();
-
-                        try
-                        {
-                            if (myMesh.vertices.size() >= 3)
-                            {
-                                mesh = meshToOgre(myMesh, fileName);
-                            }
-                        }
-                        catch(Ogre::InternalErrorException& ex)
-                        {
-                            RAVELOG_ERROR(ex.what());
-                        }
-
-                        if (mesh.get())
-                        {
-                            entity = m_sceneManager->createEntity("Mesh " + objectName + ss.str(), mesh->getName(), mesh->getGroup());
-                            entity->setVisible(true);
-                            scale = converters::ToOgreVector(geom->GetRenderScale());
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        RAVELOG_DEBUG("Unrecognized geometry type.");
-                        break;
-                    }
-                }
-            }
-
-            if (entity)
-            {
-
-                RAVELOG_DEBUG("Entity created.\n");
-
-                Ogre::MaterialManager &matMgr = Ogre::MaterialManager::getSingleton();
-                Ogre::ResourceManager::ResourceCreateOrRetrieveResult result = matMgr.createOrRetrieve(objectName + " Material" + iterSS.str(), Ogre::ResourceGroupManager::INTERNAL_RESOURCE_GROUP_NAME);
-                if (result.second)
-                {
-                    Ogre::MaterialPtr mat = (Ogre::MaterialPtr) result.first;
-                    mat->setReceiveShadows(true);
-
-                    mat->createTechnique();
-                    Ogre::Pass *pass1 = mat->getTechnique(0)->createPass();
-                    pass1->setAmbient(geom->GetAmbientColor().x, geom->GetAmbientColor().y, geom->GetAmbientColor().z);
-                    pass1->setDiffuse(geom->GetDiffuseColor().x, geom->GetDiffuseColor().y, geom->GetDiffuseColor().z, 1.0);
-                    pass1->setSpecular(0.02, 0.02, 0.02, 12.5);
-                    mat->setShadingMode(Ogre::SO_GOURAUD);
-                    pass1->setShadingMode(Ogre::SO_GOURAUD);
-                    mat->compile();
-
-                }
-
-                offsetNode->attachObject(entity);
-                offsetNode->setScale(scale);
-                offsetNode->setPosition(offset_position);
-                offsetNode->setOrientation(offset_orientation);
-
-                for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
-                {
-                    Ogre::SubEntity* sub = entity->getSubEntity(i);
-
-                    sub->setMaterialName(objectName + " Material" + iterSS.str());
-
-                }
-
-            }
-        }
-
-        // Restore the standard geometry group.
-        // TODO: This should restore whichever group was active before entering
-        // this function. Unfortunately, we can't get that information with the
-        // current version of OpenRAVE (see OpenRAVE bug 281).
-        if (restore_group) {
-            GetLink()->SetGeometriesFromGroup(default_geometry_group);
+            CreateGeometry(geom);
         }
     }
 

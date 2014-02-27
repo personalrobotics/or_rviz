@@ -18,7 +18,8 @@
 #include <rviz/visualization_manager.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
-
+#include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 
 
 
@@ -91,6 +92,7 @@ namespace or_rviz
             // Callbacks for user input events.
             void OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnJointMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
+            void OnCalibratorMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
@@ -107,6 +109,49 @@ namespace or_rviz
             void CreatePoseControl(visualization_msgs::InteractiveMarker& marker);
             void CreateJointControl(visualization_msgs::InteractiveMarker& marker, OpenRAVE::KinBody::JointPtr& joint);
             void CreateJointDOFControl(visualization_msgs::InteractiveMarker& marker, const OpenRAVE::Vector& axis, int jointID, int dofID, OpenRAVE::KinBody::Joint::JointType type);
+            void CreateTransformController(visualization_msgs::InteractiveMarker& marker, const std::string& tfFrom, const std::string& tfTo, const std::string& fixedFrame);
+
+            // Aligns a transform such that the z axis points in the given direction
+            inline OpenRAVE::Transform ComputeFacingMatrix(OpenRAVE::Vector direction)
+            {
+                // x y z
+                // x = y x z
+                // y = z x x
+                // z = x x y
+                OpenRAVE::Vector zAxis = direction;
+                zAxis.normalize3();
+
+                OpenRAVE::Vector up = OpenRAVE::Vector(0, 1, 0);
+
+                OpenRAVE::Vector yAxis = up.cross(zAxis);
+
+                if(yAxis.lengthsqr3() < 0.001)
+                {
+                    up = OpenRAVE::Vector(1, 0, 0);
+                    yAxis = up.cross(zAxis);
+                }
+
+                yAxis.normalize3();
+
+                OpenRAVE::Vector xAxis = yAxis.cross(zAxis);
+                xAxis.normalize3();
+
+                OpenRAVE::Transform toReturn;
+                toReturn.identity();
+                OpenRAVE::TransformMatrix transformMatrix;
+                transformMatrix.identity();
+                transformMatrix.rot(0, 0) = xAxis.x;
+                transformMatrix.rot(1, 0) = xAxis.y;
+                transformMatrix.rot(2, 0) = xAxis.z;
+                transformMatrix.rot(0, 1) = yAxis.x;
+                transformMatrix.rot(1, 1) = yAxis.y;
+                transformMatrix.rot(2, 1) = yAxis.z;
+                transformMatrix.rot(0, 2) = zAxis.x;
+                transformMatrix.rot(1, 2) = zAxis.y;
+                transformMatrix.rot(2, 2) = zAxis.z;
+                toReturn.rot = OpenRAVE::geometry::quatFromMatrix(transformMatrix);
+                return toReturn;
+            }
 
             OpenRAVE::EnvironmentBaseWeakPtr m_env;
             std::map<std::string, KinBodyVisual*> m_bodyVisuals;
@@ -125,6 +170,8 @@ namespace or_rviz
 
             std::map<std::string, std::map<std::string, std::string> > m_pythonCallbacks;
 
+            tf::TransformListener m_tfListener;
+            tf::TransformBroadcaster m_tfBroadcaster;
 
 
     };

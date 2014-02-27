@@ -11,13 +11,7 @@
 #include <openrave/openrave.h>
 #include <openrave/kinbody.h>
 #include <vector>
-
-namespace Ogre
-{
-    class SceneNode;
-    class SceneManager;
-    class MeshPtr;
-}
+#include "Ogre.h"
 
 namespace or_rviz
 {
@@ -51,6 +45,16 @@ namespace or_rviz
             void CreateParts();
 
         protected:
+
+            void CreateGeometry(OpenRAVE::KinBody::Link::GeometryPtr geom);
+            void CreateRenderMesh();
+            void LoadRenderMesh(std::string& fileName,
+			OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity,
+			std::string& objectName, std::stringstream& idString,
+			Ogre::Vector3& scale);
+            void CreateCollisionGeometry(OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString, Ogre::Vector3& scale, Ogre::Quaternion& offset_orientation, std::string fileName);
+            void CreateMaterial(std::string& objectName, std::stringstream& idString, OpenRAVE::KinBody::Link::GeometryPtr geom);
+
             KinBodyVisual* m_kinBody;
             OpenRAVE::KinBody::LinkWeakPtr m_link;
             Ogre::SceneNode* m_sceneNode;
