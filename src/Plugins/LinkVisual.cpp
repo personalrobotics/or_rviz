@@ -410,9 +410,16 @@ namespace or_rviz
             for (uint32_t i = 0; i < entity->getNumSubEntities(); ++i)
             {
                 Ogre::SubEntity* sub = entity->getSubEntity(i);
-
-                sub->setMaterialName(objectName + " Material" + idString.str());
-
+                if(sub->getMaterialName() == "BaseWhiteNoLighting")
+                {
+                    sub->setMaterialName(objectName + " Material" + idString.str());
+                }
+                else
+                {
+                    Ogre::MaterialPtr material = sub->getMaterial();
+                    Ogre::Technique* technique = material->getTechnique(0);
+                    technique->setLightingEnabled(false);
+                }
             }
 
         }
