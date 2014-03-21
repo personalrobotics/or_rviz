@@ -665,6 +665,17 @@ namespace or_rviz
 
         for(size_t i = 0; i < bodies.size(); i++)
         {
+            // There is a KinBody with the same name, but it changed
+            // identities. This can occur if a KinBody with the same name was
+            // both added and removed from environment between viewer updates.
+            // TODO: Switch to indexing m_bodyVisuals with pointers instead of strings.
+            if (HasKinBody(bodies[i]->GetName())) {
+                KinBodyVisual *tmp1 = m_bodyVisuals[bodies[i]->GetName()];
+                if (!tmp1->GetKinBody() || tmp1->GetKinBody().get() != bodies[i].get()) {
+                    RemoveKinBody(bodies[i]->GetName());
+                }
+            }
+
             if(!HasKinBody(bodies[i]->GetName()))
             {
                 KinBodyVisual* visual = new KinBodyVisual(m_sceneManager, m_sceneNode, bodies.at(i));

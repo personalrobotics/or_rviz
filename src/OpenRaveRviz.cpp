@@ -318,11 +318,8 @@ namespace or_rviz
             if(environmentBase && environmentBase != GetCurrentViewEnv())
             {
                 Clear();
-                environmentBase->GetMutex().lock();
+                OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(environmentBase->GetMutex());
                 SetCurrentViewEnv(environmentBase);
-                environmentBase->GetMutex().unlock();
-
-
             }
         }
 
@@ -331,8 +328,9 @@ namespace or_rviz
 
     void OpenRaveRviz::RemoveKinBody (OpenRAVE::KinBodyPtr pbody)
     {
-        if(pbody.get() && m_envDisplay)
+        if(pbody && m_envDisplay)
         {
+            OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(pbody->GetEnv()->GetMutex());
             m_envDisplay->RemoveKinBody(pbody->GetName());
         }
     }
@@ -454,12 +452,11 @@ namespace or_rviz
         }
 
         setWindowTitle("Openrave Rviz Viewer[*]");
-        GetCurrentViewEnv()->GetMutex().lock();
-
-        UpdateDisplay();
-        HandleMenus();
-
-        GetCurrentViewEnv()->GetMutex().unlock();
+        {
+            OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(GetCurrentViewEnv()->GetMutex());
+            UpdateDisplay();
+            HandleMenus();
+        }
 
         for(std::map<size_t, ViewerThreadCallbackFn>::iterator it = m_syncCallbacks.begin(); it != m_syncCallbacks.end(); it++)
         {
