@@ -418,7 +418,7 @@ namespace or_rviz
                 {
                     Ogre::MaterialPtr material = sub->getMaterial();
                     Ogre::Technique* technique = material->getTechnique(0);
-                    technique->setLightingEnabled(false);
+                    //technique->setLightingEnabled(false);
                 }
             }
 
