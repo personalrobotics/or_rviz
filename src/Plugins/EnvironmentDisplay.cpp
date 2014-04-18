@@ -700,12 +700,12 @@ namespace or_rviz
             }
             else
             {
-                /*
+
                 if(m_bodyVisuals[bodies[i]->GetName()]->IsVisible() != bodies[i]->IsVisible())
                 {
                     m_bodyVisuals[bodies[i]->GetName()]->SetVisible(bodies[i]->IsVisible());
                 }
-                */
+
 
                 m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
                 m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
