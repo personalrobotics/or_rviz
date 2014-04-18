@@ -66,6 +66,7 @@ namespace or_rviz
 
         CreateControls(m_bodyVisuals[objectName], type, false);
         GetMenu(objectName).apply(*m_markerServer, objectName);
+
     }
 
     void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
@@ -263,6 +264,7 @@ namespace or_rviz
         control.orientation.y = 0;
         control.orientation.z = 0;
         control.name = "rotate_x";
+        control.orientation_mode = InteractiveMarkerControl::INHERIT;
         control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
         int_marker.controls.push_back(control);
 
@@ -275,10 +277,12 @@ namespace or_rviz
         control.orientation.y = 1;
         control.orientation.z = 0;
         control.name = "rotate_z";
+        control.orientation_mode = InteractiveMarkerControl::INHERIT;
         control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
         int_marker.controls.push_back(control);
 
         control.name = "move_z";
+        control.orientation_mode = InteractiveMarkerControl::FIXED;
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
 
@@ -287,10 +291,12 @@ namespace or_rviz
         control.orientation.y = 0;
         control.orientation.z = 1;
         control.name = "rotate_y";
+        control.orientation_mode = InteractiveMarkerControl::INHERIT;
         control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
         int_marker.controls.push_back(control);
 
         control.name = "move_y";
+        control.orientation_mode = InteractiveMarkerControl::INHERIT;
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
     }
@@ -337,7 +343,7 @@ namespace or_rviz
         while(!success)
         try
         {
-            m_tfListener.lookupTransform("/calibrator", ros::Time(0), tfTo, ros::Time(0), "/calibrator", transform);
+            m_tfListener.lookupTransform("/head_kinect_rgb_optical_frame", ros::Time(0), tfTo, ros::Time(0), "/herb_base", transform);
             success = true;
         }
 
@@ -346,7 +352,7 @@ namespace or_rviz
             ROS_ERROR("%s",ex.what());
         }
 
-        marker.header.frame_id = fixedFrame;
+        marker.header.frame_id = "/herb_base";
         marker.pose.position.x = transform.getOrigin().x();
         marker.pose.position.y = transform.getOrigin().y();
         marker.pose.position.z = transform.getOrigin().z();
@@ -484,7 +490,7 @@ namespace or_rviz
         ROS_INFO("Calibrator moved");
         geometry_msgs::Pose pose = feedback->pose;
         tf::StampedTransform transform;
-        transform.frame_id_ = feedback->header.frame_id;
+        transform.frame_id_ = "/head_kinect_rgb_optical_frame";
         transform.stamp_ = ros::Time::now();
         transform.child_frame_id_ = "/calibrator";
         transform.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
@@ -660,6 +666,7 @@ namespace or_rviz
             return;
         }
 
+        OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(GetEnvironment()->GetMutex());
         std::vector<OpenRAVE::KinBodyPtr> bodies;
         GetEnvironment()->GetBodies(bodies);
 
@@ -668,13 +675,16 @@ namespace or_rviz
             // There is a KinBody with the same name, but it changed
             // identities. This can occur if a KinBody with the same name was
             // both added and removed from environment between viewer updates.
-            // TODO: Switch to indexing m_bodyVisuals with pointers instead of strings.
+            // TODO: Switch to indexing m_bodyVisuals with pointers instead of strings. --mkoval
+            // TODO: I believe locking in this function fixed this -- mklingen
+            /*
             if (HasKinBody(bodies[i]->GetName())) {
                 KinBodyVisual *tmp1 = m_bodyVisuals[bodies[i]->GetName()];
                 if (!tmp1->GetKinBody() || tmp1->GetKinBody().get() != bodies[i].get()) {
                     RemoveKinBody(bodies[i]->GetName());
                 }
             }
+            */
 
             if(!HasKinBody(bodies[i]->GetName()))
             {
@@ -719,8 +729,10 @@ namespace or_rviz
         if(HasKinBody(name))
         {
             property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
+
             delete m_bodyVisuals.at(name);
             m_bodyVisuals.erase(name);
+
             m_markerServer->erase(name);
         }
     }
@@ -749,15 +761,17 @@ namespace or_rviz
 
     void  EnvironmentDisplay::fixedFrameChanged()
     {
+
         rviz::FrameManager* frameManager = this->vis_manager_->getFrameManager();
 
         Ogre::Vector3 position;
         Ogre::Quaternion orientation;
-        if(frameManager->getTransform(m_frame, ros::Time::now(), position, orientation))
+        if(frameManager->getTransform(m_frame, ros::Time(0), position, orientation))
         {
             m_sceneNode->setPosition(position);
             m_sceneNode->setOrientation(orientation);
         }
+
     }
 
     void  EnvironmentDisplay::reset()
@@ -779,10 +793,10 @@ namespace or_rviz
 
     void EnvironmentDisplay::onEnable()
     {
-        /*
-        InteractiveMarker marker;
-        CreateTransformController(marker, "/head/wam2", "/head_kinect_link", "/herb_base");
-        */
+
+        //InteractiveMarker marker;
+        //CreateTransformController(marker, "/head_kinect_rgb_optical_frame", "/head_kinect_rgb_optical_frame", "/herb_base");
+
 
         m_sceneNode->setVisible(true, true);
 
