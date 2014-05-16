@@ -189,6 +189,7 @@ namespace or_rviz
             std::map<size_t, ViewerThreadCallbackFn> m_syncCallbacks;
             std::map<size_t, ItemSelectionCallbackFn> m_itemCallbacks;
 
+
             boost::mutex m_targetMutex;
             std::vector<RenderTargetRequest*> m_renderTargetRequests;
 
@@ -199,6 +200,7 @@ namespace or_rviz
             void HandleMenus();
             virtual void paintEvent(QPaintEvent* e);
             virtual bool eventFilter(QObject *o, QEvent *e);
+
 
 
             OpenRAVE::EnvironmentBasePtr m_currentViewEnv;

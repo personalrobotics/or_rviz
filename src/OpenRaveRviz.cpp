@@ -478,6 +478,7 @@ namespace or_rviz
         request->valid = false;
 
 
+
         RegisterRenderTargetRequest(request);
 
         int maxIters = 100000;
@@ -671,9 +672,12 @@ namespace or_rviz
     // Renders a 24bit RGB image of dimensions width and height from the current scene.
     bool OpenRaveRviz::GetCameraImage(std::vector<uint8_t> &memory, int width, int height, const OpenRAVE::RaveTransform<float> &t, const OpenRAVE::SensorBase::CameraIntrinsics &intrinsics)
     {
-
-
         SetCamera(m_offscreenCamera, t, intrinsics.focal_length);
+        m_offscreenCamera->setNearClipDistance(intrinsics.focal_length);
+        m_offscreenCamera->setFarClipDistance(intrinsics.focal_length*10000);
+        m_offscreenCamera->setAspectRatio((intrinsics.fy/(float)height) / (intrinsics.fx/(float)width));
+        m_offscreenCamera->setFOVy(Ogre::Radian(2.0f*atan(0.5f*height/intrinsics.fy)));
+
 
 
         uint8_t* data = (uint8_t*)OffscreenRender(width, height, 24);
