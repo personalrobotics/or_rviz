@@ -77,6 +77,18 @@ namespace or_rviz
 
     };
 
+    struct RenderTargetRequest
+    {
+            int width;
+            int height;
+            Ogre::PixelFormat format;
+            std::string name;
+            bool valid;
+            Ogre::TexturePtr texture;
+            unsigned char * data;
+            Ogre::PixelBox* pixelBox;
+    };
+
     class OpenRaveRviz : public rviz::VisualizationFrame, public OpenRAVE::ViewerBase
     {
         Q_OBJECT
@@ -125,6 +137,7 @@ namespace or_rviz
 
             // Set the camera transformation.
             virtual void SetCamera (const OpenRAVE::RaveTransform<float> &trans, float focalDistance=0);
+            virtual void SetCamera (Ogre::Camera* camera, const OpenRAVE::RaveTransform<float> &trans, float focalDistance=0);
 
             // Return the current camera transform that the viewer is rendering the environment at.
             virtual OpenRAVE::RaveTransform<float>  GetCameraTransform() const;
@@ -138,6 +151,12 @@ namespace or_rviz
             inline bool IsAutoSyncEnabled() { return m_autoSync; }
             inline void SetAutoSync(bool value) { m_autoSync = value; }
 
+
+            void RegisterRenderTargetRequest(RenderTargetRequest* request);
+            void HandleRenderTargetRequests();
+            void DeleteRequest(RenderTargetRequest* request);
+
+            unsigned char* WaitForRenderTarget(int w, int h, int depth, Ogre::PixelFormat format, std::string name);
 
             void Clear();
             std::string GetEnvironmentHash(OpenRAVE::EnvironmentBasePtr env);
@@ -163,11 +182,15 @@ namespace or_rviz
             rviz::VisualizationManager* m_rvizManager;
             rviz::RenderPanel* m_mainRenderPanel;
             Ogre::RenderWindow* m_offscreenRenderer;
+            Ogre::Camera* m_offscreenCamera;
             EnvironmentDisplay* m_envDisplay;
             QMenu* m_environmentsMenu;
             std::map<size_t, ViewerImageCallbackFn> m_renderCallbacks;
             std::map<size_t, ViewerThreadCallbackFn> m_syncCallbacks;
             std::map<size_t, ItemSelectionCallbackFn> m_itemCallbacks;
+
+            boost::mutex m_targetMutex;
+            std::vector<RenderTargetRequest*> m_renderTargetRequests;
 
             std::vector<OpenRAVE::GraphHandlePtr> m_graphsToInitialize;
 

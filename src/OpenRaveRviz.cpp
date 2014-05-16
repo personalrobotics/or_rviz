@@ -28,6 +28,7 @@
 #include <rviz/default_plugin/pose_display.h>
 #include <rviz/default_plugin/interactive_marker_display.h>
 #include <rviz/ogre_helpers/arrow.h>
+#include <boost/thread/locks.hpp>
 
 using namespace OpenRAVE;
 using namespace rviz;
@@ -107,6 +108,7 @@ namespace or_rviz
         RegisterCommand("register", boost::bind(&OpenRaveRviz::RegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] [pointer] Registers a python object with the given pointer (as a string) to the menu of a kinbody.");
         RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
 
+        m_offscreenCamera = m_rvizManager->getSceneManager()->createCamera("OfscreenCamera");
 
     }
 
@@ -181,24 +183,42 @@ namespace or_rviz
 
     uchar* OpenRaveRviz::OffscreenRender(int desiredWidth, int desiredHeight, int desiredDepth)
     {
-        m_offscreenRenderer->getViewport(0)->setDimensions(0, 0, desiredWidth, desiredHeight);
-        int left, top, width, height;
-        m_offscreenRenderer->getViewport(0)->getActualDimensions(left, top, width, height);
+        //RAVELOG_DEBUG("Writing to screen %d %d %d\n", desiredWidth, desiredHeight, desiredDepth);
 
-        Ogre::PixelFormat format = Ogre::PF_BYTE_RGBA;
-        int outWidth = width;
-        int outHeight = height;
-        int depth = Ogre::PixelUtil::getNumElemBytes(format);
+        Ogre::PixelFormat desiredFormat;
 
+        switch(desiredDepth)
+        {
+            case 8:
+                desiredFormat = Ogre::PF_L8;
+                break;
+            case 16:
+                desiredFormat = Ogre::PF_FLOAT16_GR;
+                break;
+            case 24:
+                desiredFormat = Ogre::PF_R8G8B8;
+                break;
+            case 32:
+                desiredFormat = Ogre::PF_R8G8B8A8;
+                break;
+            default:
+                RAVELOG_ERROR("Error: unsupported depth %d. Supported depths: 8 (gray byte), 16 (float16 gray), 24 (RGB bytes), 32 (RGBA bytes)\n");
+                return NULL;
+                break;
 
-        unsigned char *data = new unsigned char [outWidth * outHeight * depth];
-        Ogre::Box extents(left, top, left + width, top + height);
-        Ogre::PixelBox pb(extents, format, data);
+        }
 
-        m_offscreenRenderer->copyContentsToMemory(pb, Ogre::RenderTarget::FB_AUTO);
+        try
+        {
+            return WaitForRenderTarget(desiredWidth, desiredHeight, desiredDepth,  desiredFormat, "RttTex");
+        }
+        catch(std::bad_alloc& error)
+        {
+            RAVELOG_ERROR(error.what());
+            return NULL;
+        }
 
-
-        return data;
+        return NULL;
     }
 
     uchar* OpenRaveRviz::WriteCurrentView(int& width, int& height, int& depth)
@@ -443,6 +463,112 @@ namespace or_rviz
         }
     }
 
+    // This has to exist because Ogre hates creating textures in threads. This waits in one thread for
+    // the texture to be created in the main thread.
+    unsigned char* OpenRaveRviz::WaitForRenderTarget(int w, int h, int depth, Ogre::PixelFormat format, std::string name)
+    {
+        RenderTargetRequest* request = new RenderTargetRequest();
+        request->format = format;
+        request->name = name;
+        request->width = w;
+        request->height = h;
+        request->data =  new unsigned char [w * h * depth];
+        Ogre::Box extents(0, 0,  w, h);
+        request->pixelBox = new Ogre::PixelBox(extents, request->format, request->data);
+        request->valid = false;
+
+
+        RegisterRenderTargetRequest(request);
+
+        int maxIters = 100000;
+
+        for(int i = 0; i < maxIters; i++)
+        {
+            m_targetMutex.lock();
+
+            if(request->valid)
+            {
+                //RAVELOG_DEBUG("Got texture!\n");
+                m_targetMutex.unlock();
+                DeleteRequest(request);
+                unsigned char* toReturn = request->data;
+                delete request;
+                return toReturn;
+            }
+
+            m_targetMutex.unlock();
+            usleep(10000);
+        }
+
+        return NULL;
+    }
+
+    void OpenRaveRviz::RegisterRenderTargetRequest(RenderTargetRequest* request)
+    {
+        boost::mutex::scoped_lock(m_targetMutex);
+        m_renderTargetRequests.push_back(request);
+    }
+
+    void OpenRaveRviz::HandleRenderTargetRequests()
+    {
+        boost::mutex::scoped_lock(m_targetMutex);
+
+        for(size_t i = 0; i < m_renderTargetRequests.size(); i++)
+        {
+            RenderTargetRequest* req = m_renderTargetRequests[i];
+
+            if(req->valid)
+            {
+                continue;
+            }
+
+          // RAVELOG_DEBUG("Creating texture %s, size: %d %d\n", req->name.c_str(), req->width, req->height);
+
+            Ogre::TextureManager::getSingleton().unload(req->name);
+            Ogre::TextureManager::getSingleton().remove(req->name);
+
+           req->texture = Ogre::TextureManager::getSingleton().createManual(req->name,
+                              Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+                              Ogre::TEX_TYPE_2D, req->width,
+                              req->height, 0, req->format, Ogre::TU_RENDERTARGET);
+
+           if(!req->texture.get())
+           {
+               RAVELOG_ERROR("Texture is null!\n");
+           }
+
+
+           Ogre::RenderTexture* renderTexture = req->texture->getBuffer()->getRenderTarget();
+           renderTexture->addViewport(m_offscreenCamera);
+           renderTexture->copyContentsToMemory(*req->pixelBox, Ogre::RenderTarget::FB_AUTO);
+
+
+
+           req->valid = true;
+
+        }
+    }
+
+    void OpenRaveRviz::DeleteRequest(RenderTargetRequest* request)
+    {
+        boost::mutex::scoped_lock(m_targetMutex);
+
+        for(std::vector<RenderTargetRequest*>::iterator it = m_renderTargetRequests.begin();
+            it != m_renderTargetRequests.end(); it++)
+        {
+            RenderTargetRequest* req =  *it;
+
+            if(req == request)
+            {
+                delete req->pixelBox;
+
+
+                m_renderTargetRequests.erase(it);
+                break;
+            }
+        }
+    }
+
     // forces synchronization with the environment, returns when the environment is fully synchronized.
     void OpenRaveRviz::EnvironmentSync()
     {
@@ -451,11 +577,16 @@ namespace or_rviz
             return;
         }
 
+        HandleRenderTargetRequests();
         setWindowTitle("Openrave Rviz Viewer[*]");
         {
-            OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(GetCurrentViewEnv()->GetMutex());
-            UpdateDisplay();
-            HandleMenus();
+            if(GetCurrentViewEnv()->GetMutex().try_lock())
+            {
+                //OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(GetCurrentViewEnv()->GetMutex());
+                UpdateDisplay();
+                HandleMenus();
+                GetCurrentViewEnv()->GetMutex().unlock();
+            }
         }
 
         for(std::map<size_t, ViewerThreadCallbackFn>::iterator it = m_syncCallbacks.begin(); it != m_syncCallbacks.end(); it++)
@@ -499,11 +630,14 @@ namespace or_rviz
     // Set the camera transformation.
     void OpenRaveRviz::SetCamera (const OpenRAVE::RaveTransform<float> &trans, float focalDistance)
     {
-        Ogre::Camera* camera = getManager()->getRenderPanel()->getCamera();
+        SetCamera(getManager()->getRenderPanel()->getCamera(), trans, focalDistance);
+    }
+
+    void OpenRaveRviz::SetCamera (Ogre::Camera* camera, const OpenRAVE::RaveTransform<float> &trans, float focalDistance)
+    {
         camera->setPosition(converters::ToOgreVector(trans.trans));
         camera->setOrientation(converters::ToOgreQuaternion(trans.rot));
         camera->setFocalLength(std::max<float>(focalDistance, 0.01f));
-
     }
 
     // Return the current camera transform that the viewer is rendering the environment at.
@@ -538,15 +672,31 @@ namespace or_rviz
     bool OpenRaveRviz::GetCameraImage(std::vector<uint8_t> &memory, int width, int height, const OpenRAVE::RaveTransform<float> &t, const OpenRAVE::SensorBase::CameraIntrinsics &intrinsics)
     {
 
-        OpenRAVE::Transform oldTransform = GetCameraTransform();
-        float oldFocalLength = GetCameraIntrinsics().focal_length;
-        SetCamera(t, intrinsics.focal_length);
+
+        SetCamera(m_offscreenCamera, t, intrinsics.focal_length);
 
 
         uint8_t* data = (uint8_t*)OffscreenRender(width, height, 24);
-        memory = std::vector<uint8_t>(data, data + sizeof(data) / sizeof(data[0]) );
 
-        SetCamera(oldTransform, oldFocalLength);
+        if(!data)
+        {
+            RAVELOG_ERROR("Camera data was NULL!\n");
+            return false;
+        }
+
+
+        // This is here just to not leak memory.
+        std::vector<uint8_t> copyBuffer(data, data + sizeof(data) / sizeof(data[0]) );
+
+        memory.clear();
+
+        for(size_t i = 0; i < memory.size(); i++)
+        {
+            memory.push_back(copyBuffer[i]);
+        }
+
+
+        delete data;
 
         return true;
     }
