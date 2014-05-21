@@ -8,6 +8,7 @@
 #include "LinkVisual.h"
 
 #include "../Converters.h"
+#include <boost/make_shared.hpp>
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
 #include <OgreEntity.h>
@@ -214,6 +215,7 @@ namespace or_rviz
     
     void LinkVisual::LoadRenderMesh(std::string& fileName, OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString, Ogre::Vector3& scale)
     {
+        //
         Ogre::MeshPtr mesh;
         try
         {
@@ -226,20 +228,15 @@ namespace or_rviz
 
         if (!mesh.get())
         {
-            boost::shared_ptr < OpenRAVE::TriMesh > myMesh;
-            myMesh.reset(new OpenRAVE::TriMesh());
+            boost::shared_ptr<OpenRAVE::TriMesh> myMesh = boost::make_shared<OpenRAVE::TriMesh>();
             m_kinBody->GetKinBody()->GetEnv()->ReadTrimeshFile(myMesh, geom->GetRenderFilename());
-            
-            try
-            {
-                if (myMesh && myMesh->vertices.size() >= 3)
-                {
-                    mesh = meshToOgre(*myMesh, fileName);
-                }
 
-            }
-            catch (Ogre::InternalErrorException& ex)
-            {
+            try {
+                if (myMesh->vertices.size() >= 3) {
+                    std::string const meshName = getMeshName(fileName);
+                    mesh = meshToOgre(*myMesh, meshName);
+                }
+            } catch (Ogre::InternalErrorException const &ex) {
                 RAVELOG_ERROR(ex.what());
             }
         }
@@ -252,8 +249,24 @@ namespace or_rviz
         entity->setVisible(true);
         scale = converters::ToOgreVector(geom->GetRenderScale());
     }
+
+    std::string LinkVisual::getMeshName(std::string const filename) const
+    {
+        static int id = 0;
+
+        if (!filename.empty()) {
+            return filename;
+        } else {
+            std::stringstream ss;
+            ss << "mesh" << id;
+            id++;
+            return ss.str();
+        }
+    }
     
-    void LinkVisual::CreateCollisionGeometry(OpenRAVE::KinBody::Link::GeometryPtr& geom, Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString, Ogre::Vector3& scale, Ogre::Quaternion& offset_orientation, std::string fileName)
+    void LinkVisual::CreateCollisionGeometry(OpenRAVE::KinBody::Link::GeometryPtr& geom,
+        Ogre::Entity*& entity, std::string& objectName, std::stringstream& idString,
+        Ogre::Vector3& scale, Ogre::Quaternion& offset_orientation, std::string fileName)
     {
         switch (geom->GetType())
         {
@@ -286,9 +299,9 @@ namespace or_rviz
                 
                 try
                 {
-                    if (myMesh.vertices.size() >= 3)
-                    {
-                        mesh = meshToOgre(myMesh, fileName);
+                    if (myMesh.vertices.size() >= 3) {
+                        std::string const meshName = getMeshName(fileName);
+                        mesh = meshToOgre(myMesh, meshName);
                     }
                 }
                 catch (Ogre::InternalErrorException& ex)
@@ -360,10 +373,12 @@ namespace or_rviz
     void LinkVisual::CreateGeometry(OpenRAVE::KinBody::Link::GeometryPtr geom)
     {
         static int id = 0;
+
         if (m_renderMode == LinkVisual::VisualMesh && !geom->IsVisible())
         {
             return;
         }
+        // TODO: This might be wrong.
         else if(m_renderMode == LinkVisual::CollisionMesh && geom->IsVisible())
         {
             return;
@@ -376,21 +391,16 @@ namespace or_rviz
         Ogre::SceneNode* offsetNode = m_sceneNode->createChildSceneNode();
         Ogre::Entity* entity = NULL;
         Ogre::Vector3 scale(Ogre::Vector3::UNIT_SCALE);
-        Ogre::Vector3 offset_position(Ogre::Vector3::ZERO);
-        Ogre::Quaternion offset_orientation(Ogre::Quaternion::IDENTITY);
-
-        {
-            offset_position = converters::ToOgreVector(geom->GetTransform().trans);
-            offset_orientation = converters::ToOgreQuaternion(geom->GetTransform().rot);
-        }
+        Ogre::Vector3 offset_position = converters::ToOgreVector(geom->GetTransform().trans);
+        Ogre::Quaternion offset_orientation = converters::ToOgreQuaternion(geom->GetTransform().rot);
 
         std::string objectName = GetLink()->GetName() + " " + m_kinBody->GetKinBody()->GetName();
         std::string fileName = m_renderMode == CollisionMesh ? geom->GetInfo()._filenamecollision : geom->GetInfo()._filenamerender;
 
         // If there is a render mesh we will ignore all of the other geometry.
-        if (fileName.size() > 0)
+        if (!fileName.empty())
         {
-           LoadRenderMesh(fileName, geom, entity, objectName, idString, scale);
+            LoadRenderMesh(fileName, geom, entity, objectName, idString, scale);
         }
         else
         {
@@ -399,7 +409,6 @@ namespace or_rviz
 
         if (entity)
         {
-
             CreateMaterial(objectName, idString, geom);
 
             offsetNode->attachObject(entity);

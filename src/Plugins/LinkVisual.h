@@ -38,6 +38,8 @@ namespace or_rviz
             inline KinBodyVisual* GetKinBody() { return m_kinBody; }
             inline void SetKinBody(KinBodyVisual* value) { m_kinBody = value; }
             Ogre::MeshPtr meshToOgre(const OpenRAVE::TriMesh& trimesh, std::string name);
+            std::string getMeshName(std::string const filename) const;
+
 
             inline void SetRenderMode(RenderMode mode) { m_renderMode = mode; CreateParts(); }
             inline RenderMode GetRenderMode() { return m_renderMode; }
