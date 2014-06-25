@@ -15,13 +15,14 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 #include <rviz/properties/property.h>
+#include <rviz/properties/enum_property.h>
+#include <rviz/properties/tf_frame_property.h>
 #include <rviz/visualization_manager.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <interactive_markers/menu_handler.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-
-
+#include <QObject>
 
 namespace or_rviz
 {
@@ -48,7 +49,7 @@ namespace or_rviz
 
     class EnvironmentDisplay : public rviz::Display
     {
-
+            Q_OBJECT
         public:
             EnvironmentDisplay();
             virtual ~EnvironmentDisplay();
@@ -84,6 +85,9 @@ namespace or_rviz
             bool RegisterMenuCallback(const std::string& objectName, const std::string& menuName, const std::string& pyObject);
             bool UnRegisterMenuCallback(const std::string& objectName, const std::string& menuName);
 
+        public Q_SLOTS:
+            void FixedFrameChanged();
+
         protected:
             // RVIZ callbacks
             virtual void onEnable();
@@ -99,7 +103,6 @@ namespace or_rviz
             void OnKinbodyMenuJointControlChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void UpdateJointControlPoses(KinBodyVisual* visual);
-
 
             // These exist for events which *can't* occur in a thread
             // different from the GUI thread, due to openGL context.
@@ -159,10 +162,9 @@ namespace or_rviz
             Ogre::SceneNode* m_sceneNode;
             interactive_markers::InteractiveMarkerServer* m_markerServer;
 
-
             std::string m_frame;
-            rviz::TFFramePropertyWPtr m_frameProperty;
-            rviz::CategoryPropertyWPtr m_kinbodiesCategory;
+            rviz::TfFrameProperty* m_frameProperty;
+            rviz::Property* m_kinbodiesCategory;
 
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
             std::vector<ControlHandle> m_controlBuffer;
@@ -170,10 +172,10 @@ namespace or_rviz
 
             std::map<std::string, std::map<std::string, std::string> > m_pythonCallbacks;
 
-
             tf::TransformListener m_tfListener;
             tf::TransformBroadcaster m_tfBroadcaster;
 
+            rviz::VisualizationManager* m_visManager;
 
     };
 

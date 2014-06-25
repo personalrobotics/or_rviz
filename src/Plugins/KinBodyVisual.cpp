@@ -79,4 +79,9 @@ namespace or_rviz
         }
     }
 
+    void KinBodyVisual::UpdateVisible()
+    {
+        m_visible = m_visibleProperty->getBool();
+    }
+
 } /* namespace superviewer */

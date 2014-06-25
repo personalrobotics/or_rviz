@@ -6,7 +6,7 @@
 #include <OgreCamera.h>
 #include "Converters.h"
 #include <rviz/display.h>
-#include <rviz/display_wrapper.h>
+//#include <rviz/display_wrapper.h>
 #include <rviz/default_plugin/marker_display.h>
 #include <rviz/default_plugin/markers/marker_base.h>
 #include <rviz/default_plugin/markers/shape_marker.h>
@@ -103,7 +103,7 @@ namespace or_rviz
 
         m_offscreenRenderer = (offScreenPanel)->getRenderWindow();
         m_offscreenRenderer->setVisible(false);
-        m_offscreenRenderer->setHidden(true);
+        //m_offscreenRenderer->setHidden(true);
 
         RegisterCommand("register", boost::bind(&OpenRaveRviz::RegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] [pointer] Registers a python object with the given pointer (as a string) to the menu of a kinbody.");
         RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
@@ -270,14 +270,18 @@ namespace or_rviz
 
     void OpenRaveRviz::Reset()
     {
-        m_rvizManager->removeDisplay(m_envDisplay->getName());
+        //TODO: FIXME
+        //m_rvizManager->removeDisplay(m_envDisplay->getName());
+        delete m_envDisplay;
         m_envDisplay = NULL;
     }
 
 
     void OpenRaveRviz::SetBkgndColor(const OpenRAVE::RaveVector<float> &color)
     {
-        m_rvizManager->setBackgroundColor(rviz::Color(color.x, color.y, color.z));
+        // TODO: FIXME
+        //m_rvizManager->setBackgroundColor(rviz::Color(color.x, color.y, color.z));
+        m_rvizManager->getRenderPanel()->setBackgroundColor(Ogre::ColourValue(color.x, color.y, color.z));
     }
 
     // registers a function with the viewer that gets called everytime mouse button is clicked
@@ -364,6 +368,10 @@ namespace or_rviz
 
         if (!m_envDisplay)
         {
+            m_envDisplay = dynamic_cast<EnvironmentDisplay*>(m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true));
+            rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true));
+           //setMarkerUpdateTopic("openrave_markers/update");
+            /*// TODO: FIXME
             rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
 
             if (!wrapper)
@@ -383,6 +391,7 @@ namespace or_rviz
             }
             rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(interactiveWrapper->getDisplay());
             markerDisplay->setMarkerUpdateTopic("openrave_markers/update");
+            */
         }
 
         if (m_envDisplay)

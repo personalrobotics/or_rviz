@@ -32,10 +32,10 @@ namespace or_rviz
             virtual void reset();
             virtual void createProperties();
 
-
         protected:
             virtual void onEnable();
             virtual void onDisable();
+            rviz::BoolProperty* m_visibleProperty;
             KinBodyVisual* m_visual;
 
     };

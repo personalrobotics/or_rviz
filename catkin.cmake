@@ -5,14 +5,16 @@ include(FindPkgConfig)
 find_package(catkin REQUIRED)
 catkin_package(
     LIBRARIES ${PROJECT_NAME}
-    CATKIN_DEPENDS rviz
+    CATKIN_DEPENDS rviz openrave
+    DEPENDS Boost
 )
 include_directories(${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
 # OpenRAVE
-pkg_check_modules(OPENRAVE REQUIRED openrave0.9)
+find_package(OpenRAVE REQUIRED)
 include_directories(${OPENRAVE_INCLUDE_DIRS})
+link_directories(${OpenRAVE_LIBRARY_DIRS})
 
 # OGRE
 pkg_check_modules(OGRE REQUIRED OGRE)
@@ -28,25 +30,43 @@ find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
 add_definitions(-DQT_NO_KEYWORDS)
 include(${QT_USE_FILE})
 
+find_package(Boost REQUIRED COMPONENTS thread)
+include_directories(${Boost_INCLUDE_DIRS})
+
 # Build the RViz plugin.
-qt4_wrap_cpp(MOC_FILES src/OpenRaveRviz.h)
+qt4_wrap_cpp(MOC_FILES 
+             src/OpenRaveRviz.h 
+             src/Plugins/EnvironmentDisplay.h
+             src/Plugins/KinBodyVisual.h)
 add_library(${PROJECT_NAME}_rvizplugin SHARED
     src/Plugins/EnvironmentDisplay.cpp
     src/Plugins/KinBodyVisual.cpp
     src/Plugins/LinkVisual.cpp
-    ${RVIZ_PLUGIN_FILES})
+    ${RVIZ_PLUGIN_FILES}
+)
 
 # Build the OpenRAVE viewer plugin.
 add_library(${PROJECT_NAME}_plugin SHARED
     src/OpenRaveRviz.cpp
     ${MOC_FILES})
 target_link_libraries(${PROJECT_NAME}_plugin
-    ${QT_LIBRARIES} "${PROJECT_NAME}_rvizplugin" default_plugin)
-set_target_properties(${PROJECT_NAME}_plugin PROPERTIES PREFIX "")
+    "${PROJECT_NAME}_rvizplugin"
+    ${QT_LIBRARIES}
+    ${OpenRAVE_LIBRARIES}
+)
+set_target_properties(${PROJECT_NAME}_plugin PROPERTIES
+    PREFIX ""
+    COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}"
+    LINK_FLAGS "${OpenRAVE_LINK_FLAGS}"
+)
 
 # Build a test program.
-add_executable(test_or_rviz src/TestOrRviz.cpp)
-target_link_libraries(test_or_rviz ${PROJECT_NAME})
+#add_executable(test_or_rviz src/TestOrRviz.cpp)
+#target_link_libraries(test_or_rviz
+#    "${PROJECT_NAME}_plugin"
+#    ${Boost_LIBRARIES}
+#    ${OpenRAVE_LIBRARIES}
+#)
 
 #install(TARGETS or_ompl
 #    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})

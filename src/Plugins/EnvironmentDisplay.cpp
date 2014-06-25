@@ -7,7 +7,6 @@
 
 #include "EnvironmentDisplay.h"
 #include <rviz/frame_manager.h>
-#include <rviz/properties/property_manager.h>
 #include "../Converters.h"
 //#include "../PythonInterface/PyCallbacks.h"
 
@@ -24,6 +23,7 @@ namespace or_rviz
     {
         m_frame = "/map";
         m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
+        m_visManager = dynamic_cast<rviz::VisualizationManager*>(context_);
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
@@ -584,13 +584,19 @@ namespace or_rviz
 
     void EnvironmentDisplay::CreateRvizPropertyMenu(KinBodyVisual* visual)
     {
-        visual->SetCategory(
-                property_manager_->createCheckboxCategory(visual->GetKinBody()->GetName(),
-                                                          visual->GetKinBody()->GetName(),
-                                                         property_prefix_,
-                                                         boost::bind(&KinBodyVisual::IsVisible, visual),
-                                                         boost::bind(&KinBodyVisual::SetVisible, visual, _1),
-                                                         m_kinbodiesCategory, visual));
+        visual->SetVisibleProperty
+        (
+                new rviz::BoolProperty
+                (
+                        QString::fromStdString(visual->GetKinBody()->GetName()),
+                        true,
+                        "Sets the kinbody to visible or invisible",
+                        m_kinbodiesCategory,
+                        SLOT(UpdateVisible()),
+                        visual
+                )
+        );
+
     }
 
 
@@ -728,7 +734,9 @@ namespace or_rviz
     {
         if(HasKinBody(name))
         {
-            property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
+          //FIXME:
+            //property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
+            delete m_bodyVisuals[name]->GetCategory();
 
             delete m_bodyVisuals.at(name);
             m_bodyVisuals.erase(name);
@@ -761,8 +769,7 @@ namespace or_rviz
 
     void  EnvironmentDisplay::fixedFrameChanged()
     {
-
-        rviz::FrameManager* frameManager = this->vis_manager_->getFrameManager();
+        rviz::FrameManager* frameManager = m_visManager->getFrameManager();
 
         Ogre::Vector3 position;
         Ogre::Quaternion orientation;
@@ -771,6 +778,7 @@ namespace or_rviz
             m_sceneNode->setPosition(position);
             m_sceneNode->setOrientation(orientation);
         }
+
 
     }
 
@@ -782,12 +790,20 @@ namespace or_rviz
 
     void  EnvironmentDisplay::createProperties()
     {
+      //FIXME: FIX
+      /*
         m_frameProperty = property_manager_->createProperty<rviz::TFFrameProperty>("Frame", property_prefix_,
                 boost::bind( &EnvironmentDisplay::GetFrame, this ),
                 boost::bind( &EnvironmentDisplay::SetFrame, this, _1 ),
                 parent_category_);
+               */
 
-        m_kinbodiesCategory = property_manager_->createCategory("Kinbodies", property_prefix_, parent_category_, NULL);
+        m_frameProperty = new rviz::TfFrameProperty("Frame", "/map", "Fixed frame of the OpenRAVE environment",
+                this, m_visManager->getFrameManager(), true, SLOT(FixedFrameChanged()), this);
+
+        m_kinbodiesCategory = new rviz::Property("Kinbodies");
+      //FIXME
+       // m_kinbodiesCategory = property_manager_->createCategory("Kinbodies", property_prefix_, parent_category_, NULL);
 
     }
 
@@ -814,6 +830,11 @@ namespace or_rviz
          {
             it->second->SetVisible(false);
          }
+    }
+
+    void EnvironmentDisplay::FixedFrameChanged()
+    {
+        SetFrame(m_frameProperty->getFrame().toStdString());
     }
 
 } /* namespace superviewer */

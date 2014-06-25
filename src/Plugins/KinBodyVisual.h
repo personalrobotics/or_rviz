@@ -12,8 +12,12 @@
 #include <openrave/kinbody.h>
 #include <vector>
 #include <rviz/properties/property.h>
+#include <rviz/properties/enum_property.h>
+#include <rviz/properties/tf_frame_property.h>
+#include <rviz/properties/bool_property.h>
 #include <OgreSceneNode.h>
 #include "LinkVisual.h"
+#include <QObject>
 
 namespace Ogre
 {
@@ -37,8 +41,10 @@ namespace or_rviz
             LinkVisual::RenderMode renderMode;
     };
 
-    class KinBodyVisual
+    class KinBodyVisual : public QObject
     {
+            Q_OBJECT
+
         public:
             KinBodyVisual(Ogre::SceneManager* sceneManager, Ogre::SceneNode* parentNode, OpenRAVE::KinBodyPtr kinBody);
             virtual ~KinBodyVisual();
@@ -59,14 +65,27 @@ namespace or_rviz
 
             void CreateParts();
 
-            void SetCategory(rviz::CategoryPropertyWPtr category) { m_category = category; }
-            rviz::CategoryPropertyWPtr GetCategory() { return m_category; }
+            void SetCategory(rviz::EnumProperty* category) { m_category = category; }
+            rviz::EnumProperty*  GetCategory() { return m_category; }
 
             void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; }
             bool IsVisible() { return m_visible; }
 
             inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }
             void SetRenderMode(LinkVisual::RenderMode mode);
+
+            inline const rviz::BoolProperty* VisibleProperty() const
+            {
+                return m_visibleProperty;
+            }
+
+            inline void SetVisibleProperty(rviz::BoolProperty* visible_property)
+            {
+                m_visibleProperty = visible_property;
+            }
+
+            public Q_SLOTS:
+                void UpdateVisible();
 
 
         protected:
@@ -75,7 +94,8 @@ namespace or_rviz
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
             std::vector<LinkVisual*> m_links;
-            rviz::CategoryPropertyWPtr m_category;
+            rviz::EnumProperty*  m_category;
+            rviz::BoolProperty* m_visibleProperty;
             bool m_visible;
             LinkVisual::RenderMode m_renderMode;
 
