@@ -20,10 +20,13 @@ namespace or_rviz
 
     EnvironmentDisplay::EnvironmentDisplay() :
             m_frameProperty()
+        , m_kinbodiesCategory(NULL)
     {
         m_frame = "/map";
         m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
         m_visManager = dynamic_cast<rviz::VisualizationManager*>(context_);
+
+        createProperties();
     }
 
     EnvironmentDisplay::~EnvironmentDisplay()
@@ -582,24 +585,6 @@ namespace or_rviz
         }
     }
 
-    void EnvironmentDisplay::CreateRvizPropertyMenu(KinBodyVisual* visual)
-    {
-        visual->SetVisibleProperty
-        (
-                new rviz::BoolProperty
-                (
-                        QString::fromStdString(visual->GetKinBody()->GetName()),
-                        true,
-                        "Sets the kinbody to visible or invisible",
-                        m_kinbodiesCategory,
-                        SLOT(UpdateVisible()),
-                        visual
-                )
-        );
-
-    }
-
-
     void EnvironmentDisplay::HandleControlBufferEvents()
     {
         for(size_t i =0 ; i < m_controlBuffer.size(); i++)
@@ -678,20 +663,6 @@ namespace or_rviz
 
         for(size_t i = 0; i < bodies.size(); i++)
         {
-            // There is a KinBody with the same name, but it changed
-            // identities. This can occur if a KinBody with the same name was
-            // both added and removed from environment between viewer updates.
-            // TODO: Switch to indexing m_bodyVisuals with pointers instead of strings. --mkoval
-            // TODO: I believe locking in this function fixed this -- mklingen
-            /*
-            if (HasKinBody(bodies[i]->GetName())) {
-                KinBodyVisual *tmp1 = m_bodyVisuals[bodies[i]->GetName()];
-                if (!tmp1->GetKinBody() || tmp1->GetKinBody().get() != bodies[i].get()) {
-                    RemoveKinBody(bodies[i]->GetName());
-                }
-            }
-            */
-
             if(!HasKinBody(bodies[i]->GetName()))
             {
                 KinBodyVisual* visual = new KinBodyVisual(m_sceneManager, m_sceneNode, bodies.at(i));
@@ -700,7 +671,6 @@ namespace or_rviz
                 m_bodyVisuals[bodies[i]->GetName()] = visual;
 
 
-                CreateRvizPropertyMenu(visual);
                 CreateControls(visual, control_mode::NoControl, false);
 
             }
@@ -714,10 +684,9 @@ namespace or_rviz
 
 
                 m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
-                m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
 
-
-                UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
+                //m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
+                //UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
             }
         }
 
@@ -790,30 +759,11 @@ namespace or_rviz
 
     void  EnvironmentDisplay::createProperties()
     {
-      //FIXME: FIX
-      /*
-        m_frameProperty = property_manager_->createProperty<rviz::TFFrameProperty>("Frame", property_prefix_,
-                boost::bind( &EnvironmentDisplay::GetFrame, this ),
-                boost::bind( &EnvironmentDisplay::SetFrame, this, _1 ),
-                parent_category_);
-               */
-
-        m_frameProperty = new rviz::TfFrameProperty("Frame", "/map", "Fixed frame of the OpenRAVE environment",
-                this, m_visManager->getFrameManager(), true, SLOT(FixedFrameChanged()), this);
-
-        m_kinbodiesCategory = new rviz::Property("Kinbodies");
-      //FIXME
-       // m_kinbodiesCategory = property_manager_->createCategory("Kinbodies", property_prefix_, parent_category_, NULL);
-
+        m_kinbodiesCategory = new Property("Bodies", QVariant(), "", this);
     }
 
     void EnvironmentDisplay::onEnable()
     {
-
-        //InteractiveMarker marker;
-        //CreateTransformController(marker, "/head_kinect_rgb_optical_frame", "/head_kinect_rgb_optical_frame", "/herb_base");
-
-
         m_sceneNode->setVisible(true, true);
 
         for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)

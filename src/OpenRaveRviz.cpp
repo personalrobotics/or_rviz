@@ -403,12 +403,10 @@ namespace or_rviz
             m_envDisplay->UpdateObjects();
         }
 
-
         for(size_t i = 0; i < m_graphsToInitialize.size(); i++)
         {
             dynamic_cast<RvizGraphHandle*>(m_graphsToInitialize[i].get())->Initialize();
         }
-
         m_graphsToInitialize.clear();
     }
 

@@ -72,7 +72,6 @@ namespace or_rviz
             void RemoveKinBody(const std::string& name);
 
             void CreateControls(KinBodyVisual* visual, control_mode::ControlMode mode, bool immediate);
-            void CreateRvizPropertyMenu(KinBodyVisual* visual);
 
             inline interactive_markers::MenuHandler& GetMenu(std::string name) { return m_menus[name]; }
 
