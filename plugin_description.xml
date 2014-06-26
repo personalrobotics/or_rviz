@@ -1,4 +1,4 @@
-<library path="lib/lib_rvizplugin">
+<library path="libor_rviz_rvizplugin">
   <class name="or_rviz/Environment"
          type="or_rviz::EnvironmentDisplay"
          base_class_type="rviz::Display">

@@ -1255,13 +1255,14 @@ namespace or_rviz
 
 }
 
-static char* argv[1] = {const_cast<char *>("or_rviz")};
+static char *argv[1] = { const_cast<char *>("or_rviz") };
 static int argc = 1;
 
-
-OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, const std::string& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
+OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(
+        OpenRAVE::InterfaceType type, std::string const& interfacename,
+        std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
-    if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
+    if (type == OpenRAVE::PT_Viewer && interfacename == "rviz")
     {
 
         // Hack to prevent screen printing from RVIZ!
@@ -1286,12 +1287,10 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type
 
 void GetPluginAttributesValidated(OpenRAVE::PLUGININFO& info)
 {
-    info.interfacenames[OpenRAVE::PT_Viewer].push_back("or_rviz");
+    info.interfacenames[OpenRAVE::PT_Viewer].push_back("RViz");
 }
 
 OPENRAVE_PLUGIN_API void DestroyPlugin()
 {
     return;
 }
-
-
