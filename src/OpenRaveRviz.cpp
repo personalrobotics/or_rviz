@@ -109,7 +109,6 @@ namespace or_rviz
         RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
 
         m_offscreenCamera = m_rvizManager->getSceneManager()->createCamera("OfscreenCamera");
-
     }
 
     bool OpenRaveRviz::RegisterMenuCallback(std::ostream& sout, std::istream& sinput)
@@ -369,7 +368,7 @@ namespace or_rviz
         if (!m_envDisplay)
         {
             m_envDisplay = dynamic_cast<EnvironmentDisplay*>(m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true));
-            rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true));
+            //rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true));
            //setMarkerUpdateTopic("openrave_markers/update");
             /*// TODO: FIXME
             rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
