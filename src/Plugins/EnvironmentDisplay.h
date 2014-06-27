@@ -88,10 +88,6 @@ namespace or_rviz
             void FixedFrameChanged();
 
         protected:
-            // RVIZ callbacks
-            virtual void onEnable();
-            virtual void onDisable();
-
             // Callbacks for user input events.
             void OnKinbodyMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
             void OnJointMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
@@ -162,10 +158,9 @@ namespace or_rviz
             interactive_markers::InteractiveMarkerServer* m_markerServer;
 
             std::string m_frame;
-            rviz::TfFrameProperty* m_frameProperty;
-            rviz::Property* m_kinbodiesCategory;
 
-            rviz::Property *m_bodies_property_;
+            rviz::TfFrameProperty *m_property_frame;
+            rviz::Property *m_property_bodies;
 
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
             std::vector<ControlHandle> m_controlBuffer;

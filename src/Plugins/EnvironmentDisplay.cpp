@@ -18,9 +18,9 @@ using namespace visualization_msgs;
 namespace or_rviz
 {
 
-EnvironmentDisplay::EnvironmentDisplay() :
-        m_frameProperty()
-    , m_kinbodiesCategory(NULL)
+EnvironmentDisplay::EnvironmentDisplay()
+    : m_property_frame(NULL)
+    , m_property_bodies(NULL)
 {
     m_frame = "/map";
     m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
@@ -117,7 +117,6 @@ void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::I
         GetMenu(objectName).setCheckState(handle, MenuHandler::CHECKED);
     }
 
-    m_bodyVisuals[objectName]->SetVisible(state == MenuHandler::UNCHECKED);
     GetMenu(objectName).apply(*m_markerServer, objectName);
 }
 
@@ -369,6 +368,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
         return;
     }
 
+#if 0
     MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
     menu = MenuHandler();
     menu.setCheckState(menu.insert("Visible",
@@ -445,6 +445,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
     m_markerServer->insert(int_marker);
     m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
     menu.apply(*m_markerServer, int_marker.name);
+#endif
 }
 
 void EnvironmentDisplay::OnCalibratorMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
@@ -624,18 +625,13 @@ void EnvironmentDisplay::UpdateObjects()
         if(!HasKinBody(bodies[i]->GetName()))
         {
             KinBodyVisual* visual = new KinBodyVisual(m_sceneManager, m_sceneNode, bodies.at(i));
-            visual->SetVisible(true);
+            visual->CreateProperties(m_property_bodies);
 
             m_bodyVisuals[bodies[i]->GetName()] = visual;
             CreateControls(visual, control_mode::NoControl, false);
         }
         else
         {
-            if(m_bodyVisuals[bodies[i]->GetName()]->IsVisible() != bodies[i]->IsVisible())
-            {
-                m_bodyVisuals[bodies[i]->GetName()]->SetVisible(bodies[i]->IsVisible());
-            }
-
             m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
             //m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
             //UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
@@ -653,15 +649,9 @@ void EnvironmentDisplay::UpdateObjects()
 
 void EnvironmentDisplay::RemoveKinBody(const std::string& name)
 {
-    if(HasKinBody(name))
+    if (HasKinBody(name))
     {
-      //FIXME:
-        //property_manager_->deleteProperty(m_bodyVisuals[name]->GetCategory().lock());
-        delete m_bodyVisuals[name]->GetCategory();
-
-        delete m_bodyVisuals.at(name);
         m_bodyVisuals.erase(name);
-
         m_markerServer->erase(name);
     }
 }
@@ -709,12 +699,15 @@ void  EnvironmentDisplay::reset()
 
 void  EnvironmentDisplay::CreateProperties(rviz::Property *parent)
 {
-    m_kinbodiesCategory = new Property("Bodies", QVariant(), "", parent);
+    // TODO: What do I need to pass in for FrameManager?
+    m_property_frame = new rviz::TfFrameProperty("World Frame",
+        "/map", "OpenRAVE world frame.", parent);
+    m_property_bodies = new Property("Bodies", QVariant(), "", parent);
 }
 
 void EnvironmentDisplay::FixedFrameChanged()
 {
-    SetFrame(m_frameProperty->getFrame().toStdString());
+    SetFrame(m_property_frame->getFrame().toStdString());
 }
 
 } /* namespace superviewer */

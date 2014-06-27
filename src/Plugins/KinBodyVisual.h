@@ -12,6 +12,9 @@
 #include <openrave/kinbody.h>
 #include <vector>
 #include <rviz/properties/property.h>
+#include <rviz/properties/bool_property.h>
+#include <rviz/properties/vector_property.h>
+#include <rviz/properties/quaternion_property.h>
 #include <rviz/properties/enum_property.h>
 #include <rviz/properties/tf_frame_property.h>
 #include <rviz/properties/bool_property.h>
@@ -49,6 +52,8 @@ namespace or_rviz
             KinBodyVisual(Ogre::SceneManager* sceneManager, Ogre::SceneNode* parentNode, OpenRAVE::KinBodyPtr kinBody);
             virtual ~KinBodyVisual();
 
+            void CreateProperties(rviz::Property *parent);
+
             inline OpenRAVE::KinBodyPtr GetKinBody() { return m_kinBody.lock(); }
             inline void SetKinBody(OpenRAVE::KinBodyPtr value) { m_kinBody = value; }
 
@@ -65,24 +70,8 @@ namespace or_rviz
 
             void CreateParts();
 
-            void SetCategory(rviz::EnumProperty* category) { m_category = category; }
-            rviz::EnumProperty*  GetCategory() { return m_category; }
-
-            void SetVisible(bool value) { m_sceneNode->setVisible(value, true);  m_visible = value; }
-            bool IsVisible() { return m_visible; }
-
             inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }
             void SetRenderMode(LinkVisual::RenderMode mode);
-
-            inline const rviz::BoolProperty* VisibleProperty() const
-            {
-                return m_visibleProperty;
-            }
-
-            inline void SetVisibleProperty(rviz::BoolProperty* visible_property)
-            {
-                m_visibleProperty = visible_property;
-            }
 
             public Q_SLOTS:
                 void UpdateVisible();
@@ -94,8 +83,13 @@ namespace or_rviz
             Ogre::SceneNode* m_sceneNode;
             Ogre::SceneNode* m_parentNode;
             std::vector<LinkVisual*> m_links;
-            rviz::EnumProperty*  m_category;
-            rviz::BoolProperty* m_visibleProperty;
+
+            rviz::Property *m_property_parent;
+            rviz::BoolProperty *m_property_enabled;
+            rviz::EnumProperty *m_property_visual;
+            rviz::VectorProperty *m_property_position;
+            rviz::QuaternionProperty *m_property_orientation;
+
             bool m_visible;
             LinkVisual::RenderMode m_renderMode;
 

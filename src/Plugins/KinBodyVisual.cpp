@@ -43,6 +43,37 @@ namespace or_rviz
 
     }
 
+    void KinBodyVisual::CreateProperties(rviz::Property *parent)
+    {
+        OpenRAVE::KinBodyPtr kinbody = GetKinBody();
+        if (!kinbody) {
+            return;
+        }
+
+        std::string const name = kinbody->GetName();
+        OpenRAVE::Transform const pose = kinbody->GetTransform();
+
+        m_property_parent = new rviz::Property(
+            QString::fromStdString(kinbody->GetName()), QVariant(), "", parent);
+        m_property_enabled = new rviz::BoolProperty("Enabled",
+            true, "Enable or disable collision checking.", m_property_parent);
+
+        m_property_visual = new rviz::EnumProperty("Render",
+            "Render", "Geometry to display.", m_property_parent);
+        m_property_visual->addOption("None");
+        m_property_visual->addOption("Render");
+        m_property_visual->addOption("Collision");
+        m_property_visual->addOption("Both");
+
+        m_property_position = new rviz::VectorProperty("Position",
+            Ogre::Vector3(pose.trans.x, pose.trans.y, pose.trans.y),
+            "Position in the world frame.", m_property_parent);
+        m_property_orientation = new rviz::QuaternionProperty("Orientation",
+            Ogre::Quaternion(pose.rot.w, pose.rot.x, pose.rot.y, pose.rot.y),
+            "Orientation in the world frame.", m_property_parent);
+
+        m_property_orientation;
+    }
 
     void KinBodyVisual::UpdateTransforms()
     {
@@ -81,7 +112,6 @@ namespace or_rviz
 
     void KinBodyVisual::UpdateVisible()
     {
-        m_visible = m_visibleProperty->getBool();
     }
 
 } /* namespace superviewer */

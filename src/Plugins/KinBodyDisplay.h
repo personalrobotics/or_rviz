@@ -24,6 +24,7 @@ namespace or_rviz
             KinBodyDisplay(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             virtual ~KinBodyDisplay();
 
+            void CreateProperties(rviz::Property *parent);
             void CreateVisual(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager);
             inline void UpdateTransforms() { m_visual->UpdateTransforms(); }
 
@@ -33,8 +34,7 @@ namespace or_rviz
             virtual void createProperties();
 
         protected:
-            virtual void onEnable();
-            virtual void onDisable();
+            OpenRAVE::KinBodyPtr m_kinbody;
             rviz::BoolProperty* m_visibleProperty;
             KinBodyVisual* m_visual;
 

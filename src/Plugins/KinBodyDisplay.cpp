@@ -16,13 +16,21 @@ namespace or_rviz
 {
 
 KinBodyDisplay::KinBodyDisplay()
+    : m_visual(NULL)
 {
-    m_visual = NULL;
 }
 
 KinBodyDisplay::KinBodyDisplay(OpenRAVE::KinBodyPtr kinBod, Ogre::SceneManager* sceneManager)
+    : m_kinbody(kinBod)
+    , m_visual(NULL)
 {
-    CreateVisual(kinBod, sceneManager);
+    CreateVisual(m_kinbody, sceneManager);
+}
+
+void KinbodyDisplay::CreateProperties(rviz::Property *parent)
+{
+    BOOST_ASSERT(m_kinbody);
+    RAVELOG_INFO("CreateProperties: %s\n", m_kinbody->GetName().c_str());
 }
 
 void KinBodyDisplay::CreateVisual(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManager* sceneManager)
@@ -54,20 +62,6 @@ void  KinBodyDisplay::reset()
 void  KinBodyDisplay::createProperties()
 {
     //TODO: Implement
-}
-
-void KinBodyDisplay::onEnable()
-{
-    if(m_visual && m_visual->GetSceneNode()) {
-        m_visual->GetSceneNode()->setVisible(true, true);
-    }
-}
-
-void KinBodyDisplay::onDisable()
-{
-    if(m_visual && m_visual->GetSceneNode()) {
-        m_visual->GetSceneNode()->setVisible(false, true);
-    }
 }
 
 }

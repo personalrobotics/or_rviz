@@ -8,6 +8,7 @@
 #ifndef LINKVISUAL_H_
 #define LINKVISUAL_H_
 
+#include <rviz/properties/property.h>
 #include <openrave/openrave.h>
 #include <openrave/kinbody.h>
 #include <vector>
@@ -28,6 +29,8 @@ namespace or_rviz
 
             LinkVisual(KinBodyVisual* kinBody, OpenRAVE::KinBody::LinkPtr link, Ogre::SceneNode* parent, Ogre::SceneManager* sceneManager);
             virtual ~LinkVisual();
+
+            virtual void CreateProperties(rviz::Property *parent);
 
             inline OpenRAVE::KinBody::LinkPtr GetLink() { return m_link.lock(); }
             inline void SetLink(OpenRAVE::KinBody::LinkPtr value) { m_link = value; }

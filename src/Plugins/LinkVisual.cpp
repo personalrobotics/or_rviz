@@ -66,6 +66,10 @@ LinkVisual::~LinkVisual()
     m_sceneManager->destroySceneNode(m_sceneNode);
 }
 
+void LinkVisual::CreateProperties(rviz::Property *parent)
+{
+}
+
 void DeleteRepeatedVertices(const OpenRAVE::TriMesh& trimesh, std::vector<Ogre::Vector3>& verts, std::vector<int>& indices, bool remove)
 {
     for (size_t i = 0; i < trimesh.indices.size(); i++)
