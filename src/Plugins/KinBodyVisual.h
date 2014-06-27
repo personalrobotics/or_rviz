@@ -28,72 +28,71 @@ namespace Ogre
     class SceneNode;
 }
 
-
 namespace or_rviz
 {
 
-    enum BodyUpdateType
-    {
-        BodyUpdateRenderMode
-    };
+enum BodyUpdateType
+{
+    BodyUpdateRenderMode
+};
 
-    struct BodyUpdateEvent
-    {
-            std::string bodyName;
-            BodyUpdateType updateType;
-            LinkVisual::RenderMode renderMode;
-    };
+struct BodyUpdateEvent
+{
+    std::string bodyName;
+    BodyUpdateType updateType;
+    LinkVisual::RenderMode renderMode;
+};
 
-    class KinBodyVisual : public QObject
-    {
-            Q_OBJECT
+class KinBodyVisual : public QObject
+{
+    Q_OBJECT
 
-        public:
-            KinBodyVisual(Ogre::SceneManager* sceneManager, Ogre::SceneNode* parentNode, OpenRAVE::KinBodyPtr kinBody);
-            virtual ~KinBodyVisual();
+public:
+    KinBodyVisual(Ogre::SceneManager *sceneManager,
+                  Ogre::SceneNode *parentNode,
+                  OpenRAVE::KinBodyPtr kinBody);
+    virtual ~KinBodyVisual();
 
-            void CreateProperties(rviz::Property *parent);
+    void CreateProperties(rviz::Property *parent);
 
-            inline OpenRAVE::KinBodyPtr GetKinBody() { return m_kinBody.lock(); }
-            inline void SetKinBody(OpenRAVE::KinBodyPtr value) { m_kinBody = value; }
+    inline OpenRAVE::KinBodyPtr GetKinBody() { return m_kinBody.lock(); }
+    inline void SetKinBody(OpenRAVE::KinBodyPtr value) { m_kinBody = value; }
 
-            inline Ogre::SceneManager* GetSceneManager() { return m_sceneManager; }
-            inline void SetSceneManager(Ogre::SceneManager* value) { m_sceneManager = value; }
+    inline Ogre::SceneManager* GetSceneManager() { return m_sceneManager; }
+    inline void SetSceneManager(Ogre::SceneManager* value) { m_sceneManager = value; }
 
-            inline Ogre::SceneNode* GetSceneNode() { return m_sceneNode; }
-            inline void SetSceneNode(Ogre::SceneNode* value) { m_sceneNode = value; }
+    inline Ogre::SceneNode* GetSceneNode() { return m_sceneNode; }
+    inline void SetSceneNode(Ogre::SceneNode* value) { m_sceneNode = value; }
 
-            inline Ogre::SceneNode* GetParentNode() { return m_parentNode; }
-            inline void SetParentNode(Ogre::SceneNode* value) { m_parentNode = value; }
+    inline Ogre::SceneNode* GetParentNode() { return m_parentNode; }
+    inline void SetParentNode(Ogre::SceneNode* value) { m_parentNode = value; }
 
-            void UpdateTransforms();
+    void UpdateTransforms();
 
-            void CreateParts();
+    void CreateParts();
 
-            inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }
-            void SetRenderMode(LinkVisual::RenderMode mode);
+    inline LinkVisual::RenderMode GetRenderMode() { return m_renderMode; }
+    void SetRenderMode(LinkVisual::RenderMode mode);
 
-            public Q_SLOTS:
-                void UpdateVisible();
+public Q_SLOTS:
+    void UpdateVisible();
 
+protected:
+    OpenRAVE::KinBodyWeakPtr m_kinBody;
+    Ogre::SceneManager* m_sceneManager;
+    Ogre::SceneNode* m_sceneNode;
+    Ogre::SceneNode* m_parentNode;
+    std::vector<LinkVisual*> m_links;
 
-        protected:
-            OpenRAVE::KinBodyWeakPtr m_kinBody;
-            Ogre::SceneManager* m_sceneManager;
-            Ogre::SceneNode* m_sceneNode;
-            Ogre::SceneNode* m_parentNode;
-            std::vector<LinkVisual*> m_links;
+    rviz::Property *m_property_parent;
+    rviz::BoolProperty *m_property_enabled;
+    rviz::EnumProperty *m_property_visual;
+    rviz::VectorProperty *m_property_position;
+    rviz::QuaternionProperty *m_property_orientation;
 
-            rviz::Property *m_property_parent;
-            rviz::BoolProperty *m_property_enabled;
-            rviz::EnumProperty *m_property_visual;
-            rviz::VectorProperty *m_property_position;
-            rviz::QuaternionProperty *m_property_orientation;
+    bool m_visible;
+    LinkVisual::RenderMode m_renderMode;
+};
 
-            bool m_visible;
-            LinkVisual::RenderMode m_renderMode;
-
-    };
-
-} /* namespace superviewer */
-#endif /* KINBODYVISUAL_H_ */
+}
+#endif
