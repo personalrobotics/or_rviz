@@ -26,7 +26,7 @@ EnvironmentDisplay::EnvironmentDisplay() :
     m_markerServer = new interactive_markers::InteractiveMarkerServer("openrave_markers", "", true);
     m_visManager = dynamic_cast<rviz::VisualizationManager*>(context_);
 
-    createProperties();
+    CreateProperties(this);
 }
 
 EnvironmentDisplay::~EnvironmentDisplay()
@@ -48,7 +48,6 @@ bool  EnvironmentDisplay::UnRegisterMenuCallback(const std::string& objectName, 
     return true;
 }
 
-
 void EnvironmentDisplay::OnKinbodyMenuJointControlChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
 {
     std::string objectName = feedback->marker_name;
@@ -69,7 +68,6 @@ void EnvironmentDisplay::OnKinbodyMenuJointControlChanged(const visualization_ms
 
     CreateControls(m_bodyVisuals[objectName], type, false);
     GetMenu(objectName).apply(*m_markerServer, objectName);
-
 }
 
 void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
@@ -98,7 +96,6 @@ void EnvironmentDisplay::OnKinbodyMenuMoveChanged(const visualization_msgs::Inte
 
 void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
 {
-
     std::string objectName = feedback->marker_name;
     OpenRAVE::KinBodyPtr body = GetEnvironment()->GetKinBody(objectName);
 
@@ -122,12 +119,10 @@ void EnvironmentDisplay::OnKinbodyMenuVisibleChanged(const visualization_msgs::I
 
     m_bodyVisuals[objectName]->SetVisible(state == MenuHandler::UNCHECKED);
     GetMenu(objectName).apply(*m_markerServer, objectName);
-
 }
 
 void EnvironmentDisplay::OnKinbodyMenuDelete(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
 {
-
     std::string objectName = feedback->marker_name;
     OpenRAVE::KinBodyPtr body = GetEnvironment()->GetKinBody(objectName);
 
@@ -136,7 +131,6 @@ void EnvironmentDisplay::OnKinbodyMenuDelete(const visualization_msgs::Interacti
         GetEnvironment()->Remove(body);
         RAVELOG_INFO("Deleting %s\n", objectName.c_str());
     }
-
 }
 
 void  EnvironmentDisplay::OnKinbodyMenuCollisionChanged(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
@@ -202,8 +196,6 @@ void EnvironmentDisplay::CreateJointControl(visualization_msgs::InteractiveMarke
             CreateJointDOFControl(marker, axis, joint->GetDOFIndex(), i, type);
         }
     }
-
-
 }
 
 void EnvironmentDisplay::CreateJointDOFControl(visualization_msgs::InteractiveMarker& int_marker, const OpenRAVE::Vector& axis,  int jointID, int dofID,  OpenRAVE::KinBody::Joint::JointType type)
@@ -211,12 +203,9 @@ void EnvironmentDisplay::CreateJointDOFControl(visualization_msgs::InteractiveMa
     std::stringstream ss;
     ss << jointID << "," << dofID;
 
-    RAVELOG_INFO("ID: %s" , ss.str().c_str());
-
     OpenRAVE::Vector axisAngle;
     axisAngle = axis;
     axisAngle.w = 0;
-
 
     Ogre::Quaternion ogreQuat;
     ogreQuat.w = 1;
@@ -244,9 +233,6 @@ void EnvironmentDisplay::CreateJointDOFControl(visualization_msgs::InteractiveMa
         control.orientation.y = ogreQuat.y;
         control.orientation.z = ogreQuat.z;
         control.name = ss.str();
-
-
-
         control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
         int_marker.controls.push_back(control);
     }
@@ -254,8 +240,6 @@ void EnvironmentDisplay::CreateJointDOFControl(visualization_msgs::InteractiveMa
     {
         RAVELOG_WARN("Unrecognized joint type %d\n", (int)type);
     }
-
-
 }
 
 void EnvironmentDisplay::CreatePoseControl(visualization_msgs::InteractiveMarker& int_marker)
@@ -330,8 +314,6 @@ void EnvironmentDisplay::UpdateJointControlPoses(KinBodyVisual* visual)
         joint_marker.name = visual->GetKinBody()->GetName() + " " + joint->GetName();
 
         m_markerServer->setPose(joint_marker.name, joint_marker.pose);
-
-
     }
 }
 
@@ -339,9 +321,7 @@ void EnvironmentDisplay::CreateTransformController(visualization_msgs::Interacti
 {
     tf::StampedTransform transform;
 
-
     bool success = false;
-
 
     while(!success)
     try
@@ -390,39 +370,25 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
     }
 
     MenuHandler& menu = GetMenu(visual->GetKinBody()->GetName());
-
-
     menu = MenuHandler();
-
     menu.setCheckState(menu.insert("Visible",
             boost::bind(&EnvironmentDisplay::OnKinbodyMenuVisibleChanged, this, _1)),
             visual->IsVisible() ?  MenuHandler::CHECKED : MenuHandler::UNCHECKED);
-
-
     menu.setCheckState(menu.insert("Collision Mesh",
             boost::bind(&EnvironmentDisplay::OnKinbodyMenuCollisionChanged, this, _1)),
             visual->GetRenderMode() == LinkVisual::CollisionMesh ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
-
-
     menu.setCheckState(menu.insert("Move",
             boost::bind(&EnvironmentDisplay::OnKinbodyMenuMoveChanged, this, _1)),
             mode == control_mode::PoseControl ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
-
-
     menu.setCheckState(menu.insert("Joints",
             boost::bind(&EnvironmentDisplay::OnKinbodyMenuJointControlChanged, this, _1)),
             mode == control_mode::JointControl ? MenuHandler::CHECKED : MenuHandler::UNCHECKED);
-
-
     menu.insert("Delete",
-                    boost::bind(&EnvironmentDisplay::OnKinbodyMenuDelete, this, _1));
-
+            boost::bind(&EnvironmentDisplay::OnKinbodyMenuDelete, this, _1));
 
     InteractiveMarker int_marker;
     int_marker.header.frame_id = m_frame;
     int_marker.name = visual->GetKinBody()->GetName();
-
-
 
     InteractiveMarkerControl menuControl;
     menuControl.interaction_mode = InteractiveMarkerControl::MENU;
@@ -430,10 +396,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
     menuControl.description = visual->GetKinBody()->GetName();
     int_marker.controls.push_back(menuControl);
 
-
-
     OpenRAVE::AABB aabb = visual->GetKinBody()->ComputeAABB();
-
     int_marker.scale = sqrt((aabb.extents * 1.5).lengthsqr3());
 
     OpenRAVE::Transform transform = visual->GetKinBody()->GetTransform();
@@ -447,7 +410,6 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
 
     if(mode == control_mode::JointControl)
     {
-
         for(size_t i = 0; i < visual->GetKinBody()->GetJoints().size(); i++)
         {
             OpenRAVE::KinBody::JointPtr joint = visual->GetKinBody()->GetJoints().at(i);
@@ -464,9 +426,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
             joint_marker.pose.position.x = joint->GetAnchor().x;
             joint_marker.pose.position.y = joint->GetAnchor().y;
             joint_marker.pose.position.z = joint->GetAnchor().z;
-
             joint_marker.name = visual->GetKinBody()->GetName() + " " + joint->GetName();
-
 
             CreateJointControl(joint_marker, joint);
             m_markerServer->insert(joint_marker);
@@ -485,7 +445,6 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
     m_markerServer->insert(int_marker);
     m_markerServer->setCallback(visual->GetKinBody()->GetName(), boost::bind(&EnvironmentDisplay::OnKinbodyMoved, this, _1), visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE);
     menu.apply(*m_markerServer, int_marker.name);
-
 }
 
 void EnvironmentDisplay::OnCalibratorMoved(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback)
@@ -647,7 +606,6 @@ void EnvironmentDisplay::RemoveDeadBodies(std::vector<OpenRAVE::KinBodyPtr>& bod
     {
         RemoveKinBody(removals.at(i));
     }
-
 }
 
 void EnvironmentDisplay::UpdateObjects()
@@ -669,22 +627,16 @@ void EnvironmentDisplay::UpdateObjects()
             visual->SetVisible(true);
 
             m_bodyVisuals[bodies[i]->GetName()] = visual;
-
-
             CreateControls(visual, control_mode::NoControl, false);
-
         }
         else
         {
-
             if(m_bodyVisuals[bodies[i]->GetName()]->IsVisible() != bodies[i]->IsVisible())
             {
                 m_bodyVisuals[bodies[i]->GetName()]->SetVisible(bodies[i]->IsVisible());
             }
 
-
             m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
-
             //m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
             //UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
         }
@@ -747,8 +699,6 @@ void  EnvironmentDisplay::fixedFrameChanged()
         m_sceneNode->setPosition(position);
         m_sceneNode->setOrientation(orientation);
     }
-
-
 }
 
 void  EnvironmentDisplay::reset()
@@ -757,29 +707,9 @@ void  EnvironmentDisplay::reset()
     UpdateObjects();
 }
 
-void  EnvironmentDisplay::createProperties()
+void  EnvironmentDisplay::CreateProperties(rviz::Property *parent)
 {
-    m_kinbodiesCategory = new Property("Bodies", QVariant(), "", this);
-}
-
-void EnvironmentDisplay::onEnable()
-{
-    m_sceneNode->setVisible(true, true);
-
-    for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
-     {
-        it->second->SetVisible(true);
-     }
-}
-
-void EnvironmentDisplay::onDisable()
-{
-    m_sceneNode->setVisible(false, true);
-
-    for(std::map<std::string, KinBodyVisual*>::iterator it = m_bodyVisuals.begin(); it != m_bodyVisuals.end(); it++)
-     {
-        it->second->SetVisible(false);
-     }
+    m_kinbodiesCategory = new Property("Bodies", QVariant(), "", parent);
 }
 
 void EnvironmentDisplay::FixedFrameChanged()

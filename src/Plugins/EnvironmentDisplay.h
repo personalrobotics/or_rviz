@@ -79,7 +79,7 @@ namespace or_rviz
             virtual void onInitialize();
             virtual void fixedFrameChanged();
             virtual void reset();
-            virtual void createProperties();
+            virtual void CreateProperties(Property *parent);
 
             bool RegisterMenuCallback(const std::string& objectName, const std::string& menuName, const std::string& pyObject);
             bool UnRegisterMenuCallback(const std::string& objectName, const std::string& menuName);
@@ -164,6 +164,8 @@ namespace or_rviz
             std::string m_frame;
             rviz::TfFrameProperty* m_frameProperty;
             rviz::Property* m_kinbodiesCategory;
+
+            rviz::Property *m_bodies_property_;
 
             std::map<std::string, interactive_markers::MenuHandler> m_menus;
             std::vector<ControlHandle> m_controlBuffer;

@@ -30,7 +30,6 @@ void KinBodyDisplay::CreateVisual(OpenRAVE::KinBodyPtr kinBody, Ogre::SceneManag
     m_visual = new KinBodyVisual(sceneManager, sceneManager->getRootSceneNode(), kinBody);
 }
 
-
 KinBodyDisplay::~KinBodyDisplay()
 {
     // Gets deleted by RVIZ
@@ -59,14 +58,18 @@ void  KinBodyDisplay::createProperties()
 
 void KinBodyDisplay::onEnable()
 {
-     if(m_visual && m_visual->GetSceneNode()) {m_visual->GetSceneNode()->setVisible(true, true);}
+    if(m_visual && m_visual->GetSceneNode()) {
+        m_visual->GetSceneNode()->setVisible(true, true);
+    }
 }
 
 void KinBodyDisplay::onDisable()
 {
-     if(m_visual && m_visual->GetSceneNode()) {m_visual->GetSceneNode()->setVisible(false, true);}
+    if(m_visual && m_visual->GetSceneNode()) {
+        m_visual->GetSceneNode()->setVisible(false, true);
+    }
 }
 
-} /* namespace superviewer */
+}
 
 PLUGINLIB_DECLARE_CLASS( or_rviz, KinBody, or_rviz::KinBodyDisplay, rviz::Display );
