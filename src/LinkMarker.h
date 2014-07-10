@@ -16,34 +16,25 @@ typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
 class LinkMarker {
 public:
-    typedef std::vector<visualization_msgs::InteractiveMarkerControl> ControlCollection;
-    typedef ControlCollection::value_type value_type;
-    typedef ControlCollection::iterator iterator;
-    typedef ControlCollection::const_iterator const_iterator;
-
     LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                OpenRAVE::KinBody::LinkPtr link);
 
+    visualization_msgs::InteractiveMarkerPtr interactive_marker() const;
     std::string id() const;
-
-    const_iterator begin() const;
-    const_iterator end() const;
 
     void EnvironmentSync();
 
 private:
-    OpenRAVE::KinBody::LinkPtr link_;
-
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    std::vector<visualization_msgs::InteractiveMarkerControl> controls_;
+    OpenRAVE::KinBody::LinkPtr link_;
+    visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     visualization_msgs::InteractiveMarkerControl *visual_control_;
-
+    bool changed_;
     boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,
-        visualization_msgs::Marker *> geometry_markers_;
+        visualization_msgs::MarkerPtr> geometry_markers_;
 
-    void CreateControls();
-    visualization_msgs::Marker *CreateGeometry(
+    visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);
 };
 
