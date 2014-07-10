@@ -14,9 +14,11 @@ class KinBodyMarker {
 public:
     KinBodyMarker(OpenRAVE::KinBodyPtr kinbody);
 
+    void EnvironmentSync();
+
 private:
     OpenRAVE::KinBodyPtr kinbody_;
-    boost::unordered_map<std::string, LinkMarkerPtr> link_markers_;
+    boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
 };
 
 }

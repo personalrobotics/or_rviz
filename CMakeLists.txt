@@ -14,8 +14,11 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
 set(LIBRARY_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/lib")
 
+add_definitions(--std=c++0x)
+
 rosbuild_add_library("${PROJECT_NAME}"
     src/or_interactivemarker.cpp
+    src/or_conversions.cpp
     src/KinBodyMarker.cpp
     src/LinkMarker.cpp
 )

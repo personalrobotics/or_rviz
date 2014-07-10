@@ -19,7 +19,8 @@ public:
     virtual void quitmainloop();
 
 private:
-    boost::unordered_map<std::string, KinBodyMarkerPtr> body_markers_;
+    OpenRAVE::EnvironmentBasePtr env_;
+    boost::unordered_map<OpenRAVE::KinBody *, KinBodyMarkerPtr> body_markers_;
 };
 
 }
