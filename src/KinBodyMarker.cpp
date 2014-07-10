@@ -17,6 +17,8 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
+
+    CreateManipulators();
 }
 
 bool KinBodyMarker::IsRobot() const
@@ -30,12 +32,22 @@ void KinBodyMarker::EnvironmentSync()
 
     std::vector<LinkPtr> const &links = kinbody_->GetLinks();
 
+    // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : links) {
         LinkMarkerPtr &link_marker = link_markers_[link.get()];
         if (!link_marker) {
             link_marker = boost::make_shared<LinkMarker>(server_, link);
         }
         link_marker->EnvironmentSync();
+    }
+
+    // Also update manipulators if we're a robot.
+    if (robot_) {
+        for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
+            auto const it = manipulator_markers_.find(manipulator.get());
+            BOOST_ASSERT(it != manipulator_markers_.end());
+            it->second->EnvironmentSync();
+        }
     }
 }
 
@@ -47,7 +59,7 @@ void KinBodyMarker::CreateManipulators()
 
     for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
         manipulator_markers_[manipulator.get()]
-            = boost::make_shared<ManipulatorMarker>(manipulator);
+            = boost::make_shared<ManipulatorMarker>(server_, manipulator);
     }
 }
 

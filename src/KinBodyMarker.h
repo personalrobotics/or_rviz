@@ -4,19 +4,9 @@
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
 #include "LinkMarker.h"
+#include "ManipulatorMarker.h"
 
 namespace or_interactivemarker {
-
-class ManipulatorMarker;
-
-class ManipulatorMarker {
-public:
-    ManipulatorMarker(OpenRAVE::RobotBase::ManipulatorPtr manipulator) {}
-};
-
-typedef boost::shared_ptr<ManipulatorMarker> ManipulatorMarkerPtr;
-
-// ---
 
 class KinBodyMarker;
 typedef boost::shared_ptr<KinBodyMarker> KinBodyMarkerPtr;

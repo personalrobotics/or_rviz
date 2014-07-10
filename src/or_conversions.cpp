@@ -8,6 +8,9 @@ using geometry_msgs::Quaternion;
 
 namespace or_interactivemarker {
 
+/*
+ * OpenRAVE to ROS
+ */
 ColorRGBA toROSColor(OpenRAVE::Vector const &or_color)
 {
     ColorRGBA color;
@@ -52,6 +55,32 @@ Quaternion toROSQuaternion(OpenRAVE::Vector const &or_quat)
     quaternion.y = or_quat[2];
     quaternion.z = or_quat[3];
     return quaternion;
+}
+
+/*
+ * ROS to OpenRAVE
+ */
+OpenRAVE::Vector toORPoint(Point const &point)
+{
+    return OpenRAVE::Vector(point.x, point.y, point.z);
+}
+
+OpenRAVE::Vector toORQuaternion(Quaternion const &quat)
+{
+    OpenRAVE::Vector or_quat;
+    or_quat[0] = quat.w;
+    or_quat[1] = quat.x;
+    or_quat[2] = quat.y;
+    or_quat[3] = quat.z;
+    return or_quat;
+}
+
+OpenRAVE::Transform toORPose(Pose const &pose)
+{
+    OpenRAVE::Transform or_transform;
+    or_transform.trans = toORPoint(pose.position);
+    or_transform.rot = toORQuaternion(pose.orientation);
+    return or_transform;
 }
 
 }

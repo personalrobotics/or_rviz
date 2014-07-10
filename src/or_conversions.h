@@ -15,6 +15,10 @@ geometry_msgs::Pose toROSPose(OpenRAVE::Transform const &or_pose);
 geometry_msgs::Point toROSPoint(OpenRAVE::Vector const &or_point);
 geometry_msgs::Quaternion toROSQuaternion(OpenRAVE::Vector const &or_point);
 
+OpenRAVE::Vector toORPoint(geometry_msgs::Point const &point);
+OpenRAVE::Vector toORQuaternion(geometry_msgs::Quaternion const &quat);
+OpenRAVE::Transform toORPose(geometry_msgs::Pose const &pose);
+
 }
 
 #endif

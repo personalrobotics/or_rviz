@@ -71,6 +71,7 @@ void InteractiveMarkerViewer::EnvironmentSync()
         body_marker->EnvironmentSync();
     }
     server_->applyChanges();
+    ros::spinOnce();
 }
 
 }
