@@ -25,36 +25,32 @@ namespace or_interactivemarker {
 
 LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
                        LinkPtr link)
-    : server_(server)
-    , link_(link)
-    , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , changed_(false)
+    : link_(link)
+    , server_(server)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
 
-    interactive_marker_->header.frame_id = kWorldFrameId;
-    interactive_marker_->name = id();
-    interactive_marker_->description = "";
-    interactive_marker_->pose = toROSPose(link_->GetTransform());
-    interactive_marker_->scale = 0.25;
-
-    interactive_marker_->controls.resize(1);
-    visual_control_ = &interactive_marker_->controls[0];
+    controls_.resize(1);
+    visual_control_ = &controls_[0];
     visual_control_->orientation.w = 1;
     visual_control_->name = str(format("%s.Geometry[visual]") % id());
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
     visual_control_->interaction_mode = InteractiveMarkerControl::NONE;
     visual_control_->always_visible = true;
 
+    CreateControls();
     EnvironmentSync();
-
-    server_->insert(*interactive_marker_);
 }
 
-InteractiveMarkerPtr LinkMarker::interactive_marker() const
+auto LinkMarker::begin() const -> const_iterator
 {
-    return interactive_marker_;
+    return controls_.begin();
+}
+
+auto LinkMarker::end() const -> const_iterator
+{
+    return controls_.end();
 }
 
 std::string LinkMarker::id() const
@@ -69,63 +65,72 @@ std::string LinkMarker::id() const
 
 void LinkMarker::EnvironmentSync()
 {
-    // TODO: Creating new geometries dynamically won't work unless we republish
-    // the interactive marker.
+    OpenRAVE::Transform const body_pose = link_->GetParent()->GetTransform();
+    OpenRAVE::Transform const link_pose = body_pose.inverse() * link_->GetTransform();
+
     for (GeometryPtr const geometry : link_->GetGeometries()) {
-        MarkerPtr &marker = geometry_markers_[geometry.get()];
-        if (!marker) {
-            marker = CreateGeometry(geometry);
-            // The GeometryPtr may be empty.
-            if (marker) {
-                visual_control_->markers.push_back(*marker);
-            }
+        auto const it = geometry_markers_.find(geometry.get());
+        BOOST_ASSERT(it != geometry_markers_.end());
+        Marker *marker = it->second;
+
+        if (marker) {
+            marker->pose = toROSPose(link_pose * geometry->GetTransform());
+            marker->color = toROSColor(geometry->GetDiffuseColor());
+            marker->color.a = 1.0; // TODO: Debug.
         }
     }
 }
 
-MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
+void LinkMarker::CreateControls()
 {
-    MarkerPtr marker = boost::make_shared<Marker>();
-    marker->pose = toROSPose(geometry->GetTransform());
-    marker->color = toROSColor(geometry->GetDiffuseColor());
-    marker->color.a = 1.0; // TODO: Debug.
+    for (GeometryPtr const geometry : link_->GetGeometries()) {
+        geometry_markers_[geometry.get()] = CreateGeometry(geometry);
+    }
+}
+
+Marker *LinkMarker::CreateGeometry(GeometryPtr geometry)
+{
+    BOOST_ASSERT(geometry);
 
     // TODO: How should we allocate namespaces and IDs?
-    marker->ns = str(format("%s.Geometry[%p]") % id() % geometry.get());
-    marker->id = 0;
+    Marker marker;
+    marker.ns = str(format("%s.Geometry[%p]") % id() % geometry.get());
+    marker.id = 0;
 
     if (!geometry->IsVisible()) {
-        return MarkerPtr();
+        return NULL;
     }
 
     // If a render filename is specified, then we should ignore the rest of the
     // geometry. This is true regardless of the mesh type.
     std::string const render_mesh_path = geometry->GetRenderFilename();
     if (!render_mesh_path.empty()) {
-        marker->type = Marker::MESH_RESOURCE;
-        marker->scale = toROSVector(geometry->GetRenderScale());
-        marker->mesh_resource = "file://" + render_mesh_path;
-        marker->mesh_use_embedded_materials = true;
-        return marker;
+        marker.type = Marker::MESH_RESOURCE;
+        marker.scale = toROSVector(geometry->GetRenderScale());
+        marker.mesh_resource = "file://" + render_mesh_path;
+        marker.mesh_use_embedded_materials = true;
+
+        visual_control_->markers.push_back(marker);
+        return &visual_control_->markers.back();
     }
 
     // Otherwise, we have to render the underlying geometry type.
     switch (geometry->GetType()) {
     case OpenRAVE::GeometryType::GT_None:
-        return MarkerPtr();
+        return NULL;
 
     case OpenRAVE::GeometryType::GT_Box:
         // TODO: This may be off by a factor of two.
-        marker->type = Marker::CUBE;
-        marker->scale = toROSVector(geometry->GetBoxExtents());
+        marker.type = Marker::CUBE;
+        marker.scale = toROSVector(geometry->GetBoxExtents());
         break;
 
     case OpenRAVE::GeometryType::GT_Sphere: {
         double const sphere_radius = geometry->GetSphereRadius();
-        marker->type = Marker::SPHERE;
-        marker->scale.x = sphere_radius;
-        marker->scale.y = sphere_radius;
-        marker->scale.z = sphere_radius;
+        marker.type = Marker::SPHERE;
+        marker.scale.x = sphere_radius;
+        marker.scale.y = sphere_radius;
+        marker.scale.z = sphere_radius;
         break;
     }
 
@@ -133,23 +138,25 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         // TODO: This may be rotated and/or off by a factor of two.
         double const cylinder_radius = geometry->GetCylinderRadius();
         double const cylinder_height= geometry->GetCylinderHeight();
-        marker->type = Marker::CYLINDER;
-        marker->scale.x = cylinder_radius;
-        marker->scale.y = cylinder_radius;
-        marker->scale.z = cylinder_height;
+        marker.type = Marker::CYLINDER;
+        marker.scale.x = cylinder_radius;
+        marker.scale.y = cylinder_radius;
+        marker.scale.z = cylinder_height;
         break;
     }
 
     case OpenRAVE::GeometryType::GT_TriMesh:
         // TODO: Fall back on the OpenRAVE's mesh loader if this format is not
         // supported by RViz.
-        break;
+        return NULL;
 
     default:
         RAVELOG_WARN("Unknown geometry type '%d'.\n", geometry->GetType());
-        return MarkerPtr();
+        return NULL;
     }
-    return marker;
+
+    visual_control_->markers.push_back(marker);
+    return &visual_control_->markers.back();
 }
 
 }
