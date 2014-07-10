@@ -1,3 +1,4 @@
+#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/make_shared.hpp>
 #include <ros/ros.h>
@@ -12,6 +13,8 @@ using visualization_msgs::MarkerPtr;
 using visualization_msgs::InteractiveMarker;
 using visualization_msgs::InteractiveMarkerPtr;
 using visualization_msgs::InteractiveMarkerControl;
+using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
+using interactive_markers::MenuHandler;
 using interactive_markers::InteractiveMarkerServer;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
@@ -21,6 +24,15 @@ typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 // TODO: Don't hardcode this.
 static std::string const kWorldFrameId = "/world";
 
+static MenuHandler::CheckState boolToCheckState(bool flag)
+{
+    if (flag) {
+        return MenuHandler::CHECKED;
+    } else {
+        return MenuHandler::UNCHECKED;
+    }
+}
+
 namespace or_interactivemarker {
 
 LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
@@ -28,7 +40,9 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     : server_(server)
     , link_(link)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , changed_(false)
+    , created_(false)
+    , menu_changed_(true)
+    , render_mode_(RenderMode::kVisual)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
@@ -39,15 +53,18 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     interactive_marker_->pose = toROSPose(link_->GetTransform());
     interactive_marker_->scale = 0.25;
 
+    // Show the visual geometry.
     interactive_marker_->controls.resize(1);
     visual_control_ = &interactive_marker_->controls[0];
     visual_control_->orientation.w = 1;
     visual_control_->name = str(format("%s.Geometry[visual]") % id());
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
-    visual_control_->interaction_mode = InteractiveMarkerControl::NONE;
+    visual_control_->interaction_mode = InteractiveMarkerControl::BUTTON;
     visual_control_->always_visible = true;
+    CreateGeometry();
 
-    EnvironmentSync();
+    // Create the right-click menu.
+    CreateMenu();
 
     server_->insert(*interactive_marker_);
 }
@@ -69,18 +86,71 @@ std::string LinkMarker::id() const
 
 void LinkMarker::EnvironmentSync()
 {
-    // TODO: Creating new geometries dynamically won't work unless we republish
-    // the interactive marker.
+    // TODO: Update other properties (e.g. IsVisible).
+    // TODO: Update the geometry properties.
+
+    if (created_) {
+        OpenRAVE::Transform const link_pose = link_->GetTransform();
+        server_->setPose(interactive_marker_->name, toROSPose(link_pose));
+    }
+    created_ = true;
+
+    // Update the menu.
+    if (menu_changed_) {
+        UpdateMenu();
+    }
+}
+
+void LinkMarker::CreateGeometry()
+{
     for (GeometryPtr const geometry : link_->GetGeometries()) {
-        MarkerPtr &marker = geometry_markers_[geometry.get()];
-        if (!marker) {
-            marker = CreateGeometry(geometry);
-            // The GeometryPtr may be empty.
-            if (marker) {
-                visual_control_->markers.push_back(*marker);
-            }
+        MarkerPtr new_marker = CreateGeometry(geometry);
+        if (new_marker) {
+            visual_control_->markers.push_back(*new_marker);
+            geometry_markers_[geometry.get()] = &visual_control_->markers.back();
         }
     }
+}
+
+void LinkMarker::CreateMenu()
+{
+    auto const callback = boost::bind(&LinkMarker::MenuCallback, this, _1);
+    menu_entry_visual_ = menu_handler_.insert("Visual Geometry", callback);
+    menu_entry_collision_ = menu_handler_.insert("Collision Geometry", callback);
+}
+
+void LinkMarker::UpdateMenu()
+{
+    menu_handler_.setCheckState(menu_entry_visual_,
+        boolToCheckState(render_mode_ == RenderMode::kVisual));
+    menu_handler_.setCheckState(menu_entry_collision_,
+        boolToCheckState(render_mode_ == RenderMode::kCollision));
+
+    menu_handler_.apply(*server_, interactive_marker_->name);
+    menu_changed_ = false;
+}
+
+void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
+{
+    MenuHandler::CheckState visual_state, collision_state;
+    menu_handler_.getCheckState(menu_entry_visual_, visual_state);
+    menu_handler_.getCheckState(menu_entry_collision_, collision_state);
+
+    if (visual_state == MenuHandler::CHECKED) {
+        SetRenderMode(RenderMode::kVisual);
+    } else if (collision_state == MenuHandler::CHECKED) {
+        SetRenderMode(RenderMode::kCollision);
+    } else {
+        SetRenderMode(RenderMode::kNone);
+    }
+
+    UpdateMenu();
+}
+
+void LinkMarker::SetRenderMode(RenderMode::Type mode)
+{
+    menu_changed_ = menu_changed_ || (mode != render_mode_);
+    render_mode_ = mode;
 }
 
 MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
