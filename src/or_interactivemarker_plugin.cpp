@@ -1,13 +1,14 @@
 #include <sstream>
 #include <string>
 #include <ros/ros.h>
+#include <openrave/plugin.h>
 #include "or_interactivemarker.h"
 
 using namespace OpenRAVE;
 
 InterfaceBasePtr CreateInterfaceValidated(
         InterfaceType type, std::string const &interfacename,
-        std::istream& sinput, EnvironmentBasePtr env)
+        std::istream & sinput, EnvironmentBasePtr env)
 {
     using namespace or_interactivemarker;
 
@@ -34,11 +35,11 @@ InterfaceBasePtr CreateInterfaceValidated(
     }
 }
 
-void GetPluginAttributesValidated(OpenRAVE::PLUGININFO &info)
+void GetPluginAttributesValidated(PLUGININFO &info)
 {
-    info.interfacenames[PT_Viewer].push_back("InteractiveMarker");
+    info.interfacenames[OpenRAVE::PT_Viewer].push_back("InteractiveMarker");
 }
 
-void DestroyPlugin()
+OPENRAVE_PLUGIN_API void DestroyPlugin()
 {
 }

@@ -20,6 +20,8 @@ private:
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     boost::unordered_map<OpenRAVE::KinBody *, KinBodyMarkerPtr> body_markers_;
+
+    bool running_;
 };
 
 }

@@ -6,6 +6,7 @@
 #include <openrave/openrave.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/InteractiveMarker.h>
+#include <visualization_msgs/InteractiveMarkerControl.h>
 #include <interactive_markers/interactive_marker_server.h>
 
 namespace or_interactivemarker {
@@ -27,7 +28,7 @@ private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBody::LinkPtr link_;
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
-
+    visualization_msgs::InteractiveMarkerControl *visual_control_;
     bool changed_;
     boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,

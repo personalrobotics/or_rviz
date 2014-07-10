@@ -6,6 +6,8 @@ using interactive_markers::InteractiveMarkerServer;
 
 using OpenRAVE::KinBodyPtr;
 
+static double const kRefreshRate = 30;
+
 namespace or_interactivemarker {
 
 InteractiveMarkerViewer::InteractiveMarkerViewer(
@@ -13,6 +15,7 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     : OpenRAVE::ViewerBase(env)
     , env_(env)
     , server_(boost::make_shared<InteractiveMarkerServer>("openrave"))
+    , running_(false)
 {
     BOOST_ASSERT(env);
 
@@ -20,10 +23,28 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
 
 int InteractiveMarkerViewer::main(bool bShow)
 {
+    ros::Rate rate(kRefreshRate);
+
+    RAVELOG_DEBUG("Starting main loop with a %.0f Hz refresh rate.\n",
+        kRefreshRate
+    );
+
+    running_ = true;
+    while (running_) {
+        EnvironmentSync();
+        rate.sleep();
+    }
+
+    RAVELOG_DEBUG("Exiting main loop.\n");
+    return 0;
 }
 
 void InteractiveMarkerViewer::quitmainloop()
 {
+    RAVELOG_DEBUG("Stopping main loop on the cycle (within %.3f ms).\n",
+        1.0 / kRefreshRate
+    );
+    running_ = false;
 }
 
 void InteractiveMarkerViewer::EnvironmentSync()
@@ -32,6 +53,7 @@ void InteractiveMarkerViewer::EnvironmentSync()
     OpenRAVE::EnvironmentMutex::scoped_lock lock(env_->GetMutex(),
                                                  boost::try_to_lock);
     if (!lock) {
+        RAVELOG_DEBUG("Failed to lock environment.\n");
         return;
     }
 
@@ -41,11 +63,13 @@ void InteractiveMarkerViewer::EnvironmentSync()
     for (KinBodyPtr body : bodies) {
         KinBodyMarkerPtr &body_marker = body_markers_[body.get()];
         if (!body_marker) {
+            RAVELOG_DEBUG("Created KinBodyMarker for '%s'.\n",
+                body->GetName().c_str()
+            );
             body_marker = boost::make_shared<KinBodyMarker>(server_, body);
         }
         body_marker->EnvironmentSync();
     }
-
     server_->applyChanges();
 }
 

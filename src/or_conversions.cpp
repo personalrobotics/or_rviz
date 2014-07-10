@@ -21,9 +21,9 @@ ColorRGBA toROSColor(OpenRAVE::Vector const &or_color)
 Vector3 toROSVector(OpenRAVE::Vector const &or_vector)
 {
     Vector3 v;
-    v.x = or_vector[0];
-    v.y = or_vector[1];
-    v.z = or_vector[2];
+    v.x = or_vector.x;
+    v.y = or_vector.y;
+    v.z = or_vector.z;
     return v;
 }
 
@@ -44,13 +44,13 @@ Point toROSPoint(OpenRAVE::Vector const &or_point)
     return point;
 }
 
-Quaternion toROSQuaternion(OpenRAVE::Vector const &or_point)
+Quaternion toROSQuaternion(OpenRAVE::Vector const &or_quat)
 {
     Quaternion quaternion;
-    quaternion.x = or_point.y;
-    quaternion.y = or_point.z;
-    quaternion.z = or_point.w;
-    quaternion.w = or_point.x;
+    quaternion.w = or_quat[0];
+    quaternion.x = or_quat[1];
+    quaternion.y = or_quat[2];
+    quaternion.z = or_quat[3];
     return quaternion;
 }
 

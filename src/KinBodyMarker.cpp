@@ -25,6 +25,7 @@ void KinBodyMarker::EnvironmentSync()
         LinkMarkerPtr &link_marker = link_markers_[link.get()];
         if (!link_marker) {
             link_marker = boost::make_shared<LinkMarker>(server_, link);
+            RAVELOG_DEBUG("Created LinkMarker for '%s'.\n", link->GetName().c_str());
         }
         link_marker->EnvironmentSync();
     }
