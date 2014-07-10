@@ -1,11 +1,17 @@
 #include <boost/make_shared.hpp>
 #include "KinBodyMarker.h"
 
+using interactive_markers::InteractiveMarkerServer;
+typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
+
 namespace or_interactivemarker {
 
-KinBodyMarker::KinBodyMarker(OpenRAVE::KinBodyPtr kinbody)
-    : kinbody_(kinbody)
+KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
+                             OpenRAVE::KinBodyPtr kinbody)
+    : server_(server)
+    , kinbody_(kinbody)
 {
+    BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
 }
 
@@ -18,7 +24,7 @@ void KinBodyMarker::EnvironmentSync()
     for (LinkPtr link : links) {
         LinkMarkerPtr &link_marker = link_markers_[link.get()];
         if (!link_marker) {
-            link_marker = boost::make_shared<LinkMarker>(link);
+            link_marker = boost::make_shared<LinkMarker>(server_, link);
         }
         link_marker->EnvironmentSync();
     }

@@ -6,6 +6,7 @@
 #include <openrave/openrave.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/InteractiveMarker.h>
+#include <interactive_markers/interactive_marker_server.h>
 
 namespace or_interactivemarker {
 
@@ -14,16 +15,23 @@ typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
 class LinkMarker {
 public:
-    LinkMarker(OpenRAVE::KinBody::LinkPtr link);
+    LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+               OpenRAVE::KinBody::LinkPtr link);
 
-    std::string GetId() const;
+    visualization_msgs::InteractiveMarkerPtr interactive_marker() const;
+    std::string id() const;
+
     void EnvironmentSync();
 
 private:
+    boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBody::LinkPtr link_;
+    visualization_msgs::InteractiveMarkerPtr interactive_marker_;
+
+    bool changed_;
     boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,
-        visualization_msgs::InteractiveMarkerPtr> geometry_markers_;
+        visualization_msgs::MarkerPtr> geometry_markers_;
 
     visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);

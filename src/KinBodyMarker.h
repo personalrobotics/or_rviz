@@ -12,11 +12,13 @@ typedef boost::shared_ptr<KinBodyMarker> KinBodyMarkerPtr;
 
 class KinBodyMarker {
 public:
-    KinBodyMarker(OpenRAVE::KinBodyPtr kinbody);
+    KinBodyMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+                  OpenRAVE::KinBodyPtr kinbody);
 
     void EnvironmentSync();
 
 private:
+    boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBodyPtr kinbody_;
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
 };
