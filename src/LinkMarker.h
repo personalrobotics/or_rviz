@@ -34,11 +34,13 @@ public:
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBody::LinkPtr link_;
+    OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
 
     std::vector<visualization_msgs::MenuEntry> menu_entries_;
     interactive_markers::MenuHandler menu_handler_;
     interactive_markers::MenuHandler::EntryHandle menu_entry_visual_;
     interactive_markers::MenuHandler::EntryHandle menu_entry_collision_;
+    interactive_markers::MenuHandler::EntryHandle menu_entry_ik_;
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     visualization_msgs::InteractiveMarkerControl *visual_control_;
@@ -57,6 +59,7 @@ private:
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 
     void SetRenderMode(RenderMode::Type mode);
+    OpenRAVE::RobotBase::ManipulatorPtr InferManipulator();
 
     visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);

@@ -1,13 +1,20 @@
 #include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/range/adaptor/map.hpp>
 #include <ros/ros.h>
 #include "or_conversions.h"
 #include "LinkMarker.h"
 
+using boost::adaptors::transformed;
+using boost::algorithm::join;
 using boost::format;
 using boost::str;
 using geometry_msgs::Vector3;
+using OpenRAVE::KinBodyPtr;
+using OpenRAVE::RobotBase;
+using OpenRAVE::RobotBasePtr;
 using visualization_msgs::Marker;
 using visualization_msgs::MarkerPtr;
 using visualization_msgs::InteractiveMarker;
@@ -18,6 +25,7 @@ using interactive_markers::MenuHandler;
 using interactive_markers::InteractiveMarkerServer;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
+typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef OpenRAVE::KinBody::Link::GeometryPtr GeometryPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
@@ -46,6 +54,8 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
+
+    manipulator_ = InferManipulator();
 
     interactive_marker_->header.frame_id = kWorldFrameId;
     interactive_marker_->name = id();
@@ -117,6 +127,10 @@ void LinkMarker::CreateMenu()
     auto const callback = boost::bind(&LinkMarker::MenuCallback, this, _1);
     menu_entry_visual_ = menu_handler_.insert("Visual Geometry", callback);
     menu_entry_collision_ = menu_handler_.insert("Collision Geometry", callback);
+
+    if (manipulator_ && manipulator_->GetIkSolver()) {
+        menu_entry_ik_ = menu_handler_.insert("Inverse Kinematics", callback);
+    }
 }
 
 void LinkMarker::UpdateMenu()
@@ -145,6 +159,7 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
     }
 
     UpdateMenu();
+    server_->applyChanges();
 }
 
 void LinkMarker::SetRenderMode(RenderMode::Type mode)
@@ -159,10 +174,6 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     marker->pose = toROSPose(geometry->GetTransform());
     marker->color = toROSColor(geometry->GetDiffuseColor());
     marker->color.a = 1.0; // TODO: Debug.
-
-    // TODO: How should we allocate namespaces and IDs?
-    marker->ns = str(format("%s.Geometry[%p]") % id() % geometry.get());
-    marker->id = 0;
 
     if (!geometry->IsVisible()) {
         return MarkerPtr();
@@ -220,6 +231,68 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         return MarkerPtr();
     }
     return marker;
+}
+
+ManipulatorPtr LinkMarker::InferManipulator()
+{
+    std::vector<ManipulatorPtr> manipulators;
+
+    // TODO: What if this link is part of multiple manipulators?
+    KinBodyPtr const kinbody = link_->GetParent();
+    RobotBasePtr const robot = boost::dynamic_pointer_cast<RobotBase>(kinbody);
+    if (!robot) {
+        return ManipulatorPtr();
+    }
+
+    for (ManipulatorPtr const manipulator : robot->GetManipulators()) {
+        LinkPtr const base_link = manipulator->GetBase();
+
+        // Check if this link is a child of the manipulator (i.e. gripper).
+        std::vector<LinkPtr> child_links;
+        manipulator->GetChildLinks(child_links);
+        auto const it = std::find(child_links.begin(), child_links.end(), link_);
+        if (it != child_links.end()) {
+            manipulators.push_back(manipulator);
+            continue;
+        }
+
+        // Check if this link is in the manipulator chain by searching from
+        // leaf to root.
+        LinkPtr curr_link = manipulator->GetEndEffector();
+        while (curr_link != base_link) {
+            if (curr_link == link_) {
+                manipulators.push_back(manipulator);
+                break;
+            }
+
+            std::vector<LinkPtr> parent_links;
+            curr_link->GetParentLinks(parent_links);
+            BOOST_ASSERT(parent_links.size() == 1);
+            curr_link = parent_links.front();
+        }
+    }
+
+
+    if (manipulators.empty()) {
+        return ManipulatorPtr();
+    } else if (manipulators.size() == 1) {
+        return manipulators.front();
+    } else {
+        std::stringstream manipulator_names;
+        for (ManipulatorPtr const manipulator : manipulators) {
+            manipulator_names << " " << manipulator->GetName();
+        }
+
+        RAVELOG_WARN("Link '%s' is a member of %d manipulators [%s ]"
+                     " [ %s ]. It will only be associated with manipulator %s"
+                     " in the viewer.\n",
+            link_->GetName().c_str(),
+            manipulators.size(),
+            manipulator_names.str().c_str(),
+            manipulators.front()->GetName().c_str()
+        );
+        return manipulators.front();
+    }
 }
 
 }
