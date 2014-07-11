@@ -55,7 +55,8 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
 
-    manipulator_ = InferManipulator();
+    // TODO: How should we handle this?
+    //manipulator_ = InferManipulator();
 
     interactive_marker_->header.frame_id = kWorldFrameId;
     interactive_marker_->name = id();
@@ -173,7 +174,8 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     MarkerPtr marker = boost::make_shared<Marker>();
     marker->pose = toROSPose(geometry->GetTransform());
     marker->color = toROSColor(geometry->GetDiffuseColor());
-    marker->color.a = 1.0; // TODO: Debug.
+    //marker->color.a = 1.0 - geometry->GetTransparency(); // TODO: Debug.
+    marker->color.a = 1.0;
 
     if (!geometry->IsVisible()) {
         return MarkerPtr();
@@ -259,6 +261,11 @@ ManipulatorPtr LinkMarker::InferManipulator()
         // Check if this link is in the manipulator chain by searching from
         // leaf to root.
         LinkPtr curr_link = manipulator->GetEndEffector();
+        RAVELOG_INFO("Searching for parent '%s' of '%s'\n",
+            curr_link->GetName().c_str(),
+            base_link->GetName().c_str()
+        );
+
         while (curr_link != base_link) {
             if (curr_link == link_) {
                 manipulators.push_back(manipulator);
