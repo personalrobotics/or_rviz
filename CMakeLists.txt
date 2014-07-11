@@ -22,6 +22,7 @@ rosbuild_add_library("${PROJECT_NAME}"
     src/KinBodyMarker.cpp
     src/ManipulatorMarker.cpp
     src/LinkMarker.cpp
+    src/JointMarker.cpp
 )
 rosbuild_add_library("${PROJECT_NAME}_plugin" SHARED
     src/or_interactivemarker_plugin.cpp

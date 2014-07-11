@@ -4,6 +4,7 @@
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
 #include "LinkMarker.h"
+#include "JointMarker.h"
 #include "ManipulatorMarker.h"
 
 namespace or_interactivemarker {
@@ -25,6 +26,7 @@ private:
     OpenRAVE::KinBodyPtr kinbody_;
     OpenRAVE::RobotBasePtr robot_;
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
+    boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> joint_markers_;
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
 
     void CreateManipulators();

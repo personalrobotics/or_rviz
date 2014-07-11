@@ -192,6 +192,7 @@ ManipulatorPtr ManipulatorMarker::CreateGhost(ManipulatorPtr manipulator)
 
     for (LinkPtr const link : ghost_robot->GetLinks()) {
         for (GeometryPtr const geom : link->GetGeometries()) {
+            //geom->SetDiffuseColor(OpenRAVE::Vector(0.0, 1.0, 0.0, 1.0));
             geom->SetTransparency(0.5);
         }
     }

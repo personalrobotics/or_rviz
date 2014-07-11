@@ -174,8 +174,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     MarkerPtr marker = boost::make_shared<Marker>();
     marker->pose = toROSPose(geometry->GetTransform());
     marker->color = toROSColor(geometry->GetDiffuseColor());
-    //marker->color.a = 1.0 - geometry->GetTransparency(); // TODO: Debug.
-    marker->color.a = 1.0;
+    marker->color.a = 1.0 - geometry->GetTransparency();
 
     if (!geometry->IsVisible()) {
         return MarkerPtr();
@@ -188,7 +187,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
         marker->mesh_resource = "file://" + render_mesh_path;
-        marker->mesh_use_embedded_materials = true;
+        //marker->mesh_use_embedded_materials = true;
         return marker;
     }
 
@@ -226,6 +225,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     case OpenRAVE::GeometryType::GT_TriMesh:
         // TODO: Fall back on the OpenRAVE's mesh loader if this format is not
         // supported by RViz.
+        return MarkerPtr();
         break;
 
     default:
