@@ -1,6 +1,7 @@
 #ifndef LINKMARKER_H_
 #define LINKMARKER_H_
 #include <vector>
+#include <boost/optional.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
@@ -23,17 +24,19 @@ typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
 class LinkMarker {
 public:
-    static OpenRAVE::Vector const kGhostColor;
-
     LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                OpenRAVE::KinBody::LinkPtr link, bool is_ghost);
     virtual ~LinkMarker();
 
     std::string id() const;
     OpenRAVE::KinBody::LinkPtr link() const;
-    void set_pose(OpenRAVE::Transform const &pose) const;
     interactive_markers::MenuHandler &menu_handler();
     visualization_msgs::InteractiveMarkerPtr interactive_marker();
+
+    void set_pose(OpenRAVE::Transform const &pose) const;
+
+    void clear_color();
+    void set_color(OpenRAVE::Vector const &color);
 
     void SetRenderMode(RenderMode::Type mode);
 
@@ -52,6 +55,9 @@ private:
     OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
     bool is_ghost_;
     bool created_;
+    bool force_update_;
+
+    boost::optional<OpenRAVE::Vector> override_color_;
 
     boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,

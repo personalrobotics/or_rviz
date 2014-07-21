@@ -39,11 +39,15 @@ static std::string const kGhostKey = "interactive_marker::ghost";
 
 namespace or_interactivemarker {
 
+OpenRAVE::Vector const ManipulatorMarker::kValidColor(0, 1, 0, 0.4);
+OpenRAVE::Vector const ManipulatorMarker::kInvalidColor(1, 0, 0, 0.4);
+
 ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
                                      ManipulatorPtr manipulator)
     : server_(server)
     , manipulator_(manipulator)
     , changed_pose_(true)
+    , has_ik_(true)
     , current_pose_(manipulator->GetEndEffectorTransform())
 {
     BOOST_ASSERT(server_);
@@ -158,7 +162,7 @@ bool ManipulatorMarker::EnvironmentSync()
             if (joint_marker->delta() != 0) {
                 changed_free = true;
             }
-            current_free_[ifree] += joint_marker->delta();
+            current_free_[ifree] += 0.1 * joint_marker->delta();
             joint_marker->reset_delta();
         }
 
@@ -173,8 +177,8 @@ bool ManipulatorMarker::EnvironmentSync()
             ik_param.SetTransform6D(current_pose_);
 
             std::vector<std::vector<OpenRAVE::dReal> > ik_solutions;
-            bool const has_ik = manipulator_->FindIKSolution(ik_param, new_ik, 0);
-            if (has_ik) {
+            has_ik_ = manipulator_->FindIKSolution(ik_param, new_ik, 0);
+            if (has_ik_) {
                 current_ik_ = new_ik;
             }
         }
@@ -194,6 +198,14 @@ bool ManipulatorMarker::EnvironmentSync()
         } else {
             UpdateMenu(link_marker);
         }
+
+        // Set the color to indicate whether we have a valid IK solution.
+        if (has_ik_) {
+            link_marker->set_color(kValidColor);
+        } else {
+            link_marker->set_color(kInvalidColor);
+        }
+
         is_changed = is_changed || is_link_changed;
     }
 
@@ -211,7 +223,7 @@ bool ManipulatorMarker::EnvironmentSync()
 
             // Update the pose of the control to match the ghost arm.
             OpenRAVE::Transform const joint_pose = JointMarker::GetJointPose(joint);
-            joint_marker->set_pose(joint_pose);
+            //joint_marker->set_pose(joint_pose);
 
             bool const is_joint_changed = joint_marker->EnvironmentSync();
             is_changed = is_changed || is_joint_changed;

@@ -13,6 +13,9 @@ typedef boost::shared_ptr<ManipulatorMarker> ManipulatorMarkerPtr;
 
 class ManipulatorMarker {
 public:
+    static OpenRAVE::Vector const kValidColor;
+    static OpenRAVE::Vector const kInvalidColor;
+
     ManipulatorMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                       OpenRAVE::RobotBase::ManipulatorPtr manipulator);
     virtual ~ManipulatorMarker();
@@ -31,6 +34,7 @@ private:
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> free_joint_markers_;
 
     bool changed_pose_;
+    bool has_ik_;
     OpenRAVE::Transform current_pose_;
     std::vector<OpenRAVE::dReal> current_ik_;
     std::vector<OpenRAVE::dReal> current_free_;

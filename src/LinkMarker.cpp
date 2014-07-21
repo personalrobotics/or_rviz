@@ -35,15 +35,14 @@ static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
 
-OpenRAVE::Vector const LinkMarker::kGhostColor(0, 1, 0, 0.2);
-
 LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
                        LinkPtr link, bool is_ghost)
     : server_(server)
-    , link_(link)
-    , is_ghost_(is_ghost)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
     , render_mode_(RenderMode::kVisual)
+    , link_(link)
+    , is_ghost_(is_ghost)
+    , force_update_(false)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
@@ -98,6 +97,22 @@ void LinkMarker::set_pose(OpenRAVE::Transform const &pose) const
     server_->setPose(interactive_marker_->name, toROSPose(pose));
 }
 
+void LinkMarker::clear_color()
+{
+    force_update_ = force_update_ || !!override_color_;
+    override_color_.reset();
+}
+
+void LinkMarker::set_color(OpenRAVE::Vector const &color)
+{
+    force_update_ = force_update_ || !override_color_
+                                  || (color[0] != (*override_color_)[0])
+                                  || (color[1] != (*override_color_)[1])
+                                  || (color[2] != (*override_color_)[2])
+                                  || (color[3] != (*override_color_)[3]);
+    override_color_.reset(color);
+}
+
 InteractiveMarkerPtr LinkMarker::interactive_marker()
 {
     return interactive_marker_;
@@ -106,7 +121,7 @@ InteractiveMarkerPtr LinkMarker::interactive_marker()
 bool LinkMarker::EnvironmentSync()
 {
     LinkPtr const link = this->link();
-    bool is_changed = false;
+    bool is_changed = force_update_;
 
     // Check if we need to re-create the marker to propagate changes in the
     // OpenRAVE environment.
@@ -126,10 +141,13 @@ bool LinkMarker::EnvironmentSync()
         }
     }
 
+    // Re-create the geometry.
     if (is_changed) {
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
+
+    force_update_ = false;
     return is_changed;
 }
 
@@ -167,8 +185,8 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     MarkerPtr marker = boost::make_shared<Marker>();
     marker->pose = toROSPose(geometry->GetTransform());
 
-    if (is_ghost_) {
-        marker->color = toROSColor(kGhostColor);
+    if (override_color_) {
+        marker->color = toROSColor(*override_color_);
     } else {
         marker->color = toROSColor(geometry->GetDiffuseColor());
         marker->color.a = 1.0 - geometry->GetTransparency();
@@ -185,7 +203,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
         marker->mesh_resource = "file://" + render_mesh_path;
-        marker->mesh_use_embedded_materials = !is_ghost_;
+        marker->mesh_use_embedded_materials = !override_color_;
         return marker;
     }
 
