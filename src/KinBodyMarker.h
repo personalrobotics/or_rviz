@@ -51,13 +51,15 @@ private:
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
 
     void CreateMenu(LinkMarkerWrapper &link_wrapper);
-
     void UpdateMenu();
     void UpdateMenu(LinkMarkerWrapper &link_wrapper);
     void MenuCallback(LinkMarkerWrapper &link_wrapper,
                       visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 
     void CreateGhost();
+
+    void GetManipulators(OpenRAVE::KinBody::LinkPtr link,
+                         std::vector<OpenRAVE::RobotBase::ManipulatorPtr> *manipulators) const;
 };
 
 }

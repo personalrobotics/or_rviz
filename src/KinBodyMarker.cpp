@@ -131,6 +131,13 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
     link_wrapper.menu_enabled = Opt(menu_handler.insert(parent, "Enabled", cb));
     link_wrapper.menu_visible = Opt(menu_handler.insert(parent, "Visible", cb));
     link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+
+    std::vector<ManipulatorPtr> manipulators;
+    GetManipulators(link_wrapper.link_marker->link(), &manipulators);
+    for (ManipulatorPtr const &manipulator : manipulators) {
+        menu_handler.insert("Manipulator: " + manipulator->GetName());
+    }
+
     link_wrapper.has_menu = true;
 }
 
@@ -195,6 +202,45 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
 
     UpdateMenu();
 }
+
+void KinBodyMarker::GetManipulators(
+        LinkPtr link, std::vector<ManipulatorPtr> *manipulators) const
+{
+    BOOST_ASSERT(link);
+    BOOST_ASSERT(manipulators);
+
+    // Only robots have manipulators.
+    KinBodyPtr const body = link->GetParent();
+    auto const robot = boost::dynamic_pointer_cast<RobotBase>(body);
+    if (!robot) {
+        return;
+    }
+
+    for (ManipulatorPtr const &manipulator : robot->GetManipulators()) {
+        // Check if this link is in the manipulator chain.
+        LinkPtr const base_link = manipulator->GetBase();
+        LinkPtr const tip_link = manipulator->GetEndEffector();
+        std::vector<LinkPtr> chain_links;
+        bool const success = robot->GetChain(
+                base_link->GetIndex(), tip_link->GetIndex(), chain_links);
+        BOOST_ASSERT(success);
+
+        auto const it = std::find(chain_links.begin(), chain_links.end(), link);
+        if (it != chain_links.end()) {
+            manipulators->push_back(manipulator);
+            continue;
+        }
+
+#if 0
+        // Check if this link is a child (i.e. part of the end-effector)..
+        if (manipulator->IsChildLink(link)) {
+            manipulators->push_back(manipulator);
+            continue;
+        }
+#endif
+    }
+}
+
 
 void KinBodyMarker::CreateGhost()
 {
