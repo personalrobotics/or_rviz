@@ -108,8 +108,7 @@ void KinBodyMarker::EnvironmentSync()
 
 #if 0
     // Also update manipulators if we're a robot.
-    if (robot_ && !ManipulatorMarker::IsGhost(kinbody_)) {
-        for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
+    if (robot_ && !ManipulatorMarker::IsGhost(kinbody_)) { for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
             auto const it = manipulator_markers_.find(manipulator.get());
             BOOST_ASSERT(it != manipulator_markers_.end());
             it->second->EnvironmentSync();
@@ -134,6 +133,15 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
     link_wrapper.has_menu = true;
 }
 
+void KinBodyMarker::UpdateMenu()
+{
+    for (LinkMarkerWrapper &marker_wrapper : link_markers_ | map_values) {
+        UpdateMenu(marker_wrapper);
+        marker_wrapper.link_marker->UpdateMenu();
+        // TODO: How can the link notify us that our menu changed?
+    }
+}
+
 void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
 {
     if (!link_wrapper.has_menu) {
@@ -154,9 +162,28 @@ void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
 void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
                                  InteractiveMarkerFeedbackConstPtr const &feedback)
 {
-    RAVELOG_INFO("Callback for %s\n", link_wrapper.link_marker->id().c_str());
-
     MenuHandler &menu_handler = link_wrapper.link_marker->menu_handler();
+    KinBodyPtr kinbody = kinbody_.lock();
+
+    // Toggle kinbody collision checking.
+    if (feedback->menu_entry_id == link_wrapper.menu_enabled) {
+        MenuHandler::CheckState enabled_state;
+        menu_handler.getCheckState(link_wrapper.menu_enabled, enabled_state);
+        bool const is_enabled = !CheckStateToBool(enabled_state);
+        kinbody->Enable(is_enabled);
+        RAVELOG_DEBUG("Toggled enable to %d for '%s'\n",
+            is_enabled, kinbody->GetName().c_str());
+    }
+
+    // Toggle kinbody visibility.
+    if (feedback->menu_entry_id == link_wrapper.menu_visible) {
+        MenuHandler::CheckState visible_state;
+        menu_handler.getCheckState(link_wrapper.menu_visible, visible_state);
+        bool const is_visible = !CheckStateToBool(visible_state);
+        kinbody->SetVisible(is_visible);
+        RAVELOG_DEBUG("Toggled visible to %d for '%s'\n",
+            is_visible, kinbody->GetName().c_str());
+    }
 
     // Toggle joint controls.
     if (feedback->menu_entry_id == link_wrapper.menu_joints) {
@@ -164,10 +191,10 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         menu_handler.getCheckState(link_wrapper.menu_joints, joints_state);
         has_joint_controls_ = !CheckStateToBool(joints_state);
         RAVELOG_DEBUG("Toggled joint controls to %d for %s\n",
-            has_joint_controls_, kinbody_.lock()->GetName().c_str());
+            has_joint_controls_, kinbody->GetName().c_str());
     }
 
-    //UpdateMenu();
+    UpdateMenu();
 }
 
 void KinBodyMarker::CreateGhost()
