@@ -59,7 +59,6 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     marker_.controls.push_back(control);
 
     server_->insert(marker_);
-
     server_->setCallback(marker_.name,
         boost::bind(&JointMarker::JointCallback, this, _1));
 }
@@ -71,20 +70,23 @@ JointMarker::~JointMarker()
 
 std::string JointMarker::id() const
 {
-    OpenRAVE::KinBodyPtr const body = joint_->GetParent();
+    JointPtr const joint = this->joint();
+    OpenRAVE::KinBodyPtr const body = joint->GetParent();
     OpenRAVE::EnvironmentBasePtr const env = body->GetEnv();
     int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
 
     return str(format("Environment[%d].KinBody[%s].Joint[%s]")
-               % environment_id % body->GetName() % joint_->GetName());
+               % environment_id % body->GetName() % joint->GetName());
+}
+
+JointPtr JointMarker::joint() const
+{
+    return joint_.lock();
 }
 
 OpenRAVE::Transform JointMarker::joint_pose() const
 {
-    OpenRAVE::Transform pose = OpenRAVE::geometry::transformLookat(
-        OpenRAVE::Vector(0, 0, 0), joint_->GetAxis(), OpenRAVE::Vector(1, 0, 0));
-    pose.trans = joint_->GetAnchor();
-    return pose;
+    return GetJointPose(joint());
 }
 
 bool JointMarker::EnvironmentSync()
@@ -107,19 +109,29 @@ void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedbac
         double const delta_value = axis_angle[2];
 
         // Get the current joint value.
-        KinBodyPtr const kinbody = joint_->GetParent();
+        JointPtr const joint = this->joint();
+        KinBodyPtr const kinbody = joint->GetParent();
         std::vector<int> dof_indices;
         std::vector<OpenRAVE::dReal> dof_values;
-        dof_indices.push_back(joint_->GetJointIndex());
+        dof_indices.push_back(joint->GetJointIndex());
         kinbody->GetDOFValues(dof_values, dof_indices);
 
         // Update the joint value.
         // TODO: Why is the sign flipped?
-        BOOST_ASSERT(joint_->GetDOF() == 1);
+        BOOST_ASSERT(joint->GetDOF() == 1);
         BOOST_ASSERT(dof_values.size() == 1);
         dof_values.front() -= delta_value;
         kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
     }
+}
+
+
+OpenRAVE::Transform JointMarker::GetJointPose(JointPtr joint)
+{
+    OpenRAVE::Transform pose = OpenRAVE::geometry::transformLookat(
+        OpenRAVE::Vector(0, 0, 0), joint->GetAxis(), OpenRAVE::Vector(1, 0, 0));
+    pose.trans = joint->GetAnchor();
+    return pose;
 }
 
 }

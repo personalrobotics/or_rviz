@@ -1,6 +1,5 @@
 #ifndef JOINTMARKER_H_
 #define JOINTMARKER_H_
-
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 
@@ -16,17 +15,23 @@ public:
     virtual ~JointMarker();
 
     std::string id() const;
+    OpenRAVE::KinBody::JointPtr joint() const;
     OpenRAVE::Transform joint_pose() const;
+    void set_joint_pose(OpenRAVE::Transform const &pose);
 
-    bool EnvironmentSync();
+    virtual bool EnvironmentSync();
 
-private:
+    static OpenRAVE::Transform GetJointPose(OpenRAVE::KinBody::JointPtr joint);
+
+protected:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    OpenRAVE::KinBody::JointPtr joint_;
-    bool created_;
-
     visualization_msgs::InteractiveMarker marker_;
     visualization_msgs::InteractiveMarkerControl *joint_control_;
+
+private:
+    OpenRAVE::KinBody::JointWeakPtr joint_;
+    OpenRAVE::Transform joint_pose_;
+    bool created_;
 
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
