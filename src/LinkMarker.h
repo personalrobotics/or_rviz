@@ -31,12 +31,13 @@ public:
 
     std::string id() const;
     OpenRAVE::KinBody::LinkPtr link() const;
+    void set_pose(OpenRAVE::Transform const &pose) const;
     interactive_markers::MenuHandler &menu_handler();
     visualization_msgs::InteractiveMarkerPtr interactive_marker();
 
     void SetRenderMode(RenderMode::Type mode);
 
-    virtual void EnvironmentSync();
+    virtual bool EnvironmentSync();
     void UpdateMenu();
 
 protected:
@@ -57,8 +58,6 @@ private:
         visualization_msgs::Marker *> geometry_markers_;
 
     void CreateGeometry();
-    OpenRAVE::RobotBase::ManipulatorPtr InferManipulator();
-
     visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);
 };

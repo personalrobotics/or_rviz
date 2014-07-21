@@ -15,7 +15,7 @@ public:
 
     interactive_markers::MenuHandler &menu_handler();
 
-    virtual void EnvironmentSync();
+    virtual bool EnvironmentSync();
     void UpdateMenu();
 
 private:

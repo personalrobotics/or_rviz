@@ -20,6 +20,7 @@ struct LinkMarkerWrapper {
     LinkMarkerWrapper() : has_menu(false) { }
 
     KinBodyLinkMarkerPtr link_marker;
+    OpenRAVE::RobotBase::ManipulatorPtr parent_manipulator;
     bool has_menu;
     boost::optional<MenuEntry> menu_parent;
     boost::optional<MenuEntry> menu_joints;
@@ -36,8 +37,6 @@ public:
                   OpenRAVE::KinBodyPtr kinbody);
     virtual ~KinBodyMarker();
 
-    bool IsGhost() const;
-
     void EnvironmentSync();
 
 private:
@@ -45,9 +44,6 @@ private:
     OpenRAVE::KinBodyWeakPtr kinbody_;
     OpenRAVE::RobotBaseWeakPtr robot_;
     bool has_joint_controls_;
-
-    OpenRAVE::KinBodyPtr ghost_kinbody_;
-    OpenRAVE::RobotBasePtr ghost_robot_;
 
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> joint_markers_;
@@ -58,8 +54,6 @@ private:
     void UpdateMenu(LinkMarkerWrapper &link_wrapper);
     void MenuCallback(LinkMarkerWrapper &link_wrapper,
                       visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
-
-    void CreateGhost();
 
     void GetManipulators(OpenRAVE::KinBody::LinkPtr link,
                          std::vector<OpenRAVE::RobotBase::ManipulatorPtr> *manipulators) const;

@@ -1,4 +1,5 @@
 #include "KinBodyLinkMarker.h"
+#include "or_conversions.h"
 
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
@@ -34,13 +35,21 @@ interactive_markers::MenuHandler &KinBodyLinkMarker::menu_handler()
     return menu_handler_;
 }
 
-void KinBodyLinkMarker::EnvironmentSync()
+bool KinBodyLinkMarker::EnvironmentSync()
 {
-    LinkMarker::EnvironmentSync();
+    bool const is_changed = LinkMarker::EnvironmentSync();
 
-    if (menu_changed_) {
+    // Incrementally update the marker's pose. We can't do this if we just
+    // created the markers because the InteraciveMarkerServer will SEGFAULT.
+    if (!is_changed) {
+        OpenRAVE::Transform const link_pose = link()->GetTransform();
+        set_pose(link_pose);
+    }
+
+    if (is_changed) {
         UpdateMenu();
     }
+    return is_changed;
 }
 
 void KinBodyLinkMarker::CreateMenu()

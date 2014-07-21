@@ -79,8 +79,13 @@ std::string LinkMarker::id() const
     EnvironmentBasePtr const env = body->GetEnv();
     int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
 
-    return str(format("Environment[%d].KinBody[%s].Link[%s]")
-               % environment_id % body->GetName() % link->GetName());
+    std::string suffix;
+    if (is_ghost_) {
+        suffix = ".Ghost";
+    }
+
+    return str(format("Environment[%d].KinBody[%s].Link[%s]%s")
+               % environment_id % body->GetName() % link->GetName() % suffix);
 }
 
 LinkPtr LinkMarker::link() const
@@ -88,12 +93,17 @@ LinkPtr LinkMarker::link() const
     return link_.lock();
 }
 
+void LinkMarker::set_pose(OpenRAVE::Transform const &pose) const
+{
+    server_->setPose(interactive_marker_->name, toROSPose(pose));
+}
+
 InteractiveMarkerPtr LinkMarker::interactive_marker()
 {
     return interactive_marker_;
 }
 
-void LinkMarker::EnvironmentSync()
+bool LinkMarker::EnvironmentSync()
 {
     LinkPtr const link = this->link();
     bool is_changed = false;
@@ -120,12 +130,7 @@ void LinkMarker::EnvironmentSync()
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
-    // Incrementally update the marker's pose. We can't do this if we just
-    // created the markers because the InteraciveMarkerServer will SEGFAULT.
-    else {
-        OpenRAVE::Transform const link_pose = link->GetTransform();
-        server_->setPose(interactive_marker_->name, toROSPose(link_pose));
-    }
+    return is_changed;
 }
 
 void LinkMarker::CreateGeometry()
@@ -226,74 +231,6 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         return MarkerPtr();
     }
     return marker;
-}
-
-ManipulatorPtr LinkMarker::InferManipulator()
-{
-    LinkPtr const link = this->link();
-    std::vector<ManipulatorPtr> manipulators;
-
-    // TODO: What if this link is part of multiple manipulators?
-    KinBodyPtr const kinbody = link->GetParent();
-    RobotBasePtr const robot = boost::dynamic_pointer_cast<RobotBase>(kinbody);
-    if (!robot) {
-        return ManipulatorPtr();
-    }
-
-    for (ManipulatorPtr const manipulator : robot->GetManipulators()) {
-        LinkPtr const base_link = manipulator->GetBase();
-
-        // Check if this link is a child of the manipulator (i.e. gripper).
-        std::vector<LinkPtr> child_links;
-        manipulator->GetChildLinks(child_links);
-        auto const it = std::find(child_links.begin(), child_links.end(), link);
-        if (it != child_links.end()) {
-            manipulators.push_back(manipulator);
-            continue;
-        }
-
-        // Check if this link is in the manipulator chain by searching from
-        // leaf to root.
-        LinkPtr curr_link = manipulator->GetEndEffector();
-        RAVELOG_INFO("Searching for parent '%s' of '%s'\n",
-            curr_link->GetName().c_str(),
-            base_link->GetName().c_str()
-        );
-
-        while (curr_link != base_link) {
-            if (curr_link == link) {
-                manipulators.push_back(manipulator);
-                break;
-            }
-
-            std::vector<LinkPtr> parent_links;
-            curr_link->GetParentLinks(parent_links);
-            BOOST_ASSERT(parent_links.size() == 1);
-            curr_link = parent_links.front();
-        }
-    }
-
-
-    if (manipulators.empty()) {
-        return ManipulatorPtr();
-    } else if (manipulators.size() == 1) {
-        return manipulators.front();
-    } else {
-        std::stringstream manipulator_names;
-        for (ManipulatorPtr const manipulator : manipulators) {
-            manipulator_names << " " << manipulator->GetName();
-        }
-
-        RAVELOG_WARN("Link '%s' is a member of %d manipulators [%s ]"
-                     " [ %s ]. It will only be associated with manipulator %s"
-                     " in the viewer.\n",
-            link->GetName().c_str(),
-            manipulators.size(),
-            manipulator_names.str().c_str(),
-            manipulators.front()->GetName().c_str()
-        );
-        return manipulators.front();
-    }
 }
 
 }

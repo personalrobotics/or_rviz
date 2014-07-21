@@ -51,27 +51,10 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
-
-#if 0
-    if (!IsGhost()) {
-        CreateGhost();
-    }
-#endif
 }
 
 KinBodyMarker::~KinBodyMarker()
 {
-    if (ghost_kinbody_) {
-        ghost_kinbody_->GetEnv()->Remove(ghost_kinbody_);
-        ghost_kinbody_.reset();
-        ghost_robot_.reset();
-    }
-}
-
-bool KinBodyMarker::IsGhost() const
-{
-    KinBodyPtr kinbody = kinbody_.lock();
-    return ends_with(kinbody->GetName(), ".Ghost");
 }
 
 void KinBodyMarker::EnvironmentSync()
@@ -80,7 +63,6 @@ void KinBodyMarker::EnvironmentSync()
     typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
     KinBodyPtr const kinbody = kinbody_.lock();
-    bool const is_ghost = IsGhost();
 
     // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : kinbody->GetLinks()) {
@@ -107,15 +89,10 @@ void KinBodyMarker::EnvironmentSync()
         joint_markers_.clear();
     }
 
-#if 0
-    // Also update manipulators if we're a robot.
-    if (robot_ && !ManipulatorMarker::IsGhost(kinbody_)) { for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
-            auto const it = manipulator_markers_.find(manipulator.get());
-            BOOST_ASSERT(it != manipulator_markers_.end());
-            it->second->EnvironmentSync();
-        }
+    // Update manipulators.
+    for (ManipulatorMarkerPtr const &manipulator_marker : manipulator_markers_ | map_values) {
+        manipulator_marker->EnvironmentSync();
     }
-#endif
 }
 
 void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
@@ -138,16 +115,19 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
 
     // Manipulator controls. For now, we'll only add these options to links
     // that unambiguously belong to one manipulator.
+    // TODO: Move this elsewhere.
     std::vector<ManipulatorPtr> manipulators;
     GetManipulators(link_wrapper.link_marker->link(), &manipulators);
-    
     if (manipulators.size() == 1) {
+        link_wrapper.parent_manipulator = manipulators.front();
+    }
+    
+    if (link_wrapper.parent_manipulator) {
         EntryHandle parent = menu_handler.insert("Manipulator");
         link_wrapper.menu_manipulator = Opt(parent);
         link_wrapper.menu_manipulator_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
         link_wrapper.menu_manipulator_ik = Opt(menu_handler.insert(parent, "Inverse Kinematics", cb));
     }
-
     link_wrapper.has_menu = true;
 }
 
@@ -201,13 +181,34 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         RAVELOG_DEBUG("Toggled visible to %d for '%s'\n",
             is_visible, kinbody->GetName().c_str());
     }
-    // Toggle joint controls.
+    // Toggle full-KinBody joint controls.
     else if (feedback->menu_entry_id == *link_wrapper.menu_joints) {
         MenuHandler::CheckState joints_state;
         menu_handler.getCheckState(*link_wrapper.menu_joints, joints_state);
         has_joint_controls_ = !CheckStateToBool(joints_state);
         RAVELOG_DEBUG("Toggled joint controls to %d for '%s'\n",
             has_joint_controls_, kinbody->GetName().c_str());
+    }
+    // Toggle manipulator IK control.
+    else if (link_wrapper.menu_manipulator_ik
+             && feedback->menu_entry_id == link_wrapper.menu_manipulator_ik) {
+        ManipulatorPtr const manipulator = link_wrapper.parent_manipulator;
+        BOOST_ASSERT(manipulator);
+
+        // TODO: Implement toggle functionality.
+        bool const ik_enabled = true;
+
+        if (ik_enabled) {
+            ManipulatorMarkerPtr &manipulator_marker = manipulator_markers_[manipulator.get()];
+            if (!manipulator_marker) {
+                manipulator_marker = boost::make_shared<ManipulatorMarker>(server_, manipulator);
+            }
+        }
+
+        RAVELOG_DEBUG("Toggled IK control to %d for '%s' manipulator '%s'.\n",
+            ik_enabled, kinbody->GetName().c_str(),
+            manipulator->GetName().c_str()
+        );
     }
 
     UpdateMenu();
@@ -252,24 +253,6 @@ void KinBodyMarker::GetManipulators(
             continue;
         }
     }
-}
-
-void KinBodyMarker::CreateGhost()
-{
-    KinBodyPtr kinbody = kinbody_.lock();
-
-    EnvironmentBasePtr env = kinbody->GetEnv();
-    if (kinbody->IsRobot()) {
-        ghost_robot_ = OpenRAVE::RaveCreateRobot(env, "");
-        ghost_kinbody_ = ghost_robot_;
-    } else {
-        ghost_kinbody_ = OpenRAVE::RaveCreateKinBody(env, "");
-    }
-
-    ghost_robot_->Clone(kinbody, OpenRAVE::Clone_Bodies);
-    ghost_robot_->SetName(kinbody->GetName() + ".Ghost");
-    ghost_robot_->Enable(false);
-    env->Add(ghost_kinbody_, true);
 }
 
 }
