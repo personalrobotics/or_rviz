@@ -25,6 +25,7 @@ class LinkMarker {
 public:
     LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                OpenRAVE::KinBody::LinkPtr link);
+    virtual ~LinkMarker();
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker() const;
     std::string id() const;
@@ -33,7 +34,7 @@ public:
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    OpenRAVE::KinBody::LinkPtr link_;
+    OpenRAVE::KinBody::LinkWeakPtr link_;
     OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
 
     std::vector<visualization_msgs::MenuEntry> menu_entries_;

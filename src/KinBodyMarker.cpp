@@ -1,9 +1,18 @@
+#include <boost/format.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include "KinBodyMarker.h"
 
+using boost::format;
+using boost::str;
+using boost::algorithm::ends_with;
+using OpenRAVE::EnvironmentBasePtr;
 using OpenRAVE::KinBodyPtr;
+using OpenRAVE::KinBodyWeakPtr;
 using OpenRAVE::RobotBase;
+using OpenRAVE::RobotBaseWeakPtr;
 using interactive_markers::InteractiveMarkerServer;
+
 typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
@@ -18,12 +27,15 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
 
-    CreateManipulators();
+    if (!IsGhost()) {
+        CreateGhost();
+    }
 }
 
-bool KinBodyMarker::IsRobot() const
+bool KinBodyMarker::IsGhost() const
 {
-    return !!robot_;
+    KinBodyPtr kinbody = kinbody_.lock();
+    return ends_with(kinbody->GetName(), ".Ghost");
 }
 
 void KinBodyMarker::EnvironmentSync()
@@ -31,8 +43,10 @@ void KinBodyMarker::EnvironmentSync()
     typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
     typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
+    KinBodyPtr kinbody = kinbody_.lock();
+
     // Update links. This includes the geometry of the KinBody.
-    for (LinkPtr link : kinbody_->GetLinks()) {
+    for (LinkPtr link : kinbody->GetLinks()) {
         LinkMarkerPtr &link_marker = link_markers_[link.get()];
         if (!link_marker) {
             link_marker = boost::make_shared<LinkMarker>(server_, link);
@@ -40,6 +54,7 @@ void KinBodyMarker::EnvironmentSync()
         link_marker->EnvironmentSync();
     }
 
+#if 0
     // Update joints.
     for (JointPtr joint : kinbody_->GetJoints()) {
         JointMarkerPtr &joint_marker = joint_markers_[joint.get()];
@@ -49,9 +64,8 @@ void KinBodyMarker::EnvironmentSync()
         joint_marker->EnvironmentSync();
     }
 
-#if 0
     // Also update manipulators if we're a robot.
-    if (robot_) {
+    if (robot_ && !ManipulatorMarker::IsGhost(kinbody_)) {
         for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
             auto const it = manipulator_markers_.find(manipulator.get());
             BOOST_ASSERT(it != manipulator_markers_.end());
@@ -61,16 +75,22 @@ void KinBodyMarker::EnvironmentSync()
 #endif
 }
 
-void KinBodyMarker::CreateManipulators()
+void KinBodyMarker::CreateGhost()
 {
-    if (!robot_) {
-        return;
+    KinBodyPtr kinbody = kinbody_.lock();
+
+    EnvironmentBasePtr env = kinbody->GetEnv();
+    if (kinbody->IsRobot()) {
+        ghost_robot_ = OpenRAVE::RaveCreateRobot(env, "");
+        ghost_kinbody_ = ghost_robot_;
+    } else {
+        ghost_kinbody_ = OpenRAVE::RaveCreateKinBody(env, "");
     }
 
-    for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
-        manipulator_markers_[manipulator.get()]
-            = boost::make_shared<ManipulatorMarker>(server_, manipulator);
-    }
+    ghost_robot_->Clone(kinbody, OpenRAVE::Clone_Bodies);
+    ghost_robot_->SetName(kinbody->GetName() + ".Ghost");
+    ghost_robot_->Enable(false);
+    env->Add(ghost_kinbody_, true);
 }
 
 }

@@ -18,6 +18,8 @@ public:
 
     void EnvironmentSync();
 
+    static bool IsGhost(OpenRAVE::KinBodyPtr body);
+
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::RobotBase::ManipulatorPtr manipulator_;

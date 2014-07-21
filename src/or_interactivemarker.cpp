@@ -53,7 +53,6 @@ void InteractiveMarkerViewer::EnvironmentSync()
     OpenRAVE::EnvironmentMutex::scoped_lock lock(env_->GetMutex(),
                                                  boost::try_to_lock);
     if (!lock) {
-        RAVELOG_DEBUG("Failed to lock environment.\n");
         return;
     }
 
@@ -61,13 +60,19 @@ void InteractiveMarkerViewer::EnvironmentSync()
     env_->GetBodies(bodies);
 
     for (KinBodyPtr body : bodies) {
-        KinBodyMarkerPtr &body_marker = body_markers_[body.get()];
-        if (!body_marker) {
-            RAVELOG_DEBUG("Created KinBodyMarker for '%s'.\n",
+        OpenRAVE::UserDataPtr const raw = body->GetUserData("interactive_marker"); 
+        auto body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
+        BOOST_ASSERT(!raw || body_marker);
+
+        // Create the new geometry if neccessary.
+        if (!raw) {
+            RAVELOG_DEBUG("Creating KinBodyMarker for '%s'.\n",
                 body->GetName().c_str()
             );
             body_marker = boost::make_shared<KinBodyMarker>(server_, body);
+            body->SetUserData("interactive_marker", body_marker);
         }
+
         body_marker->EnvironmentSync();
     }
     server_->applyChanges();

@@ -29,8 +29,14 @@ typedef OpenRAVE::RobotBase::AttachedSensorInfoConstPtr AttachedSensorInfoConstP
 
 // TODO: Don't hardcode this.
 static std::string const kWorldFrameId = "/world";
+static std::string const kGhostKey = "interactive_marker::ghost";
 
 namespace or_interactivemarker {
+
+struct GhostUserData : public OpenRAVE::UserData {
+    GhostUserData() { }
+    virtual ~GhostUserData() { }
+};
 
 ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
                                      ManipulatorPtr manipulator)
@@ -41,13 +47,6 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
 {
     BOOST_ASSERT(server_);
     BOOST_ASSERT(manipulator);
-
-    // TODO: This is a hack to avoid creating ghost manipulators of ghost
-    // manipulators; i.e. an infinite loop.
-    RobotBasePtr const robot = manipulator->GetRobot();
-    if (boost::starts_with(robot->GetName(), "Ghost")) {
-        return;
-    }
 
     // Create a ghost manipulator for visualization.
     ghost_manipulator_ = CreateGhost(manipulator);
@@ -151,6 +150,7 @@ ManipulatorPtr ManipulatorMarker::CreateGhost(ManipulatorPtr manipulator)
 
     std::vector<LinkInfoConstPtr> link_infos;
     for (LinkPtr const &link : links) {
+        RAVELOG_INFO("Ghost Link[%s]\n", link->GetName().c_str());
         // TODO: Need to deep-copy the GeometryInfoPtr's.
         LinkInfo const link_info = link->UpdateAndGetInfo();
         link_infos.push_back(boost::make_shared<LinkInfo>(link_info));
@@ -162,6 +162,7 @@ ManipulatorPtr ManipulatorMarker::CreateGhost(ManipulatorPtr manipulator)
 
     std::vector<JointInfoConstPtr> joint_infos;
     for (JointPtr const &joint : joints) {
+        RAVELOG_INFO("Ghost Joint[%s]\n", joint->GetName().c_str());
         JointInfo joint_info = joint->UpdateAndGetInfo();
         joint_infos.push_back(boost::make_shared<JointInfo>(joint_info));
     }
@@ -179,6 +180,7 @@ ManipulatorPtr ManipulatorMarker::CreateGhost(ManipulatorPtr manipulator)
     EnvironmentBasePtr const env = real_robot->GetEnv();
     RobotBasePtr const ghost_robot = OpenRAVE::RaveCreateRobot(env, "");
     ghost_robot->Init(link_infos, joint_infos, manipulator_infos, sensor_infos);
+    ghost_robot->SetUserData(kGhostKey, boost::make_shared<GhostUserData>());
 
     // Assign the ghost a unique name.
     std::string const name = str(format("Ghost.Robot[%s].Manipulator[%s]")
@@ -290,6 +292,14 @@ bool ManipulatorMarker::IsChildLink(LinkPtr const parent, LinkPtr const child)
         }
     }
     return false;
+}
+
+bool ManipulatorMarker::IsGhost(OpenRAVE::KinBodyPtr body)
+{
+    auto const raw = body->GetUserData(kGhostKey);
+    auto const ghost_data = boost::dynamic_pointer_cast<GhostUserData>(raw);
+    BOOST_ASSERT(!raw || ghost_data);
+    return !!ghost_data;
 }
 
 }

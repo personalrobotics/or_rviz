@@ -12,24 +12,28 @@ namespace or_interactivemarker {
 class KinBodyMarker;
 typedef boost::shared_ptr<KinBodyMarker> KinBodyMarkerPtr;
 
-class KinBodyMarker {
+class KinBodyMarker : public OpenRAVE::UserData {
 public:
     KinBodyMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                   OpenRAVE::KinBodyPtr kinbody);
 
-    bool IsRobot() const;
+    bool IsGhost() const;
 
     void EnvironmentSync();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    OpenRAVE::KinBodyPtr kinbody_;
-    OpenRAVE::RobotBasePtr robot_;
+    OpenRAVE::KinBodyWeakPtr kinbody_;
+    OpenRAVE::RobotBaseWeakPtr robot_;
+
+    OpenRAVE::KinBodyPtr ghost_kinbody_;
+    OpenRAVE::RobotBasePtr ghost_robot_;
+
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> joint_markers_;
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
 
-    void CreateManipulators();
+    void CreateGhost();
 };
 
 }

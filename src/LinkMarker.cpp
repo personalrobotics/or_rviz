@@ -2,6 +2,7 @@
 #include <boost/format.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <ros/ros.h>
 #include "or_conversions.h"
@@ -15,6 +16,7 @@ using geometry_msgs::Vector3;
 using OpenRAVE::KinBodyPtr;
 using OpenRAVE::RobotBase;
 using OpenRAVE::RobotBasePtr;
+using OpenRAVE::EnvironmentBasePtr;
 using visualization_msgs::Marker;
 using visualization_msgs::MarkerPtr;
 using visualization_msgs::InteractiveMarker;
@@ -61,7 +63,7 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     interactive_marker_->header.frame_id = kWorldFrameId;
     interactive_marker_->name = id();
     interactive_marker_->description = "";
-    interactive_marker_->pose = toROSPose(link_->GetTransform());
+    interactive_marker_->pose = toROSPose(link->GetTransform());
     interactive_marker_->scale = 0.25;
 
     // Show the visual geometry.
@@ -80,6 +82,11 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     server_->insert(*interactive_marker_);
 }
 
+LinkMarker::~LinkMarker()
+{
+    server_->erase(interactive_marker_->name);
+}
+
 InteractiveMarkerPtr LinkMarker::interactive_marker() const
 {
     return interactive_marker_;
@@ -87,21 +94,24 @@ InteractiveMarkerPtr LinkMarker::interactive_marker() const
 
 std::string LinkMarker::id() const
 {
-    OpenRAVE::KinBodyPtr const body = link_->GetParent();
-    OpenRAVE::EnvironmentBasePtr const env = body->GetEnv();
+    LinkPtr link = link_.lock();
+    KinBodyPtr const body = link->GetParent();
+    EnvironmentBasePtr const env = body->GetEnv();
     int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
 
     return str(format("Environment[%d].KinBody[%s].Link[%s]")
-               % environment_id % body->GetName() % link_->GetName());
+               % environment_id % body->GetName() % link->GetName());
 }
 
 void LinkMarker::EnvironmentSync()
 {
+    LinkPtr link = link_.lock();
+
     // TODO: Update other properties (e.g. IsVisible).
     // TODO: Update the geometry properties.
 
     if (created_) {
-        OpenRAVE::Transform const link_pose = link_->GetTransform();
+        OpenRAVE::Transform const link_pose = link->GetTransform();
         server_->setPose(interactive_marker_->name, toROSPose(link_pose));
     }
     created_ = true;
@@ -114,7 +124,9 @@ void LinkMarker::EnvironmentSync()
 
 void LinkMarker::CreateGeometry()
 {
-    for (GeometryPtr const geometry : link_->GetGeometries()) {
+    LinkPtr link = link_.lock();
+
+    for (GeometryPtr const geometry : link->GetGeometries()) {
         MarkerPtr new_marker = CreateGeometry(geometry);
         if (new_marker) {
             visual_control_->markers.push_back(*new_marker);
@@ -182,7 +194,11 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
 
     // If a render filename is specified, then we should ignore the rest of the
     // geometry. This is true regardless of the mesh type.
-    std::string const render_mesh_path = geometry->GetRenderFilename();
+    std::string render_mesh_path = geometry->GetRenderFilename();
+    if (boost::algorithm::starts_with(render_mesh_path, "__norenderif__")) {
+        render_mesh_path = "";
+    }
+
     if (!render_mesh_path.empty()) {
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
@@ -237,10 +253,11 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
 
 ManipulatorPtr LinkMarker::InferManipulator()
 {
+    LinkPtr link = link_.lock();
     std::vector<ManipulatorPtr> manipulators;
 
     // TODO: What if this link is part of multiple manipulators?
-    KinBodyPtr const kinbody = link_->GetParent();
+    KinBodyPtr const kinbody = link->GetParent();
     RobotBasePtr const robot = boost::dynamic_pointer_cast<RobotBase>(kinbody);
     if (!robot) {
         return ManipulatorPtr();
@@ -252,7 +269,7 @@ ManipulatorPtr LinkMarker::InferManipulator()
         // Check if this link is a child of the manipulator (i.e. gripper).
         std::vector<LinkPtr> child_links;
         manipulator->GetChildLinks(child_links);
-        auto const it = std::find(child_links.begin(), child_links.end(), link_);
+        auto const it = std::find(child_links.begin(), child_links.end(), link);
         if (it != child_links.end()) {
             manipulators.push_back(manipulator);
             continue;
@@ -267,7 +284,7 @@ ManipulatorPtr LinkMarker::InferManipulator()
         );
 
         while (curr_link != base_link) {
-            if (curr_link == link_) {
+            if (curr_link == link) {
                 manipulators.push_back(manipulator);
                 break;
             }
@@ -293,7 +310,7 @@ ManipulatorPtr LinkMarker::InferManipulator()
         RAVELOG_WARN("Link '%s' is a member of %d manipulators [%s ]"
                      " [ %s ]. It will only be associated with manipulator %s"
                      " in the viewer.\n",
-            link_->GetName().c_str(),
+            link->GetName().c_str(),
             manipulators.size(),
             manipulator_names.str().c_str(),
             manipulators.front()->GetName().c_str()
