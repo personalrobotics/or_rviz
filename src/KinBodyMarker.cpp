@@ -155,6 +155,13 @@ void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
         BoolToCheckState(link->IsVisible()));
     menu_handler.setCheckState(*link_wrapper.menu_joints,
         BoolToCheckState(has_joint_controls_));
+
+    // Check whether the ghost manipulator is active.
+    if (link_wrapper.menu_manipulator_ik) {
+        bool const has_ghost = HasGhostManipulator(link_wrapper.parent_manipulator);
+        menu_handler.setCheckState(*link_wrapper.menu_manipulator_ik,
+            BoolToCheckState(has_ghost));
+    }
 }
 
 void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
@@ -195,14 +202,14 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         ManipulatorPtr const manipulator = link_wrapper.parent_manipulator;
         BOOST_ASSERT(manipulator);
 
-        // TODO: Implement toggle functionality.
-        bool const ik_enabled = true;
-
+        bool const ik_enabled = !HasGhostManipulator(manipulator);
         if (ik_enabled) {
             ManipulatorMarkerPtr &manipulator_marker = manipulator_markers_[manipulator.get()];
             if (!manipulator_marker) {
                 manipulator_marker = boost::make_shared<ManipulatorMarker>(server_, manipulator);
             }
+        } else {
+            manipulator_markers_.erase(manipulator.get());
         }
 
         RAVELOG_DEBUG("Toggled IK control to %d for '%s' manipulator '%s'.\n",
@@ -212,6 +219,12 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
     }
 
     UpdateMenu();
+}
+
+bool KinBodyMarker::HasGhostManipulator(ManipulatorPtr const manipulator) const
+{
+    auto const it = manipulator_markers_.find(manipulator.get());
+    return it != manipulator_markers_.end();
 }
 
 void KinBodyMarker::GetManipulators(

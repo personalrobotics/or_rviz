@@ -49,6 +49,8 @@ private:
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> joint_markers_;
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
 
+    bool HasGhostManipulator(OpenRAVE::RobotBase::ManipulatorPtr const manipulator) const;
+
     void CreateMenu(LinkMarkerWrapper &link_wrapper);
     void UpdateMenu();
     void UpdateMenu(LinkMarkerWrapper &link_wrapper);
