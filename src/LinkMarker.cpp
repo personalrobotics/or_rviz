@@ -226,8 +226,8 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
         link->Enable(is_enabled);
 
         RAVELOG_DEBUG("Toggled enable to %d for '%s' link '%s'.\n",
-            is_enabled, link->GetName().c_str(),
-            link->GetParent()->GetName().c_str()
+            is_enabled, link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
         );
     }
     // Toggle visiblity.
@@ -239,16 +239,22 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
         link->SetVisible(is_visible);
 
         RAVELOG_DEBUG("Toggled visible to %d for '%s' link '%s'.\n",
-            is_visible, link->GetName().c_str(),
-            link->GetParent()->GetName().c_str()
+            is_visible, link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
         );
     }
     // Geometry rendering mode.
     else if (feedback->menu_entry_id == menu_geom_visual_) {
         SetRenderMode(RenderMode::kVisual);
+        RAVELOG_DEBUG("Switched to 'visual' render mode for '%s' link '%s'.\n",
+            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        );
     }
     else if (feedback->menu_entry_id == menu_geom_collision_) {
         SetRenderMode(RenderMode::kCollision);
+        RAVELOG_DEBUG("Switched to 'collision' render mode for '%s' link '%s'.\n",
+            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        );
     }
 
     // TODO: Should we applyChanges here?

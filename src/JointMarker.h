@@ -13,6 +13,7 @@ class JointMarker {
 public:
     JointMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                 OpenRAVE::KinBody::JointPtr joint);
+    virtual ~JointMarker();
 
     std::string id() const;
 

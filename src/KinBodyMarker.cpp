@@ -103,8 +103,9 @@ void KinBodyMarker::EnvironmentSync()
             }
             joint_marker->EnvironmentSync();
         }
+    } else {
+        joint_markers_.clear();
     }
-    // TODO: Remove joint controls when they're disabled.
 
 #if 0
     // Also update manipulators if we're a robot.

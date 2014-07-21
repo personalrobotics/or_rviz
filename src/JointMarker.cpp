@@ -61,12 +61,15 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
 
     server_->insert(marker_);
 
-    RAVELOG_INFO("Created joint control %s\n", id().c_str());
-
 #if 0
     server_->setCallback(ik_marker_.name,
         boost::bind(&ManipulatorMarker::IkFeedback, this, _1));
 #endif
+}
+
+JointMarker::~JointMarker()
+{
+    server_->erase(marker_.name);
 }
 
 std::string JointMarker::id() const
