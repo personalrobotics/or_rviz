@@ -17,6 +17,10 @@ public:
     std::string id() const;
     OpenRAVE::KinBody::JointPtr joint() const;
     OpenRAVE::Transform joint_pose() const;
+
+    double delta() const;
+    void reset_delta();
+    
     void set_joint_pose(OpenRAVE::Transform const &pose);
 
     virtual bool EnvironmentSync();
@@ -31,6 +35,7 @@ protected:
 private:
     OpenRAVE::KinBody::JointWeakPtr joint_;
     OpenRAVE::Transform joint_pose_;
+    double joint_delta_;
     bool created_;
 
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);

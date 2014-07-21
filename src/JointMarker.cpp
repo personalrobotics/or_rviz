@@ -25,6 +25,7 @@ namespace or_interactivemarker {
 JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     : server_(server)
     , joint_(joint)
+    , joint_delta_(0.0)
     , created_(false)
 {
     BOOST_ASSERT(joint);
@@ -89,6 +90,16 @@ OpenRAVE::Transform JointMarker::joint_pose() const
     return GetJointPose(joint());
 }
 
+double JointMarker::delta() const
+{
+    return joint_delta_;
+}
+
+void JointMarker::reset_delta()
+{
+    joint_delta_ = 0.0;
+}
+
 bool JointMarker::EnvironmentSync()
 {
     if (created_) {
@@ -106,25 +117,23 @@ void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedbac
         // TODO: Why is this a rotation about the z-axis? It should be the y-axis.
         OpenRAVE::Transform const pose = joint_pose().inverse() * toORPose(feedback->pose);
         OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
-        double const delta_value = axis_angle[2];
+        joint_delta_ -= axis_angle[2];
 
-        // Get the current joint value.
+        // Update the KinBody in the OpenRAVE environment.
         JointPtr const joint = this->joint();
         KinBodyPtr const kinbody = joint->GetParent();
         std::vector<int> dof_indices;
         std::vector<OpenRAVE::dReal> dof_values;
         dof_indices.push_back(joint->GetJointIndex());
         kinbody->GetDOFValues(dof_values, dof_indices);
-
-        // Update the joint value.
-        // TODO: Why is the sign flipped?
         BOOST_ASSERT(joint->GetDOF() == 1);
         BOOST_ASSERT(dof_values.size() == 1);
-        dof_values.front() -= delta_value;
+
+        dof_values[0] += delta();
         kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
+        reset_delta();
     }
 }
-
 
 OpenRAVE::Transform JointMarker::GetJointPose(JointPtr joint)
 {
