@@ -6,7 +6,7 @@
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
 #include "KinBodyLinkMarker.h"
-#include "JointMarker.h"
+#include "KinBodyJointMarker.h"
 #include "ManipulatorMarker.h"
 
 namespace or_interactivemarker {
@@ -46,7 +46,7 @@ private:
     bool has_joint_controls_;
 
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
-    boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> joint_markers_;
+    boost::unordered_map<OpenRAVE::KinBody::Joint *, KinBodyJointMarkerPtr> joint_markers_;
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
 
     bool HasGhostManipulator(OpenRAVE::RobotBase::ManipulatorPtr const manipulator) const;

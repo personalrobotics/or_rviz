@@ -107,10 +107,8 @@ void JointMarker::reset_delta()
 
 bool JointMarker::EnvironmentSync()
 {
-    set_pose(GetJointPose(joint()));
-
+    // Update the pose of the marker.
     if (created_) {
-        // Update the pose of the marker.
         server_->setPose(marker_.name, toROSPose(pose()));
     }
     created_ = true;
@@ -125,20 +123,6 @@ void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedbac
         OpenRAVE::Transform const pose = this->pose().inverse() * toORPose(feedback->pose);
         OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
         joint_delta_ -= axis_angle[2];
-
-        // Update the KinBody in the OpenRAVE environment.
-        JointPtr const joint = this->joint();
-        KinBodyPtr const kinbody = joint->GetParent();
-        std::vector<int> dof_indices;
-        std::vector<OpenRAVE::dReal> dof_values;
-        dof_indices.push_back(joint->GetJointIndex());
-        kinbody->GetDOFValues(dof_values, dof_indices);
-        BOOST_ASSERT(joint->GetDOF() == 1);
-        BOOST_ASSERT(dof_values.size() == 1);
-
-        dof_values[0] += delta();
-        kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
-        reset_delta();
     }
 }
 

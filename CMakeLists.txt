@@ -21,6 +21,7 @@ rosbuild_add_library("${PROJECT_NAME}"
     src/or_conversions.cpp
     src/KinBodyMarker.cpp
     src/KinBodyLinkMarker.cpp
+    src/KinBodyJointMarker.cpp
     src/LinkMarker.cpp
     src/JointMarker.cpp
     src/ManipulatorMarker.cpp

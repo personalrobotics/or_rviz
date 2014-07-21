@@ -79,9 +79,9 @@ void KinBodyMarker::EnvironmentSync()
     // Update joints.
     if (has_joint_controls_) {
         for (JointPtr joint : kinbody->GetJoints()) {
-            JointMarkerPtr &joint_marker = joint_markers_[joint.get()];
+            KinBodyJointMarkerPtr &joint_marker = joint_markers_[joint.get()];
             if (!joint_marker) {
-                joint_marker = boost::make_shared<JointMarker>(server_, joint);
+                joint_marker = boost::make_shared<KinBodyJointMarker>(server_, joint);
             }
             joint_marker->EnvironmentSync();
         }
