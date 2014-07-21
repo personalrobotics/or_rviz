@@ -124,10 +124,14 @@ void LinkMarker::EnvironmentSync()
         // TODO  Check if color changed.
         // TODO: Check if the transform changed.
         // TODO: Check if the geometry changed.
+
+        if (is_changed) {
+            break;
+        }
     }
 
     if (is_changed) {
-        RAVELOG_DEBUG("Updating geometry for %s\n", id().c_str());
+        menu_changed_ = true;
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
@@ -152,10 +156,19 @@ void LinkMarker::CreateGeometry()
     LinkPtr link = link_.lock();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
+        if (!geometry->IsVisible()) {
+            continue;
+        }
+
         MarkerPtr new_marker = CreateGeometry(geometry);
         if (new_marker) {
             visual_control_->markers.push_back(*new_marker);
             geometry_markers_[geometry.get()] = &visual_control_->markers.back();
+        }
+        // This geometry is empty. Insert a dummy marker to simplify the
+        // change-detection logic.
+        else {
+            geometry_markers_[geometry.get()] = NULL;
         }
     }
 }
@@ -194,18 +207,28 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
     LinkPtr link = link_.lock();
 
     // Toggle collision detection.
+    // TODO: Something is wrong with this logic.
     {
         MenuHandler::CheckState enabled_state;
         menu_handler_.getCheckState(menu_enabled_, enabled_state);
-        bool const is_enabled = CheckStateToBool(enabled_state);
+
+        bool is_enabled = CheckStateToBool(enabled_state);
+        if (feedback->menu_entry_id == menu_enabled_) {
+            is_enabled = !is_enabled;
+        }
         link->Enable(is_enabled);
     }
 
     // Toggle visiblity.
+    // TODO: Something is wrong with this logic.
     {
         MenuHandler::CheckState visible_state;
         menu_handler_.getCheckState(menu_visible_, visible_state);
-        bool const is_visible = !CheckStateToBool(visible_state);
+
+        bool is_visible = !CheckStateToBool(visible_state);
+        if (feedback->menu_entry_id == menu_visible_) {
+            is_visible = !is_visible;
+        }
         link->SetVisible(is_visible);
     }
 
@@ -224,10 +247,9 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
         }
     }
 
-#if 0
+    // TODO: Should we applyChanges here?
     UpdateMenu();
     server_->applyChanges();
-#endif
 }
 
 void LinkMarker::SetRenderMode(RenderMode::Type mode)
@@ -238,10 +260,6 @@ void LinkMarker::SetRenderMode(RenderMode::Type mode)
 
 MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
 {
-    if (!geometry->IsVisible()) {
-        return MarkerPtr();
-    }
-
     MarkerPtr marker = boost::make_shared<Marker>();
     marker->pose = toROSPose(geometry->GetTransform());
 
