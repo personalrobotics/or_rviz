@@ -2,6 +2,7 @@
 #define KINBODYMARKER_H_
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
 #include "LinkMarker.h"
@@ -20,10 +21,10 @@ struct LinkMarkerWrapper {
 
     LinkMarkerPtr link_marker;
     bool has_menu;
-    MenuEntry menu_parent;
-    MenuEntry menu_joints;
-    MenuEntry menu_enabled;
-    MenuEntry menu_visible;
+    boost::optional<MenuEntry> menu_parent;
+    boost::optional<MenuEntry> menu_joints;
+    boost::optional<MenuEntry> menu_enabled;
+    boost::optional<MenuEntry> menu_visible;
 };
 
 class KinBodyMarker : public OpenRAVE::UserData {
