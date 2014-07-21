@@ -115,7 +115,7 @@ std::string ManipulatorMarker::id() const
                % environment_id % robot->GetName() % manipulator_->GetName());
 }
 
-void ManipulatorMarker::EnvironmentSync()
+bool ManipulatorMarker::EnvironmentSync()
 {
     ManipulatorPtr const manipulator = manipulator_;
     RobotBasePtr const robot = manipulator->GetRobot();
@@ -133,13 +133,16 @@ void ManipulatorMarker::EnvironmentSync()
     auto const dof_indices = manipulator->GetArmIndices();
     robot->SetDOFValues(current_ik_, 1, dof_indices);
 
+    bool is_changed = false;
     for (LinkMarkerPtr const &link_marker : link_markers_ | map_values) {
         bool const is_link_changed = link_marker->EnvironmentSync();
         if (!is_link_changed) {
             OpenRAVE::Transform const link_pose = link_marker->link()->GetTransform();
             link_marker->set_pose(link_pose);
         }
+        is_changed = is_changed || is_link_changed;
     }
+    return is_changed;
 }
 
 void ManipulatorMarker::CreateGeometry()

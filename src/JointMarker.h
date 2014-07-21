@@ -16,15 +16,19 @@ public:
     virtual ~JointMarker();
 
     std::string id() const;
+    OpenRAVE::Transform joint_pose() const;
 
-    void EnvironmentSync();
+    bool EnvironmentSync();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBody::JointPtr joint_;
+    bool created_;
 
     visualization_msgs::InteractiveMarker marker_;
     visualization_msgs::InteractiveMarkerControl *joint_control_;
+
+    void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
 
 }

@@ -4,6 +4,7 @@
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include "LinkMarker.h"
+#include "JointMarker.h"
 
 namespace or_interactivemarker {
 
@@ -17,7 +18,7 @@ public:
     virtual ~ManipulatorMarker();
 
     std::string id() const;
-    void EnvironmentSync();
+    bool EnvironmentSync();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
@@ -26,6 +27,7 @@ private:
     visualization_msgs::InteractiveMarker ik_marker_;
     visualization_msgs::InteractiveMarkerControl *ik_control_;
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
+    boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> free_joint_markers_;
 
     bool changed_pose_;
     OpenRAVE::Transform current_pose_;

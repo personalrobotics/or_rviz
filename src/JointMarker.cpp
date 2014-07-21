@@ -11,6 +11,8 @@ using interactive_markers::InteractiveMarkerServer;
 using visualization_msgs::InteractiveMarkerControl;
 using visualization_msgs::InteractiveMarkerFeedback;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
+using OpenRAVE::KinBody;
+using OpenRAVE::KinBodyPtr;
 
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
@@ -23,6 +25,7 @@ namespace or_interactivemarker {
 JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     : server_(server)
     , joint_(joint)
+    , created_(false)
 {
     BOOST_ASSERT(joint);
 
@@ -38,14 +41,10 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
         return;
     }
 
-    OpenRAVE::Transform pose = OpenRAVE::geometry::transformLookat(
-        OpenRAVE::Vector(0, 0, 0), joint->GetAxis(), OpenRAVE::Vector(1, 0, 0));
-    pose.trans = joint->GetAnchor();
-
     marker_.header.frame_id = kWorldFrameId;
     marker_.name = id();
     marker_.description = "";
-    marker_.pose = toROSPose(pose);
+    marker_.pose = toROSPose(joint_pose());
     // TODO: Infer a good scale for the control.
     marker_.scale = 0.25;
 
@@ -61,10 +60,8 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
 
     server_->insert(marker_);
 
-#if 0
-    server_->setCallback(ik_marker_.name,
-        boost::bind(&ManipulatorMarker::IkFeedback, this, _1));
-#endif
+    server_->setCallback(marker_.name,
+        boost::bind(&JointMarker::JointCallback, this, _1));
 }
 
 JointMarker::~JointMarker()
@@ -82,8 +79,47 @@ std::string JointMarker::id() const
                % environment_id % body->GetName() % joint_->GetName());
 }
 
-void JointMarker::EnvironmentSync()
+OpenRAVE::Transform JointMarker::joint_pose() const
 {
+    OpenRAVE::Transform pose = OpenRAVE::geometry::transformLookat(
+        OpenRAVE::Vector(0, 0, 0), joint_->GetAxis(), OpenRAVE::Vector(1, 0, 0));
+    pose.trans = joint_->GetAnchor();
+    return pose;
+}
+
+bool JointMarker::EnvironmentSync()
+{
+    if (created_) {
+        // Update the pose of the marker.
+        server_->setPose(marker_.name, toROSPose(joint_pose()));
+    }
+    created_ = true;
+    return false;
+}
+
+void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
+{
+    if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
+        // Get the pose of the handle relative to the current joint position.
+        // TODO: Why is this a rotation about the z-axis? It should be the y-axis.
+        OpenRAVE::Transform const pose = joint_pose().inverse() * toORPose(feedback->pose);
+        OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
+        double const delta_value = axis_angle[2];
+
+        // Get the current joint value.
+        KinBodyPtr const kinbody = joint_->GetParent();
+        std::vector<int> dof_indices;
+        std::vector<OpenRAVE::dReal> dof_values;
+        dof_indices.push_back(joint_->GetJointIndex());
+        kinbody->GetDOFValues(dof_values, dof_indices);
+
+        // Update the joint value.
+        // TODO: Why is the sign flipped?
+        BOOST_ASSERT(joint_->GetDOF() == 1);
+        BOOST_ASSERT(dof_values.size() == 1);
+        dof_values.front() -= delta_value;
+        kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
+    }
 }
 
 }
