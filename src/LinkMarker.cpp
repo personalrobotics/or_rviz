@@ -34,13 +34,18 @@ typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 // TODO: Don't hardcode this.
 static std::string const kWorldFrameId = "/world";
 
-static MenuHandler::CheckState boolToCheckState(bool flag)
+static MenuHandler::CheckState BoolToCheckState(bool const &flag)
 {
     if (flag) {
         return MenuHandler::CHECKED;
     } else {
         return MenuHandler::UNCHECKED;
     }
+}
+
+static bool CheckStateToBool(MenuHandler::CheckState const &state)
+{
+    return state == MenuHandler::CHECKED;
 }
 
 namespace or_interactivemarker {
@@ -53,7 +58,7 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     , link_(link)
     , is_ghost_(is_ghost)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , menu_changed_(true)
+    , menu_changed_(false)
     , render_mode_(RenderMode::kVisual)
 {
     BOOST_ASSERT(server);
@@ -113,7 +118,7 @@ void LinkMarker::EnvironmentSync()
         // Check if visibility changed.
         auto const it = geometry_markers_.find(geometry.get());
         bool const is_missing = it == geometry_markers_.end();
-        bool const is_visible = link->IsVisible() && geometry->IsVisible();
+        bool const is_visible = geometry->IsVisible();
         is_changed = is_changed || (is_visible == is_missing);
 
         // TODO  Check if color changed.
@@ -158,20 +163,27 @@ void LinkMarker::CreateGeometry()
 void LinkMarker::CreateMenu()
 {
     auto const callback = boost::bind(&LinkMarker::MenuCallback, this, _1);
-    menu_entry_visual_ = menu_handler_.insert("Visual Geometry", callback);
-    menu_entry_collision_ = menu_handler_.insert("Collision Geometry", callback);
 
-    if (manipulator_ && manipulator_->GetIkSolver()) {
-        menu_entry_ik_ = menu_handler_.insert("Inverse Kinematics", callback);
-    }
+    menu_link_ = menu_handler_.insert("Link", callback);
+    menu_enabled_ = menu_handler_.insert(menu_link_, "Enabled", callback);
+    menu_visible_ = menu_handler_.insert(menu_link_, "Visible", callback);
+    menu_geom_visual_ = menu_handler_.insert(menu_link_, "Visual Geometry", callback);
+    menu_geom_collision_ = menu_handler_.insert(menu_link_, "Collision Geometry", callback);
+    menu_changed_ = true;
 }
 
 void LinkMarker::UpdateMenu()
 {
-    menu_handler_.setCheckState(menu_entry_visual_,
-        boolToCheckState(render_mode_ == RenderMode::kVisual));
-    menu_handler_.setCheckState(menu_entry_collision_,
-        boolToCheckState(render_mode_ == RenderMode::kCollision));
+    LinkPtr link = link_.lock();
+
+    menu_handler_.setCheckState(menu_enabled_,
+        BoolToCheckState(link->IsEnabled()));
+    menu_handler_.setCheckState(menu_visible_,
+        BoolToCheckState(link->IsVisible()));
+    menu_handler_.setCheckState(menu_geom_visual_,
+        BoolToCheckState(render_mode_ == RenderMode::kVisual));
+    menu_handler_.setCheckState(menu_geom_collision_,
+        BoolToCheckState(render_mode_ == RenderMode::kCollision));
 
     menu_handler_.apply(*server_, interactive_marker_->name);
     menu_changed_ = false;
@@ -179,20 +191,43 @@ void LinkMarker::UpdateMenu()
 
 void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
 {
-    MenuHandler::CheckState visual_state, collision_state;
-    menu_handler_.getCheckState(menu_entry_visual_, visual_state);
-    menu_handler_.getCheckState(menu_entry_collision_, collision_state);
+    LinkPtr link = link_.lock();
 
-    if (visual_state == MenuHandler::CHECKED) {
-        SetRenderMode(RenderMode::kVisual);
-    } else if (collision_state == MenuHandler::CHECKED) {
-        SetRenderMode(RenderMode::kCollision);
-    } else {
-        SetRenderMode(RenderMode::kNone);
+    // Toggle collision detection.
+    {
+        MenuHandler::CheckState enabled_state;
+        menu_handler_.getCheckState(menu_enabled_, enabled_state);
+        bool const is_enabled = CheckStateToBool(enabled_state);
+        link->Enable(is_enabled);
     }
 
+    // Toggle visiblity.
+    {
+        MenuHandler::CheckState visible_state;
+        menu_handler_.getCheckState(menu_visible_, visible_state);
+        bool const is_visible = !CheckStateToBool(visible_state);
+        link->SetVisible(is_visible);
+    }
+
+    // Which type of geometry to render.
+    {
+        MenuHandler::CheckState visual_state, collision_state;
+        menu_handler_.getCheckState(menu_geom_visual_, visual_state);
+        menu_handler_.getCheckState(menu_geom_collision_, collision_state);
+
+        if (visual_state == MenuHandler::CHECKED) {
+            SetRenderMode(RenderMode::kVisual);
+        } else if (collision_state == MenuHandler::CHECKED) {
+            SetRenderMode(RenderMode::kCollision);
+        } else {
+            SetRenderMode(RenderMode::kNone);
+        }
+    }
+
+#if 0
     UpdateMenu();
     server_->applyChanges();
+#endif
 }
 
 void LinkMarker::SetRenderMode(RenderMode::Type mode)

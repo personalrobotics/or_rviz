@@ -42,9 +42,11 @@ private:
 
     std::vector<visualization_msgs::MenuEntry> menu_entries_;
     interactive_markers::MenuHandler menu_handler_;
-    interactive_markers::MenuHandler::EntryHandle menu_entry_visual_;
-    interactive_markers::MenuHandler::EntryHandle menu_entry_collision_;
-    interactive_markers::MenuHandler::EntryHandle menu_entry_ik_;
+    interactive_markers::MenuHandler::EntryHandle menu_link_;
+    interactive_markers::MenuHandler::EntryHandle menu_visible_;
+    interactive_markers::MenuHandler::EntryHandle menu_enabled_;
+    interactive_markers::MenuHandler::EntryHandle menu_geom_visual_;
+    interactive_markers::MenuHandler::EntryHandle menu_geom_collision_;
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     visualization_msgs::InteractiveMarkerControl *visual_control_;
