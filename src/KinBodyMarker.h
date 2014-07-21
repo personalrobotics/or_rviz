@@ -40,6 +40,7 @@ private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBodyWeakPtr kinbody_;
     OpenRAVE::RobotBaseWeakPtr robot_;
+    bool has_joint_controls_;
 
     OpenRAVE::KinBodyPtr ghost_kinbody_;
     OpenRAVE::RobotBasePtr ghost_robot_;

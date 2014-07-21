@@ -47,6 +47,7 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     : server_(server)
     , kinbody_(kinbody)
     , robot_(boost::dynamic_pointer_cast<RobotBase>(kinbody))
+    , has_joint_controls_(false)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
@@ -93,16 +94,19 @@ void KinBodyMarker::EnvironmentSync()
         link_marker->EnvironmentSync();
     }
 
-#if 0
     // Update joints.
-    for (JointPtr joint : kinbody_->GetJoints()) {
-        JointMarkerPtr &joint_marker = joint_markers_[joint.get()];
-        if (!joint_marker) {
-            joint_marker = boost::make_shared<JointMarker>(server_, joint);
+    if (has_joint_controls_) {
+        for (JointPtr joint : kinbody->GetJoints()) {
+            JointMarkerPtr &joint_marker = joint_markers_[joint.get()];
+            if (!joint_marker) {
+                joint_marker = boost::make_shared<JointMarker>(server_, joint);
+            }
+            joint_marker->EnvironmentSync();
         }
-        joint_marker->EnvironmentSync();
     }
+    // TODO: Remove joint controls when they're disabled.
 
+#if 0
     // Also update manipulators if we're a robot.
     if (robot_ && !ManipulatorMarker::IsGhost(kinbody_)) {
         for (ManipulatorPtr const manipulator : robot_->GetManipulators()) {
@@ -143,6 +147,8 @@ void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
         BoolToCheckState(link->IsEnabled()));
     menu_handler.setCheckState(link_wrapper.menu_visible,
         BoolToCheckState(link->IsVisible()));
+    menu_handler.setCheckState(link_wrapper.menu_joints,
+        BoolToCheckState(has_joint_controls_));
 }
 
 void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
@@ -150,12 +156,18 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
 {
     RAVELOG_INFO("Callback for %s\n", link_wrapper.link_marker->id().c_str());
 
-#if 0
-    if (menus_visible_.count(feedback->menu_entry_id)) {
-    }
-#endif
+    MenuHandler &menu_handler = link_wrapper.link_marker->menu_handler();
 
-    // TODO: Implement this.
+    // Toggle joint controls.
+    if (feedback->menu_entry_id == link_wrapper.menu_joints) {
+        MenuHandler::CheckState joints_state;
+        menu_handler.getCheckState(link_wrapper.menu_joints, joints_state);
+        has_joint_controls_ = !CheckStateToBool(joints_state);
+        RAVELOG_DEBUG("Toggled joint controls to %d for %s\n",
+            has_joint_controls_, kinbody_.lock()->GetName().c_str());
+    }
+
+    //UpdateMenu();
 }
 
 void KinBodyMarker::CreateGhost()

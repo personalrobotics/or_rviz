@@ -26,6 +26,18 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
 {
     BOOST_ASSERT(joint);
 
+    // TODO: Support more types of joints.
+    if (joint->GetType() != OpenRAVE::KinBody::JointRevolute) {
+        return;
+    }
+    
+    // Ignore static and mimic joints since we can't directly control them.
+    if (joint->IsStatic()) {
+        return;
+    } else if (joint->IsMimic()) {
+        return;
+    }
+
     OpenRAVE::Transform pose = OpenRAVE::geometry::transformLookat(
         OpenRAVE::Vector(0, 0, 0), joint->GetAxis(), OpenRAVE::Vector(1, 0, 0));
     pose.trans = joint->GetAnchor();
@@ -43,11 +55,14 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     control.orientation.x = 0;
     control.orientation.y = 1;
     control.orientation.z = 0;
-    control.name = "rotate_x";
+    control.name = "rotate";
     control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
     marker_.controls.push_back(control);
 
     server_->insert(marker_);
+
+    RAVELOG_INFO("Created joint control %s\n", id().c_str());
+
 #if 0
     server_->setCallback(ik_marker_.name,
         boost::bind(&ManipulatorMarker::IkFeedback, this, _1));
