@@ -48,6 +48,7 @@ private:
     interactive_markers::MenuHandler::EntryHandle menu_link_;
     interactive_markers::MenuHandler::EntryHandle menu_visible_;
     interactive_markers::MenuHandler::EntryHandle menu_enabled_;
+    interactive_markers::MenuHandler::EntryHandle menu_geom_;
     interactive_markers::MenuHandler::EntryHandle menu_geom_visual_;
     interactive_markers::MenuHandler::EntryHandle menu_geom_collision_;
 

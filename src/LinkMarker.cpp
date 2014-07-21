@@ -190,8 +190,9 @@ void LinkMarker::CreateMenu()
     menu_link_ = menu_handler_.insert("Link", callback);
     menu_enabled_ = menu_handler_.insert(menu_link_, "Enabled", callback);
     menu_visible_ = menu_handler_.insert(menu_link_, "Visible", callback);
-    menu_geom_visual_ = menu_handler_.insert(menu_link_, "Visual Geometry", callback);
-    menu_geom_collision_ = menu_handler_.insert(menu_link_, "Collision Geometry", callback);
+    menu_geom_ = menu_handler_.insert(menu_link_, "Geometry");
+    menu_geom_visual_ = menu_handler_.insert(menu_geom_, "Visual", callback);
+    menu_geom_collision_ = menu_handler_.insert(menu_geom_, "Collision", callback);
     menu_changed_ = true;
 }
 
@@ -217,44 +218,37 @@ void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
     LinkPtr link = link_.lock();
 
     // Toggle collision detection.
-    // TODO: Something is wrong with this logic.
-    {
+    if (feedback->menu_entry_id == menu_enabled_) {
         MenuHandler::CheckState enabled_state;
         menu_handler_.getCheckState(menu_enabled_, enabled_state);
 
-        bool is_enabled = CheckStateToBool(enabled_state);
-        if (feedback->menu_entry_id == menu_enabled_) {
-            is_enabled = !is_enabled;
-        }
+        bool const is_enabled = !CheckStateToBool(enabled_state);
         link->Enable(is_enabled);
-    }
 
+        RAVELOG_DEBUG("Toggled enable to %d for '%s' link '%s'.\n",
+            is_enabled, link->GetName().c_str(),
+            link->GetParent()->GetName().c_str()
+        );
+    }
     // Toggle visiblity.
-    // TODO: Something is wrong with this logic.
-    {
+    else if (feedback->menu_entry_id == menu_visible_) {
         MenuHandler::CheckState visible_state;
         menu_handler_.getCheckState(menu_visible_, visible_state);
 
-        bool is_visible = !CheckStateToBool(visible_state);
-        if (feedback->menu_entry_id == menu_visible_) {
-            is_visible = !is_visible;
-        }
+        bool const is_visible = !CheckStateToBool(visible_state);
         link->SetVisible(is_visible);
+
+        RAVELOG_DEBUG("Toggled visible to %d for '%s' link '%s'.\n",
+            is_visible, link->GetName().c_str(),
+            link->GetParent()->GetName().c_str()
+        );
     }
-
-    // Which type of geometry to render.
-    {
-        MenuHandler::CheckState visual_state, collision_state;
-        menu_handler_.getCheckState(menu_geom_visual_, visual_state);
-        menu_handler_.getCheckState(menu_geom_collision_, collision_state);
-
-        if (visual_state == MenuHandler::CHECKED) {
-            SetRenderMode(RenderMode::kVisual);
-        } else if (collision_state == MenuHandler::CHECKED) {
-            SetRenderMode(RenderMode::kCollision);
-        } else {
-            SetRenderMode(RenderMode::kNone);
-        }
+    // Geometry rendering mode.
+    else if (feedback->menu_entry_id == menu_geom_visual_) {
+        SetRenderMode(RenderMode::kVisual);
+    }
+    else if (feedback->menu_entry_id == menu_geom_collision_) {
+        SetRenderMode(RenderMode::kCollision);
     }
 
     // TODO: Should we applyChanges here?

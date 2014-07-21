@@ -175,9 +175,8 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         RAVELOG_DEBUG("Toggled enable to %d for '%s'\n",
             is_enabled, kinbody->GetName().c_str());
     }
-
     // Toggle kinbody visibility.
-    if (feedback->menu_entry_id == *link_wrapper.menu_visible) {
+    else if (feedback->menu_entry_id == *link_wrapper.menu_visible) {
         MenuHandler::CheckState visible_state;
         menu_handler.getCheckState(*link_wrapper.menu_visible, visible_state);
         bool const is_visible = !CheckStateToBool(visible_state);
@@ -185,13 +184,12 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         RAVELOG_DEBUG("Toggled visible to %d for '%s'\n",
             is_visible, kinbody->GetName().c_str());
     }
-
     // Toggle joint controls.
-    if (feedback->menu_entry_id == *link_wrapper.menu_joints) {
+    else if (feedback->menu_entry_id == *link_wrapper.menu_joints) {
         MenuHandler::CheckState joints_state;
         menu_handler.getCheckState(*link_wrapper.menu_joints, joints_state);
         has_joint_controls_ = !CheckStateToBool(joints_state);
-        RAVELOG_DEBUG("Toggled joint controls to %d for %s\n",
+        RAVELOG_DEBUG("Toggled joint controls to %d for '%s'\n",
             has_joint_controls_, kinbody->GetName().c_str());
     }
 
