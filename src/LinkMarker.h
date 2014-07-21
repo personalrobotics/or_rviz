@@ -23,8 +23,10 @@ typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
 class LinkMarker {
 public:
+    static OpenRAVE::Vector const kGhostColor;
+
     LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
-               OpenRAVE::KinBody::LinkPtr link);
+               OpenRAVE::KinBody::LinkPtr link, bool is_ghost);
     virtual ~LinkMarker();
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker() const;
@@ -36,6 +38,7 @@ private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBody::LinkWeakPtr link_;
     OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
+    bool is_ghost_;
 
     std::vector<visualization_msgs::MenuEntry> menu_entries_;
     interactive_markers::MenuHandler menu_handler_;

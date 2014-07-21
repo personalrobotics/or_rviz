@@ -16,6 +16,7 @@ class KinBodyMarker : public OpenRAVE::UserData {
 public:
     KinBodyMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                   OpenRAVE::KinBodyPtr kinbody);
+    virtual ~KinBodyMarker();
 
     bool IsGhost() const;
 

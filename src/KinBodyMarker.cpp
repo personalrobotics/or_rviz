@@ -27,8 +27,19 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
 
+#if 0
     if (!IsGhost()) {
         CreateGhost();
+    }
+#endif
+}
+
+KinBodyMarker::~KinBodyMarker()
+{
+    if (ghost_kinbody_) {
+        ghost_kinbody_->GetEnv()->Remove(ghost_kinbody_);
+        ghost_kinbody_.reset();
+        ghost_robot_.reset();
     }
 }
 
@@ -43,13 +54,14 @@ void KinBodyMarker::EnvironmentSync()
     typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
     typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
-    KinBodyPtr kinbody = kinbody_.lock();
+    KinBodyPtr const kinbody = kinbody_.lock();
+    bool const is_ghost = IsGhost();
 
     // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : kinbody->GetLinks()) {
         LinkMarkerPtr &link_marker = link_markers_[link.get()];
         if (!link_marker) {
-            link_marker = boost::make_shared<LinkMarker>(server_, link);
+            link_marker = boost::make_shared<LinkMarker>(server_, link, is_ghost);
         }
         link_marker->EnvironmentSync();
     }

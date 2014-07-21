@@ -12,6 +12,8 @@ body.SetName('robot')
 env.Add(body)
 """
 
+import roslib
+roslib.load_manifest('r2py')
 import r2py
 env, robot = r2py.initialize(sim=True)
 

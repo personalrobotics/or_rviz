@@ -45,12 +45,14 @@ static MenuHandler::CheckState boolToCheckState(bool flag)
 
 namespace or_interactivemarker {
 
+OpenRAVE::Vector const LinkMarker::kGhostColor(0, 1, 0, 0.2);
+
 LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
-                       LinkPtr link)
+                       LinkPtr link, bool is_ghost)
     : server_(server)
     , link_(link)
+    , is_ghost_(is_ghost)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , created_(false)
     , menu_changed_(true)
     , render_mode_(RenderMode::kVisual)
 {
@@ -74,12 +76,9 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
     visual_control_->interaction_mode = InteractiveMarkerControl::BUTTON;
     visual_control_->always_visible = true;
-    CreateGeometry();
 
     // Create the right-click menu.
     CreateMenu();
-
-    server_->insert(*interactive_marker_);
 }
 
 LinkMarker::~LinkMarker()
@@ -106,15 +105,33 @@ std::string LinkMarker::id() const
 void LinkMarker::EnvironmentSync()
 {
     LinkPtr link = link_.lock();
+    bool is_changed = false;
 
-    // TODO: Update other properties (e.g. IsVisible).
-    // TODO: Update the geometry properties.
+    // Check if we need to re-create the marker to propagate changes in the
+    // OpenRAVE environment.
+    for (GeometryPtr const &geometry : link->GetGeometries()) {
+        // Check if visibility changed.
+        auto const it = geometry_markers_.find(geometry.get());
+        bool const is_missing = it == geometry_markers_.end();
+        bool const is_visible = link->IsVisible() && geometry->IsVisible();
+        is_changed = is_changed || (is_visible == is_missing);
 
-    if (created_) {
+        // TODO  Check if color changed.
+        // TODO: Check if the transform changed.
+        // TODO: Check if the geometry changed.
+    }
+
+    if (is_changed) {
+        RAVELOG_DEBUG("Updating geometry for %s\n", id().c_str());
+        CreateGeometry();
+        server_->insert(*interactive_marker_);
+    }
+    // Incrementally update the marker's pose. We can't do this if we just
+    // created the markers because the InteraciveMarkerServer will SEGFAULT.
+    else {
         OpenRAVE::Transform const link_pose = link->GetTransform();
         server_->setPose(interactive_marker_->name, toROSPose(link_pose));
     }
-    created_ = true;
 
     // Update the menu.
     if (menu_changed_) {
@@ -124,6 +141,9 @@ void LinkMarker::EnvironmentSync()
 
 void LinkMarker::CreateGeometry()
 {
+    visual_control_->markers.clear();
+    geometry_markers_.clear();
+
     LinkPtr link = link_.lock();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
@@ -183,13 +203,18 @@ void LinkMarker::SetRenderMode(RenderMode::Type mode)
 
 MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
 {
-    MarkerPtr marker = boost::make_shared<Marker>();
-    marker->pose = toROSPose(geometry->GetTransform());
-    marker->color = toROSColor(geometry->GetDiffuseColor());
-    marker->color.a = 1.0 - geometry->GetTransparency();
-
     if (!geometry->IsVisible()) {
         return MarkerPtr();
+    }
+
+    MarkerPtr marker = boost::make_shared<Marker>();
+    marker->pose = toROSPose(geometry->GetTransform());
+
+    if (is_ghost_) {
+        marker->color = toROSColor(kGhostColor);
+    } else {
+        marker->color = toROSColor(geometry->GetDiffuseColor());
+        marker->color.a = 1.0 - geometry->GetTransparency();
     }
 
     // If a render filename is specified, then we should ignore the rest of the
@@ -203,7 +228,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
         marker->mesh_resource = "file://" + render_mesh_path;
-        //marker->mesh_use_embedded_materials = true;
+        marker->mesh_use_embedded_materials = !is_ghost_;
         return marker;
     }
 
