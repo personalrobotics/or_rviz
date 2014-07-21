@@ -164,6 +164,8 @@ bool ManipulatorMarker::EnvironmentSync()
         std::vector<OpenRAVE::dReal> new_ik;
         OpenRAVE::IkParameterization ik_param;
         ik_param.SetTransform6D(current_pose_);
+
+        std::vector<std::vector<OpenRAVE::dReal> > ik_solutions;
         bool const has_ik = manipulator_->FindIKSolution(ik_param, new_ik, 0);
         if (has_ik) {
             current_ik_ = new_ik;
