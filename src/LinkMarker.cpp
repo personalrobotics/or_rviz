@@ -23,7 +23,6 @@ using visualization_msgs::InteractiveMarker;
 using visualization_msgs::InteractiveMarkerPtr;
 using visualization_msgs::InteractiveMarkerControl;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
-using interactive_markers::MenuHandler;
 using interactive_markers::InteractiveMarkerServer;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
@@ -33,20 +32,6 @@ typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
 // TODO: Don't hardcode this.
 static std::string const kWorldFrameId = "/world";
-
-static MenuHandler::CheckState BoolToCheckState(bool const &flag)
-{
-    if (flag) {
-        return MenuHandler::CHECKED;
-    } else {
-        return MenuHandler::UNCHECKED;
-    }
-}
-
-static bool CheckStateToBool(MenuHandler::CheckState const &state)
-{
-    return state == MenuHandler::CHECKED;
-}
 
 namespace or_interactivemarker {
 
@@ -58,7 +43,6 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     , link_(link)
     , is_ghost_(is_ghost)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , menu_changed_(false)
     , render_mode_(RenderMode::kVisual)
 {
     BOOST_ASSERT(server);
@@ -81,14 +65,16 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
     visual_control_->interaction_mode = InteractiveMarkerControl::BUTTON;
     visual_control_->always_visible = true;
+}
 
-    // Create the right-click menu.
-    CreateMenu();
+LinkMarker::~LinkMarker()
+{
+    server_->erase(interactive_marker_->name);
 }
 
 std::string LinkMarker::id() const
 {
-    LinkPtr link = link_.lock();
+    LinkPtr const link = this->link();
     KinBodyPtr const body = link->GetParent();
     EnvironmentBasePtr const env = body->GetEnv();
     int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
@@ -102,24 +88,14 @@ LinkPtr LinkMarker::link() const
     return link_.lock();
 }
 
-LinkMarker::~LinkMarker()
-{
-    server_->erase(interactive_marker_->name);
-}
-
 InteractiveMarkerPtr LinkMarker::interactive_marker()
 {
     return interactive_marker_;
 }
 
-interactive_markers::MenuHandler &LinkMarker::menu_handler()
-{
-    return menu_handler_;
-}
-
 void LinkMarker::EnvironmentSync()
 {
-    LinkPtr link = link_.lock();
+    LinkPtr const link = this->link();
     bool is_changed = false;
 
     // Check if we need to re-create the marker to propagate changes in the
@@ -141,7 +117,6 @@ void LinkMarker::EnvironmentSync()
     }
 
     if (is_changed) {
-        menu_changed_ = true;
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
@@ -151,11 +126,6 @@ void LinkMarker::EnvironmentSync()
         OpenRAVE::Transform const link_pose = link->GetTransform();
         server_->setPose(interactive_marker_->name, toROSPose(link_pose));
     }
-
-    // Update the menu.
-    if (menu_changed_) {
-        UpdateMenu();
-    }
 }
 
 void LinkMarker::CreateGeometry()
@@ -163,7 +133,7 @@ void LinkMarker::CreateGeometry()
     visual_control_->markers.clear();
     geometry_markers_.clear();
 
-    LinkPtr link = link_.lock();
+    LinkPtr const link = this->link();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
         if (!geometry->IsVisible()) {
@@ -182,89 +152,8 @@ void LinkMarker::CreateGeometry()
         }
     }
 }
-
-void LinkMarker::CreateMenu()
-{
-    auto const callback = boost::bind(&LinkMarker::MenuCallback, this, _1);
-
-    menu_link_ = menu_handler_.insert("Link", callback);
-    menu_enabled_ = menu_handler_.insert(menu_link_, "Enabled", callback);
-    menu_visible_ = menu_handler_.insert(menu_link_, "Visible", callback);
-    menu_geom_ = menu_handler_.insert(menu_link_, "Geometry");
-    menu_geom_visual_ = menu_handler_.insert(menu_geom_, "Visual", callback);
-    menu_geom_collision_ = menu_handler_.insert(menu_geom_, "Collision", callback);
-    menu_changed_ = true;
-}
-
-void LinkMarker::UpdateMenu()
-{
-    LinkPtr link = link_.lock();
-
-    menu_handler_.setCheckState(menu_enabled_,
-        BoolToCheckState(link->IsEnabled()));
-    menu_handler_.setCheckState(menu_visible_,
-        BoolToCheckState(link->IsVisible()));
-    menu_handler_.setCheckState(menu_geom_visual_,
-        BoolToCheckState(render_mode_ == RenderMode::kVisual));
-    menu_handler_.setCheckState(menu_geom_collision_,
-        BoolToCheckState(render_mode_ == RenderMode::kCollision));
-
-    menu_handler_.apply(*server_, interactive_marker_->name);
-    menu_changed_ = false;
-}
-
-void LinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
-{
-    LinkPtr link = link_.lock();
-
-    // Toggle collision detection.
-    if (feedback->menu_entry_id == menu_enabled_) {
-        MenuHandler::CheckState enabled_state;
-        menu_handler_.getCheckState(menu_enabled_, enabled_state);
-
-        bool const is_enabled = !CheckStateToBool(enabled_state);
-        link->Enable(is_enabled);
-
-        RAVELOG_DEBUG("Toggled enable to %d for '%s' link '%s'.\n",
-            is_enabled, link->GetParent()->GetName().c_str(),
-            link->GetName().c_str()
-        );
-    }
-    // Toggle visiblity.
-    else if (feedback->menu_entry_id == menu_visible_) {
-        MenuHandler::CheckState visible_state;
-        menu_handler_.getCheckState(menu_visible_, visible_state);
-
-        bool const is_visible = !CheckStateToBool(visible_state);
-        link->SetVisible(is_visible);
-
-        RAVELOG_DEBUG("Toggled visible to %d for '%s' link '%s'.\n",
-            is_visible, link->GetParent()->GetName().c_str(),
-            link->GetName().c_str()
-        );
-    }
-    // Geometry rendering mode.
-    else if (feedback->menu_entry_id == menu_geom_visual_) {
-        SetRenderMode(RenderMode::kVisual);
-        RAVELOG_DEBUG("Switched to 'visual' render mode for '%s' link '%s'.\n",
-            link->GetParent()->GetName().c_str(), link->GetName().c_str()
-        );
-    }
-    else if (feedback->menu_entry_id == menu_geom_collision_) {
-        SetRenderMode(RenderMode::kCollision);
-        RAVELOG_DEBUG("Switched to 'collision' render mode for '%s' link '%s'.\n",
-            link->GetParent()->GetName().c_str(), link->GetName().c_str()
-        );
-    }
-
-    // TODO: Should we applyChanges here?
-    UpdateMenu();
-    server_->applyChanges();
-}
-
 void LinkMarker::SetRenderMode(RenderMode::Type mode)
 {
-    menu_changed_ = menu_changed_ || (mode != render_mode_);
     render_mode_ = mode;
 }
 
@@ -341,7 +230,7 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
 
 ManipulatorPtr LinkMarker::InferManipulator()
 {
-    LinkPtr link = link_.lock();
+    LinkPtr const link = this->link();
     std::vector<ManipulatorPtr> manipulators;
 
     // TODO: What if this link is part of multiple manipulators?

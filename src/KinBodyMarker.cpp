@@ -85,9 +85,9 @@ void KinBodyMarker::EnvironmentSync()
     // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : kinbody->GetLinks()) {
         LinkMarkerWrapper &wrapper = link_markers_[link.get()];
-        LinkMarkerPtr &link_marker = wrapper.link_marker;
+        KinBodyLinkMarkerPtr &link_marker = wrapper.link_marker;
         if (!link_marker) {
-            link_marker = boost::make_shared<LinkMarker>(server_, link, is_ghost);
+            link_marker = boost::make_shared<KinBodyLinkMarker>(server_, link);
             CreateMenu(wrapper);
             UpdateMenu(wrapper);
         }
@@ -125,18 +125,27 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
     BOOST_ASSERT(!link_wrapper.has_menu);
     auto const cb = boost::bind(&KinBodyMarker::MenuCallback, this,
                                 ref(link_wrapper), _1);
-
     MenuHandler &menu_handler = link_wrapper.link_marker->menu_handler();
-    EntryHandle parent = menu_handler.insert("Body");
-    link_wrapper.menu_parent = Opt(parent);
-    link_wrapper.menu_enabled = Opt(menu_handler.insert(parent, "Enabled", cb));
-    link_wrapper.menu_visible = Opt(menu_handler.insert(parent, "Visible", cb));
-    link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
 
+    // KinBody controls.
+    {
+        EntryHandle parent = menu_handler.insert("Body");
+        link_wrapper.menu_parent = Opt(parent);
+        link_wrapper.menu_enabled = Opt(menu_handler.insert(parent, "Enabled", cb));
+        link_wrapper.menu_visible = Opt(menu_handler.insert(parent, "Visible", cb));
+        link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+    }
+
+    // Manipulator controls. For now, we'll only add these options to links
+    // that unambiguously belong to one manipulator.
     std::vector<ManipulatorPtr> manipulators;
     GetManipulators(link_wrapper.link_marker->link(), &manipulators);
-    for (ManipulatorPtr const &manipulator : manipulators) {
-        menu_handler.insert("Manipulator: " + manipulator->GetName());
+    
+    if (manipulators.size() == 1) {
+        EntryHandle parent = menu_handler.insert("Manipulator");
+        link_wrapper.menu_manipulator = Opt(parent);
+        link_wrapper.menu_manipulator_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+        link_wrapper.menu_manipulator_ik = Opt(menu_handler.insert(parent, "Inverse Kinematics", cb));
     }
 
     link_wrapper.has_menu = true;

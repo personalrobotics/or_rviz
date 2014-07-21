@@ -1,0 +1,127 @@
+#include "KinBodyLinkMarker.h"
+
+using interactive_markers::MenuHandler;
+using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
+
+typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
+
+static MenuHandler::CheckState BoolToCheckState(bool const &flag)
+{
+    if (flag) {
+        return MenuHandler::CHECKED;
+    } else {
+        return MenuHandler::UNCHECKED;
+    }
+}
+
+static bool CheckStateToBool(MenuHandler::CheckState const &state)
+{
+    return state == MenuHandler::CHECKED;
+}
+
+namespace or_interactivemarker {
+
+
+KinBodyLinkMarker::KinBodyLinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+                                     OpenRAVE::KinBody::LinkPtr link)
+    : LinkMarker(server, link, false)
+{
+    CreateMenu();
+}
+
+interactive_markers::MenuHandler &KinBodyLinkMarker::menu_handler()
+{
+    return menu_handler_;
+}
+
+void KinBodyLinkMarker::EnvironmentSync()
+{
+    LinkMarker::EnvironmentSync();
+
+    if (menu_changed_) {
+        UpdateMenu();
+    }
+}
+
+void KinBodyLinkMarker::CreateMenu()
+{
+    auto const callback = boost::bind(&KinBodyLinkMarker::MenuCallback, this, _1);
+
+    menu_link_ = menu_handler_.insert("Link", callback);
+    menu_enabled_ = menu_handler_.insert(menu_link_, "Enabled", callback);
+    menu_visible_ = menu_handler_.insert(menu_link_, "Visible", callback);
+    menu_geom_ = menu_handler_.insert(menu_link_, "Geometry");
+    menu_geom_visual_ = menu_handler_.insert(menu_geom_, "Visual", callback);
+    menu_geom_collision_ = menu_handler_.insert(menu_geom_, "Collision", callback);
+    menu_changed_ = true;
+}
+
+void KinBodyLinkMarker::UpdateMenu()
+{
+    LinkPtr const link = this->link();
+
+    menu_handler_.setCheckState(menu_enabled_,
+        BoolToCheckState(link->IsEnabled()));
+    menu_handler_.setCheckState(menu_visible_,
+        BoolToCheckState(link->IsVisible()));
+    menu_handler_.setCheckState(menu_geom_visual_,
+        BoolToCheckState(render_mode_ == RenderMode::kVisual));
+    menu_handler_.setCheckState(menu_geom_collision_,
+        BoolToCheckState(render_mode_ == RenderMode::kCollision));
+
+    menu_handler_.apply(*server_, interactive_marker_->name);
+    menu_changed_ = false;
+}
+
+void KinBodyLinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
+{
+    LinkPtr const link = this->link();
+
+    // Toggle collision detection.
+    if (feedback->menu_entry_id == menu_enabled_) {
+        MenuHandler::CheckState enabled_state;
+        menu_handler_.getCheckState(menu_enabled_, enabled_state);
+
+        bool const is_enabled = !CheckStateToBool(enabled_state);
+        link->Enable(is_enabled);
+
+        RAVELOG_DEBUG("Toggled enable to %d for '%s' link '%s'.\n",
+            is_enabled, link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
+        );
+    }
+    // Toggle visiblity.
+    else if (feedback->menu_entry_id == menu_visible_) {
+        MenuHandler::CheckState visible_state;
+        menu_handler_.getCheckState(menu_visible_, visible_state);
+
+        bool const is_visible = !CheckStateToBool(visible_state);
+        link->SetVisible(is_visible);
+
+        RAVELOG_DEBUG("Toggled visible to %d for '%s' link '%s'.\n",
+            is_visible, link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
+        );
+    }
+    // Geometry rendering mode.
+    else if (feedback->menu_entry_id == menu_geom_visual_) {
+        SetRenderMode(RenderMode::kVisual);
+        RAVELOG_DEBUG("Switched to 'visual' render mode for '%s' link '%s'.\n",
+            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        );
+    }
+    else if (feedback->menu_entry_id == menu_geom_collision_) {
+        SetRenderMode(RenderMode::kCollision);
+        RAVELOG_DEBUG("Switched to 'collision' render mode for '%s' link '%s'.\n",
+            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        );
+    }
+
+    // TODO: Should we applyChanges here?
+    UpdateMenu();
+    server_->applyChanges();
+}
+
+
+}
+

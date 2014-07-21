@@ -20,9 +20,10 @@ rosbuild_add_library("${PROJECT_NAME}"
     src/or_interactivemarker.cpp
     src/or_conversions.cpp
     src/KinBodyMarker.cpp
-    src/ManipulatorMarker.cpp
+    src/KinBodyLinkMarker.cpp
     src/LinkMarker.cpp
     src/JointMarker.cpp
+    src/ManipulatorMarker.cpp
 )
 rosbuild_add_library("${PROJECT_NAME}_plugin" SHARED
     src/or_interactivemarker_plugin.cpp

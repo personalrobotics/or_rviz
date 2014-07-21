@@ -5,7 +5,7 @@
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <openrave/openrave.h>
-#include "LinkMarker.h"
+#include "KinBodyLinkMarker.h"
 #include "JointMarker.h"
 #include "ManipulatorMarker.h"
 
@@ -19,12 +19,15 @@ struct LinkMarkerWrapper {
 
     LinkMarkerWrapper() : has_menu(false) { }
 
-    LinkMarkerPtr link_marker;
+    KinBodyLinkMarkerPtr link_marker;
     bool has_menu;
     boost::optional<MenuEntry> menu_parent;
     boost::optional<MenuEntry> menu_joints;
     boost::optional<MenuEntry> menu_enabled;
     boost::optional<MenuEntry> menu_visible;
+    boost::optional<MenuEntry> menu_manipulator;
+    boost::optional<MenuEntry> menu_manipulator_joints;
+    boost::optional<MenuEntry> menu_manipulator_ik;
 };
 
 class KinBodyMarker : public OpenRAVE::UserData {
