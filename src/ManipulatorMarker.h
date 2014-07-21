@@ -32,9 +32,11 @@ private:
     bool changed_pose_;
     OpenRAVE::Transform current_pose_;
     std::vector<OpenRAVE::dReal> current_ik_;
+    std::vector<OpenRAVE::dReal> current_free_;
 
     void CreateGeometry();
     void IkFeedback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+    void InferFreeJoints(std::vector<OpenRAVE::KinBody::JointPtr> *free_joints) const;
 };
 
 }

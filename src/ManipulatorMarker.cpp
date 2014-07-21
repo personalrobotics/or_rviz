@@ -15,6 +15,7 @@ using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using OpenRAVE::EnvironmentBasePtr;
 using OpenRAVE::RobotBasePtr;
 using OpenRAVE::KinBody;
+using OpenRAVE::IkSolverBasePtr;
 
 typedef OpenRAVE::RobotBase::RobotStateSaver RobotStateSaver;
 
@@ -119,13 +120,54 @@ bool ManipulatorMarker::EnvironmentSync()
 {
     ManipulatorPtr const manipulator = manipulator_;
     RobotBasePtr const robot = manipulator->GetRobot();
-    RobotStateSaver saver(robot, KinBody::Save_LinkTransformation);
+    IkSolverBasePtr const ik_solver = manipulator->GetIkSolver();
+    RobotStateSaver const saver(robot, KinBody::Save_LinkTransformation);
 
-    // Update our IK solution.
-    if (changed_pose_ && manipulator_->GetIkSolver()) {
+    // Figure out what the free joints are.
+    size_t const num_free = ik_solver->GetNumFreeParameters();
+    std::vector<JointPtr> free_joints;
+    InferFreeJoints(&free_joints);
+    BOOST_ASSERT(free_joints.size() == num_free);
+
+    std::vector<int> free_dof_indices;
+    for (JointPtr const &free_joint : free_joints) {
+        free_dof_indices.push_back(free_joint->GetJointIndex());
+    }
+
+    if (ik_solver) {
+        RobotStateSaver const free_saver(robot, KinBody::Save_LinkTransformation);
+
+        // Default to the current configuration of the robot.
+        if (current_free_.size() != num_free) {
+            robot->GetDOFValues(current_free_, free_dof_indices);
+        }
+
+        // Extract free parameters from the joint controls.
+        for (size_t ifree = 0; ifree < num_free; ++ifree) {
+            JointPtr const &joint = free_joints[ifree];
+
+            auto const it = free_joint_markers_.find(joint.get());
+            if (it == free_joint_markers_.end()) {
+                continue;
+            }
+
+            JointMarkerPtr &joint_marker = it->second;
+            current_free_[ifree] += joint_marker->delta();
+            joint_marker->reset_delta();
+        }
+
+        // Set and clamp these joint values to be within limits.
+        robot->SetDOFValues(current_free_, KinBody::CLA_CheckLimitsSilent, free_dof_indices);
+        robot->GetDOFValues(current_free_, free_dof_indices);
+        
+        // Update our IK solution.
+        std::vector<OpenRAVE::dReal> new_ik;
         OpenRAVE::IkParameterization ik_param;
         ik_param.SetTransform6D(current_pose_);
-        manipulator_->FindIKSolution(ik_param, current_ik_, 0);
+        bool const has_ik = manipulator_->FindIKSolution(ik_param, new_ik, 0);
+        if (has_ik) {
+            current_ik_ = new_ik;
+        }
     }
     changed_pose_ = false;
 
@@ -141,6 +183,27 @@ bool ManipulatorMarker::EnvironmentSync()
             link_marker->set_pose(link_pose);
         }
         is_changed = is_changed || is_link_changed;
+    }
+
+    if (ik_solver) {
+        for (JointPtr const &joint : free_joints) {
+            if (!joint) {
+                continue;
+            }
+
+            // Lazily create the marker if it is missing.
+            JointMarkerPtr &joint_marker = free_joint_markers_[joint.get()];
+            if (!joint_marker) {
+                joint_marker = boost::make_shared<JointMarker>(server_, joint);
+            }
+
+            // Update the pose of the control to match the ghost arm.
+            OpenRAVE::Transform const joint_pose = JointMarker::GetJointPose(joint);
+            joint_marker->set_pose(joint_pose);
+
+            bool const is_joint_changed = joint_marker->EnvironmentSync();
+            is_changed = is_changed || is_joint_changed;
+        }
     }
     return is_changed;
 }
@@ -180,6 +243,59 @@ void ManipulatorMarker::IkFeedback(InteractiveMarkerFeedbackConstPtr const &feed
     if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
         current_pose_ = toORPose(feedback->pose);
         changed_pose_ = true;
+    }
+}
+
+void ManipulatorMarker::InferFreeJoints(std::vector<JointPtr> *free_joints) const
+{
+    static OpenRAVE::dReal const kEpsilon = 1e-3;
+
+    ManipulatorPtr const manipulator = manipulator_;
+    RobotBasePtr const robot = manipulator->GetRobot();
+    IkSolverBasePtr const ik_solver = manipulator->GetIkSolver();
+
+    std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
+    robot->GetDOFLimits(lower_limits, upper_limits);
+
+    // We'll only accept a joint if it changes the value by at least kEpsilon.
+    size_t const num_free = ik_solver->GetNumFreeParameters();
+    std::vector<OpenRAVE::dReal> best_ratio(num_free, kEpsilon);
+    std::vector<JointPtr> &best_joints = *free_joints;
+    best_joints.assign(num_free, JointPtr());
+
+    // Calculate the sensitivity of the free parameters to each joint.
+    std::vector<int> const &arm_indices = manipulator->GetArmIndices();
+    std::vector<OpenRAVE::dReal> free_motion;
+    for (int const dof_index : arm_indices) {
+        RobotStateSaver const saver(robot, KinBody::Save_LinkTransformation);
+        std::vector<OpenRAVE::dReal> dof_values;
+        robot->GetDOFValues(dof_values);
+
+        // Move the joint to its limits.
+        std::vector<OpenRAVE::dReal> lower_free;
+        dof_values[dof_index] = lower_limits[dof_index];
+        robot->SetDOFValues(dof_values);
+        ik_solver->GetFreeParameters(lower_free);
+        BOOST_ASSERT(lower_free.size() == num_free);
+
+        std::vector<OpenRAVE::dReal> upper_free;
+        dof_values[dof_index] = upper_limits[dof_index];
+        robot->SetDOFValues(dof_values);
+        ik_solver->GetFreeParameters(upper_free);
+        BOOST_ASSERT(upper_free.size() == num_free);
+
+        // Calculate the relative change in free parameters.
+        for (size_t ifree = 0; ifree < num_free; ++ifree) {
+            double const delta_param = upper_free[ifree] - lower_free[ifree];
+            double const delta_value = upper_limits[ifree] - lower_limits[ifree];
+            BOOST_ASSERT(delta_value > 0);
+            double const ratio = std::fabs(delta_param / delta_value);
+
+            if (ratio > best_ratio[ifree]) {
+                best_ratio[ifree] = ratio;
+                best_joints[ifree] = robot->GetJointFromDOFIndex(dof_index);
+            }
+        }
     }
 }
 
