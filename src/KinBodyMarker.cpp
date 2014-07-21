@@ -226,22 +226,24 @@ void KinBodyMarker::GetManipulators(
                 base_link->GetIndex(), tip_link->GetIndex(), chain_links);
         BOOST_ASSERT(success);
 
-        auto const it = std::find(chain_links.begin(), chain_links.end(), link);
-        if (it != chain_links.end()) {
+        auto const chain_it = std::find(chain_links.begin(), chain_links.end(), link);
+        if (chain_it != chain_links.end()) {
             manipulators->push_back(manipulator);
             continue;
         }
 
-#if 0
-        // Check if this link is a child (i.e. part of the end-effector)..
-        if (manipulator->IsChildLink(link)) {
+        // Check if this link is a child (i.e. part of the end-effector).
+        // TODO: This is necessary because IsChildLink is broken.
+        std::vector<LinkPtr> child_links;
+        manipulator->GetChildLinks(child_links);
+
+        auto const child_it = std::find(child_links.begin(), child_links.end(), link);
+        if (child_it != child_links.end()) {
             manipulators->push_back(manipulator);
             continue;
         }
-#endif
     }
 }
-
 
 void KinBodyMarker::CreateGhost()
 {
