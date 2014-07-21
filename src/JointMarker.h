@@ -16,7 +16,9 @@ public:
 
     std::string id() const;
     OpenRAVE::KinBody::JointPtr joint() const;
-    OpenRAVE::Transform joint_pose() const;
+
+    OpenRAVE::Transform pose() const;
+    void set_pose(OpenRAVE::Transform const &pose);
 
     double delta() const;
     void reset_delta();

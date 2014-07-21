@@ -45,7 +45,7 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     marker_.header.frame_id = kWorldFrameId;
     marker_.name = id();
     marker_.description = "";
-    marker_.pose = toROSPose(joint_pose());
+    marker_.pose = toROSPose(pose());
     // TODO: Infer a good scale for the control.
     marker_.scale = 0.25;
 
@@ -85,9 +85,14 @@ JointPtr JointMarker::joint() const
     return joint_.lock();
 }
 
-OpenRAVE::Transform JointMarker::joint_pose() const
+OpenRAVE::Transform JointMarker::pose() const
 {
-    return GetJointPose(joint());
+    return joint_pose_;
+}
+
+void JointMarker::set_pose(OpenRAVE::Transform const &pose)
+{
+    joint_pose_ = pose;
 }
 
 double JointMarker::delta() const
@@ -102,9 +107,11 @@ void JointMarker::reset_delta()
 
 bool JointMarker::EnvironmentSync()
 {
+    set_pose(GetJointPose(joint()));
+
     if (created_) {
         // Update the pose of the marker.
-        server_->setPose(marker_.name, toROSPose(joint_pose()));
+        server_->setPose(marker_.name, toROSPose(pose()));
     }
     created_ = true;
     return false;
@@ -115,7 +122,7 @@ void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedbac
     if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
         // Get the pose of the handle relative to the current joint position.
         // TODO: Why is this a rotation about the z-axis? It should be the y-axis.
-        OpenRAVE::Transform const pose = joint_pose().inverse() * toORPose(feedback->pose);
+        OpenRAVE::Transform const pose = this->pose().inverse() * toORPose(feedback->pose);
         OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
         joint_delta_ -= axis_angle[2];
 
