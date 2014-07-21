@@ -86,16 +86,6 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     CreateMenu();
 }
 
-LinkMarker::~LinkMarker()
-{
-    server_->erase(interactive_marker_->name);
-}
-
-InteractiveMarkerPtr LinkMarker::interactive_marker() const
-{
-    return interactive_marker_;
-}
-
 std::string LinkMarker::id() const
 {
     LinkPtr link = link_.lock();
@@ -105,6 +95,26 @@ std::string LinkMarker::id() const
 
     return str(format("Environment[%d].KinBody[%s].Link[%s]")
                % environment_id % body->GetName() % link->GetName());
+}
+
+LinkPtr LinkMarker::link() const
+{
+    return link_.lock();
+}
+
+LinkMarker::~LinkMarker()
+{
+    server_->erase(interactive_marker_->name);
+}
+
+InteractiveMarkerPtr LinkMarker::interactive_marker()
+{
+    return interactive_marker_;
+}
+
+interactive_markers::MenuHandler &LinkMarker::menu_handler()
+{
+    return menu_handler_;
 }
 
 void LinkMarker::EnvironmentSync()

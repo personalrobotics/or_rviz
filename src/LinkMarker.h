@@ -29,10 +29,13 @@ public:
                OpenRAVE::KinBody::LinkPtr link, bool is_ghost);
     virtual ~LinkMarker();
 
-    visualization_msgs::InteractiveMarkerPtr interactive_marker() const;
     std::string id() const;
+    OpenRAVE::KinBody::LinkPtr link() const;
+    interactive_markers::MenuHandler &menu_handler();
+    visualization_msgs::InteractiveMarkerPtr interactive_marker();
 
     void EnvironmentSync();
+    void UpdateMenu();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
@@ -61,7 +64,6 @@ private:
     void CreateGeometry();
 
     void CreateMenu();
-    void UpdateMenu();
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 
     void SetRenderMode(RenderMode::Type mode);
