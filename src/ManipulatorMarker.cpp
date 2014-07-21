@@ -99,6 +99,8 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
     server_->insert(ik_marker_);
     server_->setCallback(ik_marker_.name,
         boost::bind(&ManipulatorMarker::IkFeedback, this, _1));
+
+    CreateMenu();
 }
 
 ManipulatorMarker::~ManipulatorMarker()
@@ -143,15 +145,19 @@ bool ManipulatorMarker::EnvironmentSync()
         }
 
         // Extract free parameters from the joint controls.
+        bool changed_free = false;
         for (size_t ifree = 0; ifree < num_free; ++ifree) {
             JointPtr const &joint = free_joints[ifree];
-
             auto const it = free_joint_markers_.find(joint.get());
             if (it == free_joint_markers_.end()) {
                 continue;
             }
 
+            // Invalidate the IK solution if we change the free joint.
             JointMarkerPtr &joint_marker = it->second;
+            if (joint_marker->delta() != 0) {
+                changed_free = true;
+            }
             current_free_[ifree] += joint_marker->delta();
             joint_marker->reset_delta();
         }
@@ -161,14 +167,16 @@ bool ManipulatorMarker::EnvironmentSync()
         robot->GetDOFValues(current_free_, free_dof_indices);
         
         // Update our IK solution.
-        std::vector<OpenRAVE::dReal> new_ik;
-        OpenRAVE::IkParameterization ik_param;
-        ik_param.SetTransform6D(current_pose_);
+        if (changed_pose_ || changed_free) {
+            std::vector<OpenRAVE::dReal> new_ik;
+            OpenRAVE::IkParameterization ik_param;
+            ik_param.SetTransform6D(current_pose_);
 
-        std::vector<std::vector<OpenRAVE::dReal> > ik_solutions;
-        bool const has_ik = manipulator_->FindIKSolution(ik_param, new_ik, 0);
-        if (has_ik) {
-            current_ik_ = new_ik;
+            std::vector<std::vector<OpenRAVE::dReal> > ik_solutions;
+            bool const has_ik = manipulator_->FindIKSolution(ik_param, new_ik, 0);
+            if (has_ik) {
+                current_ik_ = new_ik;
+            }
         }
     }
     changed_pose_ = false;
@@ -183,6 +191,8 @@ bool ManipulatorMarker::EnvironmentSync()
         if (!is_link_changed) {
             OpenRAVE::Transform const link_pose = link_marker->link()->GetTransform();
             link_marker->set_pose(link_pose);
+        } else {
+            UpdateMenu(link_marker);
         }
         is_changed = is_changed || is_link_changed;
     }
@@ -237,6 +247,47 @@ void ManipulatorMarker::CreateGeometry()
     // Render each link using a LinkMarker.
     for (LinkPtr const &link : links) {
         link_markers_[link.get()] = boost::make_shared<LinkMarker>(server_, link, true);
+    }
+}
+
+void ManipulatorMarker::CreateMenu()
+{
+    auto const cb = boost::bind(&ManipulatorMarker::MenuCallback, this, _1);
+
+    menu_set_ = menu_handler_.insert("Set DOF Values", cb);
+    menu_reset_ = menu_handler_.insert("Restore DOF Values", cb);
+}
+
+void ManipulatorMarker::UpdateMenu()
+{
+    for (LinkMarkerPtr const &link_marker : link_markers_ | map_values) {
+        UpdateMenu(link_marker);
+    }
+}
+
+void ManipulatorMarker::UpdateMenu(LinkMarkerPtr link_marker)
+{
+    menu_handler_.apply(*server_, link_marker->interactive_marker()->name);
+}
+
+void ManipulatorMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
+{
+    ManipulatorPtr const manipulator = manipulator_;
+    RobotBasePtr const robot = manipulator->GetRobot();
+    std::vector<int> const &arm_indices = manipulator->GetArmIndices();
+
+    if (feedback->menu_entry_id == menu_set_) {
+        robot->SetDOFValues(current_ik_, KinBody::CLA_CheckLimits, arm_indices);
+        RAVELOG_DEBUG("Set manipulator '%s' to IK solution.\n",
+            manipulator->GetName().c_str()
+        );
+    } else if (feedback->menu_entry_id == menu_reset_) {
+        robot->GetDOFValues(current_ik_, arm_indices);
+        current_pose_ = manipulator_->GetEndEffectorTransform();
+        current_free_.clear();
+        RAVELOG_DEBUG("Snapped to current configuration of manipulator '%s'.\n",
+            manipulator->GetName().c_str()
+        );
     }
 }
 

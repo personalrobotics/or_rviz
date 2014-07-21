@@ -19,6 +19,7 @@ public:
 
     std::string id() const;
     bool EnvironmentSync();
+    void UpdateMenu();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
@@ -34,7 +35,16 @@ private:
     std::vector<OpenRAVE::dReal> current_ik_;
     std::vector<OpenRAVE::dReal> current_free_;
 
+    interactive_markers::MenuHandler menu_handler_;
+    interactive_markers::MenuHandler::EntryHandle menu_set_;
+    interactive_markers::MenuHandler::EntryHandle menu_reset_;
+
     void CreateGeometry();
+
+    void CreateMenu();
+    void UpdateMenu(LinkMarkerPtr link_marker);
+    void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+
     void IkFeedback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
     void InferFreeJoints(std::vector<OpenRAVE::KinBody::JointPtr> *free_joints) const;
 };
