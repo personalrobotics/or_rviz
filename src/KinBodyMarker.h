@@ -49,7 +49,7 @@ private:
     bool has_pose_controls_;
     bool has_joint_controls_;
 
-    visualization_msgs::InteractiveMarker interactive_marker_;
+    visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     bool new_marker_;
 
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
