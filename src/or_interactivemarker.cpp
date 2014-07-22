@@ -79,4 +79,11 @@ void InteractiveMarkerViewer::EnvironmentSync()
     ros::spinOnce();
 }
 
+OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterViewerThreadCallback(
+    OpenRAVE::ViewerBase::ViewerThreadCallbackFn const &fncallback)
+{
+    RAVELOG_WARN("RegisterViewerThreadCallback is not implemented.\n");
+    return OpenRAVE::UserDataPtr();
+}
+
 }

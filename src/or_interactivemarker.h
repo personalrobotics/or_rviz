@@ -16,6 +16,9 @@ public:
     virtual int main(bool bShow = true);
     virtual void quitmainloop();
 
+    virtual OpenRAVE::UserDataPtr RegisterViewerThreadCallback(
+        OpenRAVE::ViewerBase::ViewerThreadCallbackFn const &fncallback);
+
 private:
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;

@@ -17,7 +17,8 @@ InterfaceBasePtr CreateInterfaceValidated(
         sinput >> node_name;
 
         if (sinput.fail()) {
-            return OpenRAVE::InterfaceBasePtr();
+            // Default node name.
+            node_name = "openrave";
         }
 
         if (!ros::isInitialized()) {

@@ -62,7 +62,7 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     visual_control_->orientation.w = 1;
     visual_control_->name = str(format("%s.Geometry[visual]") % id());
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
-    visual_control_->interaction_mode = InteractiveMarkerControl::BUTTON;
+    visual_control_->interaction_mode = InteractiveMarkerControl::MENU;
     visual_control_->always_visible = true;
 }
 
@@ -216,14 +216,17 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         // TODO: This may be off by a factor of two.
         marker->type = Marker::CUBE;
         marker->scale = toROSVector(geometry->GetBoxExtents());
+        marker->scale.x *= 2.0;
+        marker->scale.y *= 2.0;
+        marker->scale.z *= 2.0;
         break;
 
     case OpenRAVE::GeometryType::GT_Sphere: {
         double const sphere_radius = geometry->GetSphereRadius();
         marker->type = Marker::SPHERE;
-        marker->scale.x = sphere_radius;
-        marker->scale.y = sphere_radius;
-        marker->scale.z = sphere_radius;
+        marker->scale.x = 0.5 * sphere_radius;
+        marker->scale.y = 0.5 * sphere_radius;
+        marker->scale.z = 0.5 * sphere_radius;
         break;
     }
 
@@ -232,8 +235,8 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         double const cylinder_radius = geometry->GetCylinderRadius();
         double const cylinder_height= geometry->GetCylinderHeight();
         marker->type = Marker::CYLINDER;
-        marker->scale.x = cylinder_radius;
-        marker->scale.y = cylinder_radius;
+        marker->scale.x = 0.5 * cylinder_radius;
+        marker->scale.y = 0.5 * cylinder_radius;
         marker->scale.z = cylinder_height;
         break;
     }
