@@ -23,6 +23,7 @@ using interactive_markers::InteractiveMarkerServer;
 using interactive_markers::MenuHandler;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
+typedef OpenRAVE::KinBody::JointPtr JointPtr;
 typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef MenuHandler::EntryHandle EntryHandle;
@@ -108,16 +109,18 @@ void KinBodyMarker::EnvironmentSync()
     }
 
     // Update joints.
-    if (has_joint_controls_) {
-        for (JointPtr joint : kinbody->GetJoints()) {
-            KinBodyJointMarkerPtr &joint_marker = joint_markers_[joint.get()];
-            if (!joint_marker) {
-                joint_marker = boost::make_shared<KinBodyJointMarker>(server_, joint);
-            }
-            joint_marker->EnvironmentSync();
+    for (JointPtr joint : kinbody->GetJoints()) {
+        auto const it = joint_markers_.find(joint.get());
+        if (it == joint_markers_.end()) {
+            continue;
         }
-    } else {
-        joint_markers_.clear();
+        KinBodyJointMarkerPtr &joint_marker = it->second;
+
+        // Lazily construct a new marker if necessary.
+        if (!joint_marker) {
+            joint_marker = boost::make_shared<KinBodyJointMarker>(server_, joint);
+        }
+        joint_marker->EnvironmentSync();
     }
 
     // Update manipulators.
@@ -241,6 +244,19 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         MenuHandler::CheckState joints_state;
         menu_handler.getCheckState(*link_wrapper.menu_joints, joints_state);
         has_joint_controls_ = !CheckStateToBool(joints_state);
+
+        if (!has_joint_controls_) {
+            joint_markers_.clear();
+        }
+        // Allocate space for all joint controls. The actual controls will be
+        // lazily created in the next EnvironmentSync callback.
+        else {
+            for (JointPtr const &joint : kinbody->GetJoints()) {
+                // Accessing an element causes it to be default-constructed.
+                joint_markers_[joint.get()];
+            }
+        }
+
         RAVELOG_DEBUG("Toggled joint controls to %d for '%s'\n",
             has_joint_controls_, kinbody->GetName().c_str()
         );
