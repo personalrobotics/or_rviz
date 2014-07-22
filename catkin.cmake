@@ -31,10 +31,19 @@ add_library("${PROJECT_NAME}"
     src/JointMarker.cpp
     src/ManipulatorMarker.cpp
 )
+target_link_libraries("${PROJECT_NAME}"
+    ${OpenRAVE_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
+
 add_library("${PROJECT_NAME}_plugin" SHARED
     src/or_interactivemarker_plugin.cpp
 )
-target_link_libraries("${PROJECT_NAME}_plugin" "${PROJECT_NAME}")
+target_link_libraries("${PROJECT_NAME}_plugin"
+    "${PROJECT_NAME}"
+    ${OpenRAVE_LIBRARIES}
+    ${catkin_LIBRARIES}
+)
 set_target_properties("${PROJECT_NAME}_plugin" PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY "${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
