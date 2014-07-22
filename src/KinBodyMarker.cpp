@@ -3,6 +3,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include "KinBodyMarker.h"
+#include "or_conversions.h"
 
 using boost::ref;
 using boost::format;
@@ -14,6 +15,8 @@ using OpenRAVE::KinBodyPtr;
 using OpenRAVE::KinBodyWeakPtr;
 using OpenRAVE::RobotBase;
 using OpenRAVE::RobotBaseWeakPtr;
+using visualization_msgs::InteractiveMarkerControl;
+using visualization_msgs::InteractiveMarkerFeedback;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 using interactive_markers::MenuHandler;
@@ -23,6 +26,7 @@ typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef MenuHandler::EntryHandle EntryHandle;
 
+static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
 
@@ -47,14 +51,39 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     : server_(server)
     , kinbody_(kinbody)
     , robot_(boost::dynamic_pointer_cast<RobotBase>(kinbody))
+    , has_pose_controls_(false)
     , has_joint_controls_(false)
+    , new_marker_(true)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
+
+    interactive_marker_.header.frame_id = kWorldFrameId;
+    interactive_marker_.name = id();
+    interactive_marker_.description = kinbody->GetName();
+    interactive_marker_.pose = toROSPose(kinbody->GetTransform());
+    interactive_marker_.scale = 1.0; // TODO: Infer a good scale.
+
+    EnablePoseControls(true);
+
+    server_->setCallback(interactive_marker_.name,
+        boost::bind(&KinBodyMarker::PoseCallback, this, _1));
 }
 
 KinBodyMarker::~KinBodyMarker()
 {
+    if (has_pose_controls_) {
+        server_->erase(interactive_marker_.name);
+    }
+}
+
+std::string KinBodyMarker::id() const
+{
+    KinBodyPtr const body = kinbody_.lock();
+    EnvironmentBasePtr const env = body->GetEnv();
+    int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
+    return str(format("Environment[%d].KinBody[%s]")
+               % environment_id % body->GetName());
 }
 
 void KinBodyMarker::EnvironmentSync()
@@ -63,6 +92,13 @@ void KinBodyMarker::EnvironmentSync()
     typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
     KinBodyPtr const kinbody = kinbody_.lock();
+
+    // Update the KinBody's marker.
+    if (!new_marker_) {
+        OpenRAVE::Transform const kinbody_pose = kinbody->GetTransform();
+        server_->setPose(interactive_marker_.name, toROSPose(kinbody_pose));
+    }
+    new_marker_ = false;
 
     // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : kinbody->GetLinks()) {
@@ -110,6 +146,7 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
         link_wrapper.menu_parent = Opt(parent);
         link_wrapper.menu_enabled = Opt(menu_handler.insert(parent, "Enabled", cb));
         link_wrapper.menu_visible = Opt(menu_handler.insert(parent, "Visible", cb));
+        link_wrapper.menu_move = Opt(menu_handler.insert(parent, "Pose Controls", cb));
         link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
     }
 
@@ -153,6 +190,8 @@ void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
         BoolToCheckState(link->IsEnabled()));
     menu_handler.setCheckState(*link_wrapper.menu_visible,
         BoolToCheckState(link->IsVisible()));
+    menu_handler.setCheckState(*link_wrapper.menu_move,
+        BoolToCheckState(has_pose_controls_));
     menu_handler.setCheckState(*link_wrapper.menu_joints,
         BoolToCheckState(has_joint_controls_));
 
@@ -176,8 +215,9 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         menu_handler.getCheckState(*link_wrapper.menu_enabled, enabled_state);
         bool const is_enabled = !CheckStateToBool(enabled_state);
         kinbody->Enable(is_enabled);
-        RAVELOG_DEBUG("Toggled enable to %d for '%s'\n",
-            is_enabled, kinbody->GetName().c_str());
+        RAVELOG_DEBUG("Toggled enable to %d for '%s'.\n",
+            is_enabled, kinbody->GetName().c_str()
+        );
     }
     // Toggle kinbody visibility.
     else if (feedback->menu_entry_id == *link_wrapper.menu_visible) {
@@ -185,8 +225,21 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         menu_handler.getCheckState(*link_wrapper.menu_visible, visible_state);
         bool const is_visible = !CheckStateToBool(visible_state);
         kinbody->SetVisible(is_visible);
-        RAVELOG_DEBUG("Toggled visible to %d for '%s'\n",
-            is_visible, kinbody->GetName().c_str());
+        RAVELOG_DEBUG("Toggled visible to %d for '%s'.\n",
+            is_visible, kinbody->GetName().c_str()
+        );
+    }
+    // Toggle movement handles.
+    else if (feedback->menu_entry_id == *link_wrapper.menu_move) {
+        MenuHandler::CheckState move_state;
+        menu_handler.getCheckState(*link_wrapper.menu_move, move_state);
+        has_pose_controls_ = !CheckStateToBool(move_state);
+
+        EnablePoseControls(has_pose_controls_);
+
+        RAVELOG_DEBUG("Toggled pose controls to %d for '%s'.\n",
+            has_pose_controls_, kinbody->GetName().c_str()
+        );
     }
     // Toggle full-KinBody joint controls.
     else if (feedback->menu_entry_id == *link_wrapper.menu_joints) {
@@ -194,7 +247,8 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         menu_handler.getCheckState(*link_wrapper.menu_joints, joints_state);
         has_joint_controls_ = !CheckStateToBool(joints_state);
         RAVELOG_DEBUG("Toggled joint controls to %d for '%s'\n",
-            has_joint_controls_, kinbody->GetName().c_str());
+            has_joint_controls_, kinbody->GetName().c_str()
+        );
     }
     // Toggle manipulator IK control.
     else if (link_wrapper.menu_manipulator_ik
@@ -219,6 +273,63 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
     }
 
     UpdateMenu();
+}
+
+void KinBodyMarker::EnablePoseControls(bool enabled)
+{
+    OpenRAVE::KinBodyPtr const kinbody = kinbody_.lock();
+    interactive_marker_.pose = toROSPose(kinbody->GetTransform());
+
+    server_->erase(interactive_marker_.name);
+
+    if (enabled) {
+        InteractiveMarkerControl control;
+        control.orientation.w = 1;
+        control.orientation.x = 1;
+        control.orientation.y = 0;
+        control.orientation.z = 0;
+        control.name = "rotate_x";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        interactive_marker_.controls.push_back(control);
+        control.name = "move_x";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        interactive_marker_.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 1;
+        control.orientation.z = 0;
+        control.name = "rotate_z";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        interactive_marker_.controls.push_back(control);
+        control.name = "move_z";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        interactive_marker_.controls.push_back(control);
+
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 0;
+        control.orientation.z = 1;
+        control.name = "rotate_y";
+        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+        interactive_marker_.controls.push_back(control);
+        control.name = "move_y";
+        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+        interactive_marker_.controls.push_back(control);
+    }
+
+    server_->insert(interactive_marker_);
+    new_marker_ = true;
+}
+
+void KinBodyMarker::PoseCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
+{
+    OpenRAVE::KinBodyPtr const kinbody = kinbody_.lock();
+
+    if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
+        OpenRAVE::Transform const pose = toORPose(feedback->pose);
+        kinbody->SetTransform(pose);
+    }
 }
 
 bool KinBodyMarker::HasGhostManipulator(ManipulatorPtr const manipulator) const
