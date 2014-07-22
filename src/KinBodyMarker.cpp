@@ -160,7 +160,9 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
     if (link_wrapper.parent_manipulator) {
         EntryHandle parent = menu_handler.insert("Manipulator");
         link_wrapper.menu_manipulator = Opt(parent);
-        link_wrapper.menu_manipulator_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+        // TODO: Implement joint control on the ghost manipulator.
+        //link_wrapper.menu_manipulator_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+        link_wrapper.menu_manipulator_active = Opt(menu_handler.insert(parent, "Set Active", cb));
         link_wrapper.menu_manipulator_ik = Opt(menu_handler.insert(parent, "Inverse Kinematics", cb));
     }
     link_wrapper.has_menu = true;
@@ -193,7 +195,6 @@ void KinBodyMarker::UpdateMenu(LinkMarkerWrapper &link_wrapper)
     menu_handler.setCheckState(*link_wrapper.menu_joints,
         BoolToCheckState(has_joint_controls_));
 
-    // Check whether the ghost manipulator is active.
     if (link_wrapper.menu_manipulator_ik) {
         bool const has_ghost = HasGhostManipulator(link_wrapper.parent_manipulator);
         menu_handler.setCheckState(*link_wrapper.menu_manipulator_ik,
@@ -257,8 +258,17 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
             }
         }
 
-        RAVELOG_DEBUG("Toggled joint controls to %d for '%s'\n",
+        RAVELOG_DEBUG("Toggled joint controls to %d for '%s'.\n",
             has_joint_controls_, kinbody->GetName().c_str()
+        );
+    }
+    // Set the manipulator as active.
+    else if (link_wrapper.menu_manipulator_active
+             && feedback->menu_entry_id == link_wrapper.menu_manipulator_active) {
+        ManipulatorPtr const manipulator = link_wrapper.parent_manipulator;
+        manipulator->GetRobot()->SetActiveManipulator(manipulator);
+        RAVELOG_DEBUG("Set manipulator '%s' active for '%s'.\n",
+            manipulator->GetName().c_str(), kinbody->GetName().c_str()
         );
     }
     // Toggle manipulator IK control.
