@@ -1,5 +1,6 @@
 #include <boost/format.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/algorithm/string/trim.hpp>
 #include <interactive_markers/interactive_marker_server.h>
 #include "or_interactivemarker.h"
 
@@ -29,6 +30,17 @@ public:
 private:
     boost::signals2::scoped_connection scoped_connection_;
 };
+
+static std::string GetRemainingContent(std::istream &stream, bool trim = false)
+{
+
+    std::istreambuf_iterator<char> eos;
+    std::string str(std::istreambuf_iterator<char>(stream), eos);
+    if (trim) {
+        boost::algorithm::trim(str);
+    }
+    return str;
+}
 
 }
 
@@ -124,10 +136,6 @@ OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterViewerThreadCallback(
     return boost::make_shared<detail::ScopedConnection>(con);
 }
 
-void callback()
-{
-}
-
 bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istream &in)
 {
     std::string type, kinbody_name;
@@ -154,7 +162,8 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
     }
 
     if (type == "kinbody") {
-        marker->AddMenuEntry("Custom", &callback);
+        std::string const name = detail::GetRemainingContent(in, true);
+        marker->AddMenuEntry(name, &callback);
     } else if (type == "link") {
         std::string link_name;
         in >> link_name;
@@ -168,7 +177,8 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
             );
         }
 
-        marker->AddMenuEntry(link, "Custom", &callback);
+        std::string const name = detail::GetRemainingContent(in, true);
+        marker->AddMenuEntry(link, name, &callback);
     } else if (type == "manipulator" || type == "ghost_manipulator") {
         std::string manipulator_name;
         in >> manipulator_name;
@@ -192,7 +202,8 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
             );
         }
 
-        marker->AddMenuEntry(manipulator, "Custom", &callback);
+        std::string const name = detail::GetRemainingContent(in, true);
+        marker->AddMenuEntry(manipulator, name, &callback);
     }
     return true;
 }
