@@ -26,7 +26,9 @@ struct LinkMarkerWrapper {
     boost::optional<MenuEntry> menu_joints;
     boost::optional<MenuEntry> menu_enabled;
     boost::optional<MenuEntry> menu_visible;
+    boost::optional<MenuEntry> menu_move;
     boost::optional<MenuEntry> menu_manipulator;
+    boost::optional<MenuEntry> menu_manipulator_active;
     boost::optional<MenuEntry> menu_manipulator_joints;
     boost::optional<MenuEntry> menu_manipulator_ik;
 };
@@ -37,13 +39,19 @@ public:
                   OpenRAVE::KinBodyPtr kinbody);
     virtual ~KinBodyMarker();
 
+    std::string id() const;
+
     void EnvironmentSync();
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBodyWeakPtr kinbody_;
     OpenRAVE::RobotBaseWeakPtr robot_;
+    bool has_pose_controls_;
     bool has_joint_controls_;
+
+    visualization_msgs::InteractiveMarkerPtr interactive_marker_;
+    bool new_marker_;
 
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, KinBodyJointMarkerPtr> joint_markers_;
@@ -52,10 +60,14 @@ private:
     bool HasGhostManipulator(OpenRAVE::RobotBase::ManipulatorPtr const manipulator) const;
 
     void CreateMenu(LinkMarkerWrapper &link_wrapper);
-    void UpdateMenu();
     void UpdateMenu(LinkMarkerWrapper &link_wrapper);
+    void UpdateMenu();
     void MenuCallback(LinkMarkerWrapper &link_wrapper,
                       visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+
+    void CreatePoseControls();
+    void EnablePoseControls(bool enabled);
+    void PoseCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 
     void GetManipulators(OpenRAVE::KinBody::LinkPtr link,
                          std::vector<OpenRAVE::RobotBase::ManipulatorPtr> *manipulators) const;
