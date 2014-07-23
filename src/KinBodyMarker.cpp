@@ -82,6 +82,57 @@ std::string KinBodyMarker::id() const
                % environment_id % body->GetName());
 }
 
+void KinBodyMarker::AddMenuEntry(std::string const &name,
+                                 boost::function<void ()> const &callback)
+{
+    CustomMenuEntry entry;
+    entry.name = name;
+    entry.callback = callback;
+    menu_custom_kinbody_.push_back(entry);
+
+    RAVELOG_DEBUG("Added menu option [ KinBody > %s ] to KinBody '%s'.\n",
+        name.c_str(), kinbody_.lock()->GetName().c_str()
+    );
+
+    // TODO: Only re-generate the menu.
+    link_markers_.clear();
+}
+
+void KinBodyMarker::AddMenuEntry(LinkPtr link,
+                                 std::string const &name,
+                                 boost::function<void ()> const &callback)
+{
+    CustomMenuEntry entry;
+    entry.name = name;
+    entry.callback = callback;
+
+    menu_custom_links_[link.get()].push_back(entry);
+
+    RAVELOG_DEBUG("Added menu option [ Link > %s ] to KinBody '%s' link '%s'.\n",
+        name.c_str(), kinbody_.lock()->GetName().c_str(), link->GetName().c_str()
+    );
+
+    // TODO: Only re-generate the menu.
+    link_markers_.clear();
+}
+
+void KinBodyMarker::AddMenuEntry(ManipulatorPtr manipulator,
+                                 std::string const &name,
+                                 boost::function<void ()> const &callback)
+{
+    CustomMenuEntry entry;
+    entry.name = name;
+    entry.callback = callback;
+    menu_custom_manipulators_[manipulator.get()].push_back(entry);
+
+    RAVELOG_DEBUG("Added menu option [ Manipulator > %s ] to KinBody '%s' manipulator '%s'.\n",
+        name.c_str(), kinbody_.lock()->GetName().c_str(), manipulator->GetName().c_str()
+    );
+
+    // TODO: Only re-generate the menu.
+    link_markers_.clear();
+}
+
 void KinBodyMarker::EnvironmentSync()
 {
     typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
@@ -146,6 +197,23 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
         link_wrapper.menu_visible = Opt(menu_handler.insert(parent, "Visible", cb));
         link_wrapper.menu_move = Opt(menu_handler.insert(parent, "Pose Controls", cb));
         link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
+
+        // Custom KinBody entries.
+        for (CustomMenuEntry const &menu_entry : menu_custom_kinbody_) {
+            // TODO: Add a custom callback.
+            menu_handler.insert(parent, menu_entry.name);
+        }
+    }
+
+    // Custom link entries.
+    {
+        LinkPtr const link = link_wrapper.link_marker->link();
+        std::vector<CustomMenuEntry> const &entries = menu_custom_links_[link.get()];
+        for (CustomMenuEntry const &menu_entry : entries) {
+            // TODO: Add a custom callback.
+            // TODO: Put these in the "Link" submenu.
+            menu_handler.insert("LINK: " + menu_entry.name);
+        }
     }
 
     // Manipulator controls. For now, we'll only add these options to links
@@ -164,6 +232,14 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
         //link_wrapper.menu_manipulator_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
         link_wrapper.menu_manipulator_active = Opt(menu_handler.insert(parent, "Set Active", cb));
         link_wrapper.menu_manipulator_ik = Opt(menu_handler.insert(parent, "Inverse Kinematics", cb));
+
+        // Custom manipulator entries.
+        std::vector<CustomMenuEntry> const &entries
+            = menu_custom_manipulators_[link_wrapper.parent_manipulator.get()];
+        for (CustomMenuEntry const &menu_entry : entries) {
+            // TODO: Add a custom callback.
+            menu_handler.insert(parent, menu_entry.name);
+        }
     }
     link_wrapper.has_menu = true;
 }

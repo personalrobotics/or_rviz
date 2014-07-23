@@ -33,6 +33,13 @@ struct LinkMarkerWrapper {
     boost::optional<MenuEntry> menu_manipulator_ik;
 };
 
+struct CustomMenuEntry {
+    std::string name;
+    OpenRAVE::KinBody::LinkWeakPtr link;
+    OpenRAVE::RobotBase::ManipulatorWeakPtr manipulator;
+    boost::function<void ()> callback;
+};
+
 class KinBodyMarker : public OpenRAVE::UserData {
 public:
     KinBodyMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
@@ -40,6 +47,12 @@ public:
     virtual ~KinBodyMarker();
 
     std::string id() const;
+
+    void AddMenuEntry(std::string const &name, boost::function<void ()> const &callback);
+    void AddMenuEntry(OpenRAVE::KinBody::LinkPtr link,
+                      std::string const &name, boost::function<void ()> const &callback);
+    void AddMenuEntry(OpenRAVE::RobotBase::ManipulatorPtr manipulator,
+                      std::string const &name, boost::function<void ()> const &callback);
 
     void EnvironmentSync();
 
@@ -52,6 +65,10 @@ private:
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     bool new_marker_;
+
+    std::vector<CustomMenuEntry> menu_custom_kinbody_;
+    boost::unordered_map<OpenRAVE::KinBody::Link *, std::vector<CustomMenuEntry> > menu_custom_links_;
+    boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, std::vector<CustomMenuEntry> > menu_custom_manipulators_;
 
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, KinBodyJointMarkerPtr> joint_markers_;
