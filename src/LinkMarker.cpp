@@ -10,6 +10,7 @@
 
 using boost::adaptors::transformed;
 using boost::algorithm::join;
+using boost::algorithm::ends_with;
 using boost::format;
 using boost::str;
 using geometry_msgs::Vector3;
@@ -62,7 +63,7 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     visual_control_->orientation.w = 1;
     visual_control_->name = str(format("%s.Geometry[visual]") % id());
     visual_control_->orientation_mode = InteractiveMarkerControl::INHERIT;
-    visual_control_->interaction_mode = InteractiveMarkerControl::MENU;
+    visual_control_->interaction_mode = InteractiveMarkerControl::BUTTON;
     visual_control_->always_visible = true;
 }
 
@@ -200,10 +201,20 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     }
 
     if (!render_mesh_path.empty()) {
+        bool const has_texture = !override_color_ && HasTexture(render_mesh_path);
+
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
         marker->mesh_resource = "file://" + render_mesh_path;
-        marker->mesh_use_embedded_materials = !override_color_;
+        marker->mesh_use_embedded_materials = has_texture;
+
+        // Color must be zero to use the embedded material.
+        if (has_texture) {
+            marker->color.r = 0;
+            marker->color.g = 0;
+            marker->color.b = 0;
+            marker->color.a = 0;
+        }
         return marker;
     }
 
@@ -254,4 +265,9 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     return marker;
 }
 
+bool LinkMarker::HasTexture(std::string const uri) const
+{
+    // We'll assume all DAE files contain material properties.
+    return ends_with(uri, ".dae");
+}
 }
