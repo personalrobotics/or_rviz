@@ -66,6 +66,8 @@ private:
     void CreateGeometry();
     visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);
+
+    bool HasTexture(std::string const uri) const;
 };
 
 }
