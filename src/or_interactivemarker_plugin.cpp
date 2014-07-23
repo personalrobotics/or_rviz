@@ -23,7 +23,8 @@ InterfaceBasePtr CreateInterfaceValidated(
 
         if (!ros::isInitialized()) {
             int argc = 0;
-            ros::init(argc, NULL, node_name, ros::init_options::AnonymousName);
+            ros::init(argc, NULL, node_name, ros::init_options::AnonymousName
+                                           | ros::init_options::NoSigintHandler);
             RAVELOG_DEBUG("Starting ROS node '%s'.\n", node_name.c_str());
         } else {
             RAVELOG_DEBUG("Using existing ROS node '%s'\n",

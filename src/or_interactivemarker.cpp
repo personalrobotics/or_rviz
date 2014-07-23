@@ -44,6 +44,12 @@ static std::string GetRemainingContent(std::istream &stream, bool trim = false)
 
 }
 
+
+// TODO: Dummy implementation.
+static void callback()
+{
+}
+
 InteractiveMarkerViewer::InteractiveMarkerViewer(
         OpenRAVE::EnvironmentBasePtr env)
     : OpenRAVE::ViewerBase(env)
