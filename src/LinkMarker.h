@@ -11,14 +11,6 @@
 
 namespace or_interactivemarker {
 
-struct RenderMode {
-    enum Type {
-        kNone,
-        kVisual,
-        kCollision,
-    };
-};
-
 class LinkMarker;
 typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
@@ -38,7 +30,11 @@ public:
     void clear_color();
     void set_color(OpenRAVE::Vector const &color);
 
-    void SetRenderMode(RenderMode::Type mode);
+    bool is_view_visual() const;
+    void set_view_visual(bool flag);
+
+    bool is_view_collision() const;
+    void set_view_collision(bool flag);
 
     virtual bool EnvironmentSync();
     void UpdateMenu();
@@ -48,14 +44,14 @@ protected:
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
     visualization_msgs::InteractiveMarkerControl *visual_control_;
 
-    RenderMode::Type render_mode_;
-
 private:
     OpenRAVE::KinBody::LinkWeakPtr link_;
     OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
     bool is_ghost_;
     bool created_;
     bool force_update_;
+    bool view_visual_;
+    bool view_collision_;
 
     boost::optional<OpenRAVE::Vector> override_color_;
 

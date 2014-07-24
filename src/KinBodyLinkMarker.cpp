@@ -74,9 +74,9 @@ void KinBodyLinkMarker::UpdateMenu()
     menu_handler_.setCheckState(menu_visible_,
         BoolToCheckState(link->IsVisible()));
     menu_handler_.setCheckState(menu_geom_visual_,
-        BoolToCheckState(render_mode_ == RenderMode::kVisual));
+        BoolToCheckState(is_view_visual()));
     menu_handler_.setCheckState(menu_geom_collision_,
-        BoolToCheckState(render_mode_ == RenderMode::kCollision));
+        BoolToCheckState(is_view_collision()));
 
     menu_handler_.apply(*server_, interactive_marker_->name);
     menu_changed_ = false;
@@ -114,13 +114,13 @@ void KinBodyLinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
     }
     // Geometry rendering mode.
     else if (feedback->menu_entry_id == menu_geom_visual_) {
-        SetRenderMode(RenderMode::kVisual);
+        set_view_visual(!is_view_visual());
         RAVELOG_DEBUG("Switched to 'visual' render mode for '%s' link '%s'.\n",
             link->GetParent()->GetName().c_str(), link->GetName().c_str()
         );
     }
     else if (feedback->menu_entry_id == menu_geom_collision_) {
-        SetRenderMode(RenderMode::kCollision);
+        set_view_collision(!is_view_collision());
         RAVELOG_DEBUG("Switched to 'collision' render mode for '%s' link '%s'.\n",
             link->GetParent()->GetName().c_str(), link->GetName().c_str()
         );

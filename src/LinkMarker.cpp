@@ -41,10 +41,11 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
                        LinkPtr link, bool is_ghost)
     : server_(server)
     , interactive_marker_(boost::make_shared<InteractiveMarker>())
-    , render_mode_(RenderMode::kVisual)
+    , view_visual_(true)
+    , view_collision_(false)
     , link_(link)
     , is_ghost_(is_ghost)
-    , force_update_(false)
+    , force_update_(true)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(link);
@@ -115,6 +116,28 @@ void LinkMarker::set_color(OpenRAVE::Vector const &color)
     override_color_.reset(color);
 }
 
+bool LinkMarker::is_view_visual() const
+{
+    return view_visual_;
+}
+
+void LinkMarker::set_view_visual(bool flag)
+{
+    force_update_ = force_update_ || (flag == view_visual_);
+    view_visual_ = flag;
+}
+
+bool LinkMarker::is_view_collision() const
+{
+    return view_collision_;
+}
+
+void LinkMarker::set_view_collision(bool flag)
+{
+    force_update_ = force_update_ || (flag == view_collision_);
+    view_collision_ = flag;
+}
+
 InteractiveMarkerPtr LinkMarker::interactive_marker()
 {
     return interactive_marker_;
@@ -165,13 +188,14 @@ void LinkMarker::CreateGeometry()
     LinkPtr const link = this->link();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
+        // TODO: Support both types of geometry simultaneously.
         MarkerPtr new_marker; 
-        if (render_mode_ == RenderMode::kVisual && geometry->IsVisible()) {
+        if (view_visual_ && geometry->IsVisible()) {
             new_marker = CreateVisualGeometry(geometry);
             if (!new_marker) {
                 new_marker = CreateCollisionGeometry(geometry);
             }
-        } else if (render_mode_ == RenderMode::kCollision && link->IsEnabled()) {
+        } else if (view_collision_ && link->IsEnabled()) {
             new_marker = CreateCollisionGeometry(geometry);
         }
 
@@ -184,16 +208,6 @@ void LinkMarker::CreateGeometry()
         else {
             geometry_markers_[geometry.get()] = NULL;
         }
-    }
-}
-void LinkMarker::SetRenderMode(RenderMode::Type mode)
-{
-    bool const is_changed = mode != render_mode_;
-    render_mode_ = mode;
-
-    // Re-generate the geometry.
-    if (is_changed) {
-        force_update_ = true;
     }
 }
 
