@@ -10,7 +10,7 @@
 
 using boost::adaptors::transformed;
 using boost::algorithm::join;
-using boost::algorithm::ends_with;
+using boost::algorithm::iends_with;
 using boost::format;
 using boost::str;
 using geometry_msgs::Vector3;
@@ -27,6 +27,7 @@ using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
+typedef boost::shared_ptr<OpenRAVE::TriMesh> TriMeshPtr;
 typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef OpenRAVE::KinBody::Link::GeometryPtr GeometryPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
@@ -200,12 +201,14 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         render_mesh_path = "";
     }
 
-    if (!render_mesh_path.empty()) {
-        bool const has_texture = !override_color_ && HasTexture(render_mesh_path);
-
+    // Pass the path to the mesh to RViz and let RViz load it directly. This is
+    // only possible if RViz supports the mesh format.
+    if (!render_mesh_path.empty() && HasRVizSupport(render_mesh_path)) {
         marker->type = Marker::MESH_RESOURCE;
         marker->scale = toROSVector(geometry->GetRenderScale());
         marker->mesh_resource = "file://" + render_mesh_path;
+
+        bool const has_texture = !override_color_ && HasTexture(render_mesh_path);
         marker->mesh_use_embedded_materials = has_texture;
 
         // Color must be zero to use the embedded material.
@@ -215,6 +218,27 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
             marker->color.b = 0;
             marker->color.a = 0;
         }
+        return marker;
+    }
+    // Otherwise, load the mesh with OpenRAVE and serialize the full mesh it
+    // into the marker.
+    else if (!render_mesh_path.empty()) {
+        OpenRAVE::EnvironmentBasePtr const env = link()->GetParent()->GetEnv();
+        TriMeshPtr trimesh = boost::make_shared<OpenRAVE::TriMesh>();
+        trimesh = env->ReadTrimeshURI(trimesh, render_mesh_path);
+        if (!trimesh) {
+            RAVELOG_WARN("Loading trimesh '%s' using OpenRAVE failed.",
+                render_mesh_path.c_str()
+            );
+            return MarkerPtr();
+        }
+
+        TriMeshToMarker(*trimesh, marker);
+
+        RAVELOG_WARN("Loaded mesh '%s' with OpenRAVE because this format is not"
+                     " supported by RViz. This may be slow for large files.\n",
+            render_mesh_path.c_str()
+        );
         return marker;
     }
 
@@ -265,9 +289,33 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     return marker;
 }
 
-bool LinkMarker::HasTexture(std::string const uri) const
+void LinkMarker::TriMeshToMarker(OpenRAVE::TriMesh const &trimesh,
+                                 MarkerPtr const &marker)
 {
-    // We'll assume all DAE files contain material properties.
-    return ends_with(uri, ".dae");
+    marker->type = Marker::TRIANGLE_LIST;
+    marker->points.clear();
+
+    BOOST_ASSERT(trimesh.indices.size() % 3 == 0);
+    for (size_t i = 0; i < trimesh.indices.size(); ++i) {
+        OpenRAVE::Vector const &p1 = trimesh.vertices[i + 0];
+        OpenRAVE::Vector const &p2 = trimesh.vertices[i + 1];
+        OpenRAVE::Vector const &p3 = trimesh.vertices[i + 2];
+        marker->points.push_back(toROSPoint(p1));
+        marker->points.push_back(toROSPoint(p2));
+        marker->points.push_back(toROSPoint(p3));
+    }
 }
+
+bool LinkMarker::HasTexture(std::string const &uri) const
+{
+    return iends_with(uri, ".dae");
+}
+
+bool LinkMarker::HasRVizSupport(std::string const &uri) const
+{
+    return iends_with(uri, ".dae")
+        || iends_with(uri, ".stl")
+        || iends_with(uri, ".mesh");
+}
+
 }

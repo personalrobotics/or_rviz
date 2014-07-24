@@ -67,7 +67,10 @@ private:
     visualization_msgs::MarkerPtr CreateGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);
 
-    bool HasTexture(std::string const uri) const;
+    bool HasTexture(std::string const &uri) const;
+    bool HasRVizSupport(std::string const &uri) const;
+    void TriMeshToMarker(OpenRAVE::TriMesh const &trimesh,
+                         visualization_msgs::MarkerPtr const &marker);
 };
 
 }
