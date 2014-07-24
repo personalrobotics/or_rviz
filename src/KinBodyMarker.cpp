@@ -200,8 +200,8 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
 
         // Custom KinBody entries.
         for (CustomMenuEntry const &menu_entry : menu_custom_kinbody_) {
-            // TODO: Add a custom callback.
-            menu_handler.insert(parent, menu_entry.name);
+            auto const custom_cb = boost::bind(menu_entry.callback);
+            menu_handler.insert(parent, menu_entry.name, custom_cb);
         }
     }
 

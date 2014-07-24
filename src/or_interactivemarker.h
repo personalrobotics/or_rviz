@@ -34,9 +34,16 @@ private:
 
     boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
+    std::stringstream menu_queue_;
 
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
+
+    void KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name);
+    void LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name);
+    void ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator,
+                                 std::string const &name);
+
 };
 
 }

@@ -45,11 +45,6 @@ static std::string GetRemainingContent(std::istream &stream, bool trim = false)
 }
 
 
-// TODO: Dummy implementation.
-static void callback()
-{
-}
-
 InteractiveMarkerViewer::InteractiveMarkerViewer(
         OpenRAVE::EnvironmentBasePtr env)
     : OpenRAVE::ViewerBase(env)
@@ -169,7 +164,11 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
 
     if (type == "kinbody") {
         std::string const name = detail::GetRemainingContent(in, true);
-        marker->AddMenuEntry(name, &callback);
+        auto const callback = boost::bind(
+            &InteractiveMarkerViewer::KinBodyMenuCallback,
+            this, kinbody, name
+        );
+        marker->AddMenuEntry(name, callback);
     } else if (type == "link") {
         std::string link_name;
         in >> link_name;
@@ -184,7 +183,11 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
         }
 
         std::string const name = detail::GetRemainingContent(in, true);
-        marker->AddMenuEntry(link, name, &callback);
+        auto const callback = boost::bind(
+            &InteractiveMarkerViewer::LinkMenuCallback,
+            this, link, name
+        );
+        marker->AddMenuEntry(link, name, callback);
     } else if (type == "manipulator" || type == "ghost_manipulator") {
         std::string manipulator_name;
         in >> manipulator_name;
@@ -209,13 +212,45 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istrea
         }
 
         std::string const name = detail::GetRemainingContent(in, true);
-        marker->AddMenuEntry(manipulator, name, &callback);
+        auto const callback = boost::bind(
+            &InteractiveMarkerViewer::ManipulatorMenuCallback,
+            this, manipulator, name
+        );
+        marker->AddMenuEntry(manipulator, name, callback);
     }
     return true;
 }
 
-bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out, std::istream &in)
+bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
+                                                      std::istream &in)
 {
+    out << menu_queue_.rdbuf();
+}
+
+void InteractiveMarkerViewer::KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody,
+                                                  std::string const &name)
+{
+    menu_queue_ << "kinbody " << kinbody->GetName()
+                << " " << name << '\n';
+    selection_callbacks_(OpenRAVE::KinBody::LinkPtr(),
+                         OpenRAVE::RaveVector<float>(),
+                         OpenRAVE::RaveVector<float>());
+}
+
+void InteractiveMarkerViewer::LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link,
+                                               std::string const &name)
+{
+    menu_queue_ << "link " << link->GetParent()->GetName()
+                << " " << link->GetName()
+                << " " << name << '\n';
+}
+
+void InteractiveMarkerViewer::ManipulatorMenuCallback(
+        OpenRAVE::RobotBase::ManipulatorPtr manipulator, std::string const &name)
+{
+    menu_queue_ << "manipulator " << manipulator->GetRobot()->GetName()
+                << " " << manipulator->GetName()
+                << " " << name << '\n';
 }
 
 }
