@@ -132,7 +132,11 @@ bool LinkMarker::EnvironmentSync()
         auto const it = geometry_markers_.find(geometry.get());
         bool const is_missing = it == geometry_markers_.end();
         bool const is_visible = geometry->IsVisible();
-        is_changed = is_changed || (is_visible == is_missing);
+        is_changed = is_changed || is_missing;
+
+        // TODO: Figure out what the correct logic is for the different render
+        // modes.
+        //is_changed = is_changed || (render_mode_ == RenderMode::kVisual && is_visible == is_missing);
 
         // TODO  Check if color changed.
         // TODO: Check if the transform changed.
@@ -161,11 +165,16 @@ void LinkMarker::CreateGeometry()
     LinkPtr const link = this->link();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
-        if (!geometry->IsVisible()) {
-            continue;
+        MarkerPtr new_marker; 
+        if (render_mode_ == RenderMode::kVisual && geometry->IsVisible()) {
+            new_marker = CreateVisualGeometry(geometry);
+            if (!new_marker) {
+                new_marker = CreateCollisionGeometry(geometry);
+            }
+        } else if (render_mode_ == RenderMode::kCollision && link->IsEnabled()) {
+            new_marker = CreateCollisionGeometry(geometry);
         }
 
-        MarkerPtr new_marker = CreateGeometry(geometry);
         if (new_marker) {
             visual_control_->markers.push_back(*new_marker);
             geometry_markers_[geometry.get()] = &visual_control_->markers.back();
@@ -179,10 +188,16 @@ void LinkMarker::CreateGeometry()
 }
 void LinkMarker::SetRenderMode(RenderMode::Type mode)
 {
+    bool const is_changed = mode != render_mode_;
     render_mode_ = mode;
+
+    // Re-generate the geometry.
+    if (is_changed) {
+        force_update_ = true;
+    }
 }
 
-MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
+MarkerPtr LinkMarker::CreateVisualGeometry(GeometryPtr geometry)
 {
     MarkerPtr marker = boost::make_shared<Marker>();
     marker->pose = toROSPose(geometry->GetTransform());
@@ -226,23 +241,35 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         OpenRAVE::EnvironmentBasePtr const env = link()->GetParent()->GetEnv();
         TriMeshPtr trimesh = boost::make_shared<OpenRAVE::TriMesh>();
         trimesh = env->ReadTrimeshURI(trimesh, render_mesh_path);
-        if (!trimesh) {
+        if (trimesh) {
+            TriMeshToMarker(*trimesh, marker);
+
+            RAVELOG_WARN("Loaded mesh '%s' with OpenRAVE because this format is not"
+                         " supported by RViz. This may be slow for large files.\n",
+                render_mesh_path.c_str()
+            );
+            return marker;
+        } else {
             RAVELOG_WARN("Loading trimesh '%s' using OpenRAVE failed.",
                 render_mesh_path.c_str()
             );
-            return MarkerPtr();
         }
+    }
+    return MarkerPtr();
+}
 
-        TriMeshToMarker(*trimesh, marker);
+MarkerPtr LinkMarker::CreateCollisionGeometry(GeometryPtr geometry)
+{
+    MarkerPtr marker = boost::make_shared<Marker>();
+    marker->pose = toROSPose(geometry->GetTransform());
 
-        RAVELOG_WARN("Loaded mesh '%s' with OpenRAVE because this format is not"
-                     " supported by RViz. This may be slow for large files.\n",
-            render_mesh_path.c_str()
-        );
-        return marker;
+    if (override_color_) {
+        marker->color = toROSColor(*override_color_);
+    } else {
+        marker->color = toROSColor(geometry->GetDiffuseColor());
+        marker->color.a = 1.0 - geometry->GetTransparency();
     }
 
-    // Otherwise, we have to render the underlying geometry type.
     switch (geometry->GetType()) {
     case OpenRAVE::GeometryType::GT_None:
         return MarkerPtr();
@@ -254,6 +281,9 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         marker->scale.x *= 2.0;
         marker->scale.y *= 2.0;
         marker->scale.z *= 2.0;
+        if (marker->scale.x * marker->scale.y * marker->scale.z == 0.0) {
+            return MarkerPtr();
+        }
         break;
 
     case OpenRAVE::GeometryType::GT_Sphere: {
@@ -262,6 +292,9 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
         marker->scale.x = 0.5 * sphere_radius;
         marker->scale.y = 0.5 * sphere_radius;
         marker->scale.z = 0.5 * sphere_radius;
+        if (sphere_radius == 0.0) {
+            return MarkerPtr();
+        }
         break;
     }
 
@@ -279,11 +312,13 @@ MarkerPtr LinkMarker::CreateGeometry(GeometryPtr geometry)
     case OpenRAVE::GeometryType::GT_TriMesh:
         // TODO: Fall back on the OpenRAVE's mesh loader if this format is not
         // supported by RViz.
-        return MarkerPtr();
+        TriMeshToMarker(geometry->GetCollisionMesh(), marker);
         break;
 
     default:
-        RAVELOG_WARN("Unknown geometry type '%d'.\n", geometry->GetType());
+        RAVELOG_WARN("Unknown geometry type '%d' for link '%s'.\n",
+            geometry->GetType(), link()->GetName().c_str()
+        );
         return MarkerPtr();
     }
     return marker;
@@ -296,10 +331,13 @@ void LinkMarker::TriMeshToMarker(OpenRAVE::TriMesh const &trimesh,
     marker->points.clear();
 
     BOOST_ASSERT(trimesh.indices.size() % 3 == 0);
-    for (size_t i = 0; i < trimesh.indices.size(); ++i) {
-        OpenRAVE::Vector const &p1 = trimesh.vertices[i + 0];
-        OpenRAVE::Vector const &p2 = trimesh.vertices[i + 1];
-        OpenRAVE::Vector const &p3 = trimesh.vertices[i + 2];
+    for (size_t i = 0; i < trimesh.indices.size() / 3; ++i) {
+        int const index1 = trimesh.indices.at(3 * i + 0);
+        int const index2 = trimesh.indices.at(3 * i + 1);
+        int const index3 = trimesh.indices.at(3 * i + 2);
+        OpenRAVE::Vector const &p1 = trimesh.vertices.at(index1);
+        OpenRAVE::Vector const &p2 = trimesh.vertices.at(index2);
+        OpenRAVE::Vector const &p3 = trimesh.vertices.at(index3);
         marker->points.push_back(toROSPoint(p1));
         marker->points.push_back(toROSPoint(p2));
         marker->points.push_back(toROSPoint(p3));

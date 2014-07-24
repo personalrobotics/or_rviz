@@ -64,7 +64,9 @@ private:
         visualization_msgs::Marker *> geometry_markers_;
 
     void CreateGeometry();
-    visualization_msgs::MarkerPtr CreateGeometry(
+    visualization_msgs::MarkerPtr CreateVisualGeometry(
+            OpenRAVE::KinBody::Link::GeometryPtr geometry);
+    visualization_msgs::MarkerPtr CreateCollisionGeometry(
             OpenRAVE::KinBody::Link::GeometryPtr geometry);
 
     bool HasTexture(std::string const &uri) const;
