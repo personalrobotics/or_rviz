@@ -19,16 +19,20 @@ public:
     void UpdateMenu();
 
 private:
+    typedef interactive_markers::MenuHandler MenuHandler;
+
     bool menu_changed_;
     std::vector<visualization_msgs::MenuEntry> menu_entries_;
-    interactive_markers::MenuHandler menu_handler_;
-    interactive_markers::MenuHandler::EntryHandle menu_link_;
-    interactive_markers::MenuHandler::EntryHandle menu_visible_;
-    interactive_markers::MenuHandler::EntryHandle menu_enabled_;
-    interactive_markers::MenuHandler::EntryHandle menu_geom_;
-    interactive_markers::MenuHandler::EntryHandle menu_geom_visual_;
-    interactive_markers::MenuHandler::EntryHandle menu_geom_collision_;
-    interactive_markers::MenuHandler::EntryHandle menu_geom_both_;
+    MenuHandler menu_handler_;
+    MenuHandler::EntryHandle menu_link_;
+    MenuHandler::EntryHandle menu_visible_;
+    MenuHandler::EntryHandle menu_enabled_;
+    MenuHandler::EntryHandle menu_geom_;
+    MenuHandler::EntryHandle menu_geom_visual_;
+    MenuHandler::EntryHandle menu_geom_collision_;
+    MenuHandler::EntryHandle menu_geom_both_;
+    MenuHandler::EntryHandle menu_groups_;
+    boost::unordered_map<std::string, MenuHandler::EntryHandle> menu_groups_entries_;
 
     void CreateMenu();
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);

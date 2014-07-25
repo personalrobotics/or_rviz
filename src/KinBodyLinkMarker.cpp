@@ -1,10 +1,13 @@
+#include <boost/range/adaptor/map.hpp>
 #include "KinBodyLinkMarker.h"
 #include "or_conversions.h"
 
+using boost::adaptors::map_keys;
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
+typedef OpenRAVE::KinBody::LinkInfo LinkInfo;
 
 static MenuHandler::CheckState BoolToCheckState(bool const &flag)
 {
@@ -59,11 +62,23 @@ void KinBodyLinkMarker::CreateMenu()
     menu_link_ = menu_handler_.insert("Link", callback);
     menu_enabled_ = menu_handler_.insert(menu_link_, "Enabled", callback);
     menu_visible_ = menu_handler_.insert(menu_link_, "Visible", callback);
+
+    // Switching geometry mode.
     menu_geom_ = menu_handler_.insert(menu_link_, "Geometry");
     menu_geom_visual_ = menu_handler_.insert(menu_geom_, "Visual", callback);
     menu_geom_collision_ = menu_handler_.insert(menu_geom_, "Collision", callback);
     menu_geom_both_ = menu_handler_.insert(menu_geom_, "Both", callback);
     menu_changed_ = true;
+
+    // Switching geometry groups.
+    menu_groups_ = menu_handler_.insert(menu_link_, "Geometry Groups");
+    menu_groups_entries_.clear();
+
+    LinkInfo const &link_info = link()->GetInfo();
+    for (std::string const group_name : link_info._mapExtraGeometries | map_keys) {
+        auto const callback = boost::bind(&KinBodyLinkMarker::SwitchGeometryGroup, this, group_name);
+        menu_groups_entries_[group_name] = menu_handler_.insert(menu_groups_, group_name, callback);
+    }
 }
 
 void KinBodyLinkMarker::UpdateMenu()

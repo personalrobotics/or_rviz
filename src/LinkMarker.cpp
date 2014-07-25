@@ -145,6 +145,12 @@ InteractiveMarkerPtr LinkMarker::interactive_marker()
     return interactive_marker_;
 }
 
+void LinkMarker::SwitchGeometryGroup(std::string const &group)
+{
+    link()->SetGeometriesFromGroup(group);
+    force_update_ = true;
+}
+
 bool LinkMarker::EnvironmentSync()
 {
     LinkPtr const link = this->link();
@@ -322,9 +328,9 @@ MarkerPtr LinkMarker::CreateCollisionGeometry(GeometryPtr geometry)
     case OpenRAVE::GeometryType::GT_Sphere: {
         double const sphere_radius = geometry->GetSphereRadius();
         marker->type = Marker::SPHERE;
-        marker->scale.x = 0.5 * sphere_radius;
-        marker->scale.y = 0.5 * sphere_radius;
-        marker->scale.z = 0.5 * sphere_radius;
+        marker->scale.x = 2.0 * sphere_radius;
+        marker->scale.y = 2.0 * sphere_radius;
+        marker->scale.z = 2.0 * sphere_radius;
         if (sphere_radius == 0.0) {
             return MarkerPtr();
         }
