@@ -82,6 +82,25 @@ std::string KinBodyMarker::id() const
                % environment_id % body->GetName());
 }
 
+std::vector<std::string> KinBodyMarker::group_names() const
+{
+    std::set<std::string> all_group_names;
+
+    for (LinkMarkerWrapper const &wrapper: link_markers_ | map_values) {
+        std::vector<std::string> const link_group_names = wrapper.link_marker->group_names();
+        all_group_names.insert(link_group_names.begin(), link_group_names.end());
+    }
+
+    return std::vector<std::string>(all_group_names.begin(), all_group_names.end());
+}
+
+void KinBodyMarker::SwitchGeometryGroup(std::string const &group)
+{
+    // This is theoretically more efficient than calling SetGeometriesFromGroup
+    // on each link. See the OpenRAVE documentation for more information.
+    kinbody_.lock()->SetLinkGeometriesFromGroup(group);
+}
+
 void KinBodyMarker::AddMenuEntry(std::string const &name,
                                  boost::function<void ()> const &callback)
 {
@@ -204,6 +223,17 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
         link_wrapper.menu_geometry_collision = Opt(menu_handler.insert(geom_parent, "Collision", cb));
         link_wrapper.menu_geometry_both = Opt(menu_handler.insert(geom_parent, "Both", cb));
 
+        // Geometry groups.
+        EntryHandle groups_parent = menu_handler.insert(parent, "Geometry Groups");
+        link_wrapper.menu_groups = Opt(groups_parent);
+
+        link_wrapper.menu_groups_entries.clear();
+        for (std::string const &group_name : group_names()) {
+            // TODO: Add a callback.
+            auto const group_cb = boost::bind(&KinBodyMarker::SwitchGeometryGroup, this, group_name);
+            EntryHandle const group_handle = menu_handler.insert(groups_parent, group_name, group_cb);
+            link_wrapper.menu_groups_entries[group_name] = group_handle;
+        }
 
         // Custom KinBody entries.
         for (CustomMenuEntry const &menu_entry : menu_custom_kinbody_) {

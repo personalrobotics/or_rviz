@@ -1,8 +1,6 @@
-#include <boost/range/adaptor/map.hpp>
 #include "KinBodyLinkMarker.h"
 #include "or_conversions.h"
 
-using boost::adaptors::map_keys;
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 
@@ -74,8 +72,7 @@ void KinBodyLinkMarker::CreateMenu()
     menu_groups_ = menu_handler_.insert(menu_link_, "Geometry Groups");
     menu_groups_entries_.clear();
 
-    LinkInfo const &link_info = link()->GetInfo();
-    for (std::string const group_name : link_info._mapExtraGeometries | map_keys) {
+    for (std::string const group_name : group_names()) {
         auto const callback = boost::bind(&KinBodyLinkMarker::SwitchGeometryGroup, this, group_name);
         menu_groups_entries_[group_name] = menu_handler_.insert(menu_groups_, group_name, callback);
     }

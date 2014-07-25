@@ -8,6 +8,7 @@
 #include "or_conversions.h"
 #include "LinkMarker.h"
 
+using boost::adaptors::map_keys;
 using boost::adaptors::transformed;
 using boost::algorithm::join;
 using boost::algorithm::iends_with;
@@ -143,6 +144,13 @@ void LinkMarker::set_view_collision(bool flag)
 InteractiveMarkerPtr LinkMarker::interactive_marker()
 {
     return interactive_marker_;
+}
+
+std::vector<std::string> LinkMarker::group_names() const
+{
+    OpenRAVE::KinBody::LinkInfo const &link_info = link()->GetInfo();
+    auto const range = link_info._mapExtraGeometries | map_keys;
+    return std::vector<std::string>(range.begin(), range.end());
 }
 
 void LinkMarker::SwitchGeometryGroup(std::string const &group)

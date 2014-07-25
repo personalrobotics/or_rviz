@@ -38,6 +38,7 @@ public:
     bool is_view_collision() const;
     void set_view_collision(bool flag);
 
+    std::vector<std::string> group_names() const;
     void SwitchGeometryGroup(std::string const &group);
 
     virtual bool EnvironmentSync();

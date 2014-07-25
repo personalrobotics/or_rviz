@@ -26,11 +26,16 @@ struct LinkMarkerWrapper {
     boost::optional<MenuEntry> menu_joints;
     boost::optional<MenuEntry> menu_enabled;
     boost::optional<MenuEntry> menu_visible;
+    boost::optional<MenuEntry> menu_move;
+
+    boost::optional<MenuEntry> menu_groups;
+    boost::unordered_map<std::string, MenuEntry> menu_groups_entries;
+
     boost::optional<MenuEntry> menu_geometry;
     boost::optional<MenuEntry> menu_geometry_visual;
     boost::optional<MenuEntry> menu_geometry_collision;
     boost::optional<MenuEntry> menu_geometry_both;
-    boost::optional<MenuEntry> menu_move;
+
     boost::optional<MenuEntry> menu_manipulator;
     boost::optional<MenuEntry> menu_manipulator_active;
     boost::optional<MenuEntry> menu_manipulator_joints;
@@ -59,6 +64,9 @@ public:
                       std::string const &name, boost::function<void ()> const &callback);
 
     void EnvironmentSync();
+
+    std::vector<std::string> group_names() const;
+    void SwitchGeometryGroup(std::string const &group);
 
 private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
