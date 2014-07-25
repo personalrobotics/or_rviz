@@ -198,6 +198,13 @@ void KinBodyMarker::CreateMenu(LinkMarkerWrapper &link_wrapper)
         link_wrapper.menu_move = Opt(menu_handler.insert(parent, "Pose Controls", cb));
         link_wrapper.menu_joints = Opt(menu_handler.insert(parent, "Joint Controls", cb));
 
+        EntryHandle geom_parent = menu_handler.insert(parent, "Geometry");
+        link_wrapper.menu_geometry = Opt(geom_parent);
+        link_wrapper.menu_geometry_visual = Opt(menu_handler.insert(geom_parent, "Visual", cb));
+        link_wrapper.menu_geometry_collision = Opt(menu_handler.insert(geom_parent, "Collision", cb));
+        link_wrapper.menu_geometry_both = Opt(menu_handler.insert(geom_parent, "Both", cb));
+
+
         // Custom KinBody entries.
         for (CustomMenuEntry const &menu_entry : menu_custom_kinbody_) {
             auto const custom_cb = boost::bind(menu_entry.callback);
@@ -303,6 +310,25 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         RAVELOG_DEBUG("Toggled visible to %d for '%s'.\n",
             is_visible, kinbody->GetName().c_str()
         );
+    }
+    // Change geometry visibility.
+    else if (feedback->menu_entry_id == *link_wrapper.menu_geometry_visual) {
+        for (LinkMarkerWrapper &link_wrapper : link_markers_ | map_values) {
+            link_wrapper.link_marker->set_view_visual(true);
+            link_wrapper.link_marker->set_view_collision(false);
+        }
+    }
+    else if (feedback->menu_entry_id == *link_wrapper.menu_geometry_collision) {
+        for (LinkMarkerWrapper &link_wrapper : link_markers_ | map_values) {
+            link_wrapper.link_marker->set_view_visual(false);
+            link_wrapper.link_marker->set_view_collision(true);
+        }
+    }
+    else if (feedback->menu_entry_id == *link_wrapper.menu_geometry_both) {
+        for (LinkMarkerWrapper &link_wrapper : link_markers_ | map_values) {
+            link_wrapper.link_marker->set_view_visual(true);
+            link_wrapper.link_marker->set_view_collision(true);
+        }
     }
     // Toggle movement handles.
     else if (feedback->menu_entry_id == *link_wrapper.menu_move) {

@@ -28,6 +28,7 @@ private:
     interactive_markers::MenuHandler::EntryHandle menu_geom_;
     interactive_markers::MenuHandler::EntryHandle menu_geom_visual_;
     interactive_markers::MenuHandler::EntryHandle menu_geom_collision_;
+    interactive_markers::MenuHandler::EntryHandle menu_geom_both_;
 
     void CreateMenu();
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);

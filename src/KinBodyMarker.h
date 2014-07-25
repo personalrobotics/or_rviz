@@ -26,6 +26,10 @@ struct LinkMarkerWrapper {
     boost::optional<MenuEntry> menu_joints;
     boost::optional<MenuEntry> menu_enabled;
     boost::optional<MenuEntry> menu_visible;
+    boost::optional<MenuEntry> menu_geometry;
+    boost::optional<MenuEntry> menu_geometry_visual;
+    boost::optional<MenuEntry> menu_geometry_collision;
+    boost::optional<MenuEntry> menu_geometry_both;
     boost::optional<MenuEntry> menu_move;
     boost::optional<MenuEntry> menu_manipulator;
     boost::optional<MenuEntry> menu_manipulator_active;

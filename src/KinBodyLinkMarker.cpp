@@ -62,6 +62,7 @@ void KinBodyLinkMarker::CreateMenu()
     menu_geom_ = menu_handler_.insert(menu_link_, "Geometry");
     menu_geom_visual_ = menu_handler_.insert(menu_geom_, "Visual", callback);
     menu_geom_collision_ = menu_handler_.insert(menu_geom_, "Collision", callback);
+    menu_geom_both_ = menu_handler_.insert(menu_geom_, "Both", callback);
     menu_changed_ = true;
 }
 
@@ -74,9 +75,11 @@ void KinBodyLinkMarker::UpdateMenu()
     menu_handler_.setCheckState(menu_visible_,
         BoolToCheckState(link->IsVisible()));
     menu_handler_.setCheckState(menu_geom_visual_,
-        BoolToCheckState(is_view_visual()));
+        BoolToCheckState(is_view_visual() && !is_view_collision()));
     menu_handler_.setCheckState(menu_geom_collision_,
-        BoolToCheckState(is_view_collision()));
+        BoolToCheckState(!is_view_visual() && is_view_collision()));
+    menu_handler_.setCheckState(menu_geom_both_,
+        BoolToCheckState(is_view_visual() && is_view_collision()));
 
     menu_handler_.apply(*server_, interactive_marker_->name);
     menu_changed_ = false;
@@ -114,19 +117,25 @@ void KinBodyLinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
     }
     // Geometry rendering mode.
     else if (feedback->menu_entry_id == menu_geom_visual_) {
-        set_view_visual(!is_view_visual());
-        RAVELOG_DEBUG("Toggled visual geometry visibility to %d"
-                      " for '%s' link '%s'.\n",
-            is_view_visual(),
+        set_view_visual(true);
+        set_view_collision(false);
+        RAVELOG_DEBUG("Showing visual geometry for '%s' link '%s'.\n",
             link->GetParent()->GetName().c_str(),
             link->GetName().c_str()
         );
     }
     else if (feedback->menu_entry_id == menu_geom_collision_) {
-        set_view_collision(!is_view_collision());
-        RAVELOG_DEBUG("Toggled collision geometry to visibility to %d"
-                      " for '%s' link '%s'.\n",
-            is_view_collision(),
+        set_view_visual(false);
+        set_view_collision(true);
+        RAVELOG_DEBUG("Showing collision geometry for '%s' link '%s'.\n",
+            link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
+        );
+    }
+    else if (feedback->menu_entry_id == menu_geom_both_) {
+        set_view_visual(true);
+        set_view_collision(true);
+        RAVELOG_DEBUG("Showing visual and collision geometry for '%s' link '%s'.\n",
             link->GetParent()->GetName().c_str(),
             link->GetName().c_str()
         );
