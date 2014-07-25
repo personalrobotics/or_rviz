@@ -115,14 +115,20 @@ void KinBodyLinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
     // Geometry rendering mode.
     else if (feedback->menu_entry_id == menu_geom_visual_) {
         set_view_visual(!is_view_visual());
-        RAVELOG_DEBUG("Switched to 'visual' render mode for '%s' link '%s'.\n",
-            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        RAVELOG_DEBUG("Toggled visual geometry visibility to %d"
+                      " for '%s' link '%s'.\n",
+            is_view_visual(),
+            link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
         );
     }
     else if (feedback->menu_entry_id == menu_geom_collision_) {
         set_view_collision(!is_view_collision());
-        RAVELOG_DEBUG("Switched to 'collision' render mode for '%s' link '%s'.\n",
-            link->GetParent()->GetName().c_str(), link->GetName().c_str()
+        RAVELOG_DEBUG("Toggled collision geometry to visibility to %d"
+                      " for '%s' link '%s'.\n",
+            is_view_collision(),
+            link->GetParent()->GetName().c_str(),
+            link->GetName().c_str()
         );
     }
 

@@ -16,6 +16,8 @@ typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
 
 class LinkMarker {
 public:
+    static OpenRAVE::Vector const kCollisionColor;
+
     LinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                OpenRAVE::KinBody::LinkPtr link, bool is_ghost);
     virtual ~LinkMarker();
@@ -57,7 +59,7 @@ private:
 
     boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,
-        visualization_msgs::Marker *> geometry_markers_;
+        std::vector<visualization_msgs::Marker *> > geometry_markers_;
 
     void CreateGeometry();
     visualization_msgs::MarkerPtr CreateVisualGeometry(

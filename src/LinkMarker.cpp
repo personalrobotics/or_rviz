@@ -37,6 +37,8 @@ static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
 
+OpenRAVE::Vector const LinkMarker::kCollisionColor(0.0, 0.0, 1.0, 0.5);
+
 LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
                        LinkPtr link, bool is_ghost)
     : server_(server)
@@ -123,7 +125,7 @@ bool LinkMarker::is_view_visual() const
 
 void LinkMarker::set_view_visual(bool flag)
 {
-    force_update_ = force_update_ || (flag == view_visual_);
+    force_update_ = force_update_ || (flag != view_visual_);
     view_visual_ = flag;
 }
 
@@ -134,7 +136,7 @@ bool LinkMarker::is_view_collision() const
 
 void LinkMarker::set_view_collision(bool flag)
 {
-    force_update_ = force_update_ || (flag == view_collision_);
+    force_update_ = force_update_ || (flag != view_collision_);
     view_collision_ = flag;
 }
 
@@ -188,25 +190,42 @@ void LinkMarker::CreateGeometry()
     LinkPtr const link = this->link();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
-        // TODO: Support both types of geometry simultaneously.
-        MarkerPtr new_marker; 
+        // Note that this inserts an empty vector if the entry does not already
+        // exist. We depend on this for lazy marker creation.
+        std::vector<visualization_msgs::Marker *> &markers
+                = geometry_markers_[geometry.get()];
+
         if (view_visual_ && geometry->IsVisible()) {
-            new_marker = CreateVisualGeometry(geometry);
-            if (!new_marker) {
-                new_marker = CreateCollisionGeometry(geometry);
+            // Try loading the visual mesh.
+            MarkerPtr visual_marker = CreateVisualGeometry(geometry);
+
+            // Otherwise, fall back on the collision geometry. This mimics the
+            // behavior of qtcoin.
+            if (!visual_marker) {
+                visual_marker = CreateCollisionGeometry(geometry);
             }
-        } else if (view_collision_ && link->IsEnabled()) {
-            new_marker = CreateCollisionGeometry(geometry);
+
+            if (visual_marker) {
+                visual_control_->markers.push_back(*visual_marker);
+                markers.push_back(&visual_control_->markers.back());
+            }
         }
 
-        if (new_marker) {
-            visual_control_->markers.push_back(*new_marker);
-            geometry_markers_[geometry.get()] = &visual_control_->markers.back();
-        }
-        // This geometry is empty. Insert a dummy marker to simplify the
-        // change-detection logic.
-        else {
-            geometry_markers_[geometry.get()] = NULL;
+        if (view_collision_ && link->IsEnabled()) {
+            MarkerPtr const collision_marker = CreateCollisionGeometry(geometry);
+
+            // Make the collision geometry partially transparent if we're also
+            // rendering the collision geometry. It's generally true that the
+            // collision geometry is larger than the visual geometry.
+            if (collision_marker && view_visual_) {
+                collision_marker->color = toROSColor(kCollisionColor);
+                collision_marker->mesh_use_embedded_materials = false;
+            }
+
+            if (collision_marker) {
+                visual_control_->markers.push_back(*collision_marker);
+                markers.push_back(&visual_control_->markers.back());
+            }
         }
     }
 }
