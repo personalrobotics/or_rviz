@@ -157,15 +157,13 @@ bool ManipulatorMarker::EnvironmentSync()
                 continue;
             }
 
-#if 0
-            // TODO: Invalidate the IK solution if we change the free joint.
+            // Invalidate the IK solution if we change the free joint.
             JointMarkerPtr &joint_marker = it->second;
-            if (joint_marker->delta() != 0) {
+            if (joint_marker->angle() != current_free_[ifree]) {
+                std::cout << "Free Value: " << joint_marker->angle() << std::endl;
+                current_free_[ifree] = joint_marker->angle();
                 changed_free = true;
             }
-            current_free_[ifree] += 0.1 * joint_marker->delta();
-            joint_marker->reset_delta();
-#endif
         }
 
         // Set and clamp these joint values to be within limits.
@@ -225,7 +223,7 @@ bool ManipulatorMarker::EnvironmentSync()
 
             // Update the pose of the control to match the ghost arm.
             OpenRAVE::Transform const joint_pose = JointMarker::GetJointPose(joint);
-            //joint_marker->set_pose(joint_pose);
+            joint_marker->set_pose(joint_pose);
 
             bool const is_joint_changed = joint_marker->EnvironmentSync();
             is_changed = is_changed || is_joint_changed;
