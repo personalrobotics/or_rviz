@@ -22,6 +22,11 @@ public:
     virtual OpenRAVE::UserDataPtr RegisterViewerThreadCallback(
         OpenRAVE::ViewerBase::ViewerThreadCallbackFn const &fncallback);
 
+protected:
+    virtual OpenRAVE::GraphHandlePtr plot3(
+        float const *points, int num_points, int stride, float point_size,
+        OpenRAVE::RaveVector<float> const &color, int drawstyle = 0);
+
 private:
     typedef void ViewerCallbackFn();
     typedef bool SelectionCallbackFn(OpenRAVE::KinBody::LinkPtr plink,
@@ -31,6 +36,7 @@ private:
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     bool running_;
+    int graph_id_;
 
     boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;

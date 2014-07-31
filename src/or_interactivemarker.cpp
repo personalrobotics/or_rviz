@@ -3,12 +3,16 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <interactive_markers/interactive_marker_server.h>
 #include "or_interactivemarker.h"
+#include "or_conversions.h"
 
 using boost::format;
 using boost::str;
 using interactive_markers::InteractiveMarkerServer;
-
+using visualization_msgs::InteractiveMarker;
+using visualization_msgs::InteractiveMarkerPtr;
 using OpenRAVE::KinBodyPtr;
+using OpenRAVE::GraphHandlePtr;
+typedef boost::shared_ptr<interactive_markers::InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
 static double const kRefreshRate = 30;
 
@@ -16,6 +20,9 @@ namespace or_interactivemarker {
 
 namespace detail {
 
+/*
+ * ScopedConnection
+ */
 class ScopedConnection : public OpenRAVE::UserData {
 public:
     ScopedConnection(boost::signals2::connection const &connection)
@@ -41,6 +48,24 @@ static std::string GetRemainingContent(std::istream &stream, bool trim = false)
     }
     return str;
 }
+
+/*
+ * InteractiveMarkerGraphHandle
+ */
+class InteractiveMarkerGraphHandle : public OpenRAVE::GraphHandle {
+public:
+    InteractiveMarkerGraphHandle(
+            InteractiveMarkerServerPtr const &interactive_marker_server,
+            InteractiveMarkerPtr const &interactive_marker)
+        : interactive_marker_server_(interactive_marker_server)
+        , interactive_marker_(interactive_marker)
+    {
+    }
+
+private:
+    InteractiveMarkerServerPtr interactive_marker_server_;
+    InteractiveMarkerPtr interactive_marker_;
+};
 
 }
 
@@ -135,6 +160,45 @@ OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterViewerThreadCallback(
 {
     boost::signals2::connection const con = viewer_callbacks_.connect(fncallback);
     return boost::make_shared<detail::ScopedConnection>(con);
+}
+
+GraphHandlePtr InteractiveMarkerViewer::plot3(
+    float const *points, int num_points, int stride, float point_size,
+    OpenRAVE::RaveVector<float> const &color, int drawstyle)
+{
+    auto interactive_marker = boost::make_shared<InteractiveMarker>();
+    interactive_marker->header.frame_id = "/world"; // TODO: don't hardcode this
+    interactive_marker->pose = toROSPose(OpenRAVE::Transform());
+    interactive_marker->name = str(format("GraphHandle[%p]") % interactive_marker.get());
+    interactive_marker->scale = 1.0;
+
+    interactive_marker->controls.resize(1);
+    visualization_msgs::InteractiveMarkerControl &control = interactive_marker->controls.front();
+    control.orientation_mode = visualization_msgs::InteractiveMarkerControl::FIXED;
+    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
+    control.always_visible = true;
+
+    control.markers.resize(1);
+    visualization_msgs::Marker &marker = control.markers.front();
+    marker.type = visualization_msgs::Marker::POINTS;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose = toROSPose(OpenRAVE::Transform());
+    marker.scale.x = 1.0;
+    marker.scale.y = 1.0;
+    marker.scale.z = 1.0;
+    marker.color.r = color[0];
+    marker.color.g = color[1];
+    marker.color.b = color[2];
+    marker.color.a = color[3];
+
+    marker.points.resize(num_points);
+    for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
+        marker.points[ipoint].x = points[stride * ipoint + 0];
+        marker.points[ipoint].y = points[stride * ipoint + 1];
+        marker.points[ipoint].z = points[stride * ipoint + 2];
+    }
+
+    // TODO: Create the GraphHandle.
 }
 
 bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istream &in)
