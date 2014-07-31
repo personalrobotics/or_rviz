@@ -27,6 +27,7 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     , joint_(joint)
     , joint_delta_(0.0)
     , created_(false)
+    , active_(false)
 {
     BOOST_ASSERT(joint);
 
@@ -92,17 +93,14 @@ OpenRAVE::Transform JointMarker::pose() const
 
 void JointMarker::set_pose(OpenRAVE::Transform const &pose)
 {
-    joint_pose_ = pose;
+    if (!active_) {
+        joint_pose_ = pose;
+    }
 }
 
-double JointMarker::delta() const
+double JointMarker::angle() const
 {
-    return joint_delta_;
-}
-
-void JointMarker::reset_delta()
-{
-    joint_delta_ = 0.0;
+    return joint_initial_ + joint_delta_;
 }
 
 bool JointMarker::EnvironmentSync()
@@ -111,18 +109,29 @@ bool JointMarker::EnvironmentSync()
     if (created_) {
         server_->setPose(marker_.name, toROSPose(pose()));
     }
+    if (!active_) {
+        joint_initial_ = joint()->GetValue(0);
+        joint_delta_ = 0;
+    }
+
     created_ = true;
     return false;
 }
 
 void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedback)
 {
-    if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
+    if (feedback->event_type == InteractiveMarkerFeedback::MOUSE_DOWN) {
+        active_ = true;
+    } else if (feedback->event_type == InteractiveMarkerFeedback::MOUSE_UP) {
+        active_ = false;
+    } else if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
         // Get the pose of the handle relative to the current joint position.
         // TODO: Why is this a rotation about the z-axis? It should be the y-axis.
         OpenRAVE::Transform const pose = this->pose().inverse() * toORPose(feedback->pose);
         OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
-        joint_delta_ -= axis_angle[2];
+
+        // TODO: Why is this negated?
+        joint_delta_ = -axis_angle[2];
     }
 }
 

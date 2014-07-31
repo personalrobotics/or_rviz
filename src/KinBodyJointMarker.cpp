@@ -30,9 +30,8 @@ bool KinBodyJointMarker::EnvironmentSync()
     BOOST_ASSERT(joint->GetDOF() == 1);
     BOOST_ASSERT(dof_values.size() == 1);
 
-    dof_values[0] += delta();
+    dof_values[0] = angle();
     kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
-    reset_delta();
 
     // Update the pose of the joint from OpenRAVE.
     set_pose(GetJointPose(joint));

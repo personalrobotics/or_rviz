@@ -157,13 +157,15 @@ bool ManipulatorMarker::EnvironmentSync()
                 continue;
             }
 
-            // Invalidate the IK solution if we change the free joint.
+#if 0
+            // TODO: Invalidate the IK solution if we change the free joint.
             JointMarkerPtr &joint_marker = it->second;
             if (joint_marker->delta() != 0) {
                 changed_free = true;
             }
             current_free_[ifree] += 0.1 * joint_marker->delta();
             joint_marker->reset_delta();
+#endif
         }
 
         // Set and clamp these joint values to be within limits.

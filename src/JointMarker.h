@@ -20,8 +20,7 @@ public:
     OpenRAVE::Transform pose() const;
     void set_pose(OpenRAVE::Transform const &pose);
 
-    double delta() const;
-    void reset_delta();
+    double angle() const;
     
     void set_joint_pose(OpenRAVE::Transform const &pose);
 
@@ -37,8 +36,10 @@ protected:
 private:
     OpenRAVE::KinBody::JointWeakPtr joint_;
     OpenRAVE::Transform joint_pose_;
+    double joint_initial_;
     double joint_delta_;
     bool created_;
+    bool active_;
 
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
