@@ -39,6 +39,8 @@ private:
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
 
+    virtual void RemoveKinBody(OpenRAVE::KinBodyPtr body);
+
     void KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name);
     void LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name);
     void ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator,

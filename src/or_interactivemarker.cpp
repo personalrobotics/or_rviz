@@ -227,6 +227,11 @@ bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
     out << menu_queue_.rdbuf();
 }
 
+void InteractiveMarkerViewer::RemoveKinBody(OpenRAVE::KinBodyPtr body)
+{
+    body->RemoveUserData("interactive_marker");
+}
+
 void InteractiveMarkerViewer::KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody,
                                                   std::string const &name)
 {
