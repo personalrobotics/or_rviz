@@ -25,7 +25,10 @@ public:
 protected:
     virtual OpenRAVE::GraphHandlePtr plot3(
         float const *points, int num_points, int stride, float point_size,
-        OpenRAVE::RaveVector<float> const &color, int drawstyle = 0);
+        OpenRAVE::RaveVector<float> const &color, int draw_style = 0);
+    virtual OpenRAVE::GraphHandlePtr plot3(
+        float const *points, int num_points, int stride, float point_size,
+        float const *colors, int draw_style = 0, bool has_alpha = false);
 
 private:
     typedef void ViewerCallbackFn();
@@ -52,6 +55,7 @@ private:
     void ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator,
                                  std::string const &name);
 
+    visualization_msgs::InteractiveMarkerPtr CreateMarker() const;
 };
 
 }

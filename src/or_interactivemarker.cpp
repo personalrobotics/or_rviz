@@ -194,32 +194,28 @@ OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterViewerThreadCallback(
 
 GraphHandlePtr InteractiveMarkerViewer::plot3(
     float const *points, int num_points, int stride, float point_size,
-    OpenRAVE::RaveVector<float> const &color, int drawstyle)
+    OpenRAVE::RaveVector<float> const &color, int draw_style)
 {
-    auto interactive_marker = boost::make_shared<InteractiveMarker>();
-    interactive_marker->header.frame_id = "/world"; // TODO: don't hardcode this
-    interactive_marker->pose = toROSPose(OpenRAVE::Transform());
-    interactive_marker->name = str(format("GraphHandle[%p]") % interactive_marker.get());
-    interactive_marker->scale = 1.0;
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.color = toROSColor<>(color);
 
-    interactive_marker->controls.resize(1);
-    visualization_msgs::InteractiveMarkerControl &control = interactive_marker->controls.front();
-    control.orientation_mode = visualization_msgs::InteractiveMarkerControl::FIXED;
-    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
-    control.always_visible = true;
-
-    control.markers.resize(1);
-    visualization_msgs::Marker &marker = control.markers.front();
-    marker.type = visualization_msgs::Marker::POINTS;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.pose = toROSPose(OpenRAVE::Transform());
-    marker.scale.x = 1.0;
-    marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
-    marker.color.r = color[0];
-    marker.color.g = color[1];
-    marker.color.b = color[2];
-    marker.color.a = color[3];
+    if (draw_style == 0) {
+        marker.type = visualization_msgs::Marker::POINTS;
+        marker.scale.x = point_size;
+        marker.scale.y = point_size;
+    } else if (draw_style == 1) {
+        marker.type = visualization_msgs::Marker::SPHERE_LIST;
+        marker.scale.x = point_size;
+        marker.scale.y = point_size;
+        marker.scale.z = point_size;
+    } else {
+        throw OpenRAVE::openrave_exception(str(
+            format("Unsupported drawstyle %d; expected 0 or 1.")
+                % draw_style
+            ), OpenRAVE::ORE_InvalidArguments
+        );
+    }
 
     marker.points.resize(num_points);
     for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
@@ -228,7 +224,62 @@ GraphHandlePtr InteractiveMarkerViewer::plot3(
         marker.points[ipoint].z = points[stride * ipoint + 2];
     }
 
-    // TODO: Create the GraphHandle.
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
+    float const *points, int num_points, int stride, float point_size,
+    float const *colors, int draw_style, bool has_alpha)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+
+    if (draw_style == 0) {
+        marker.type = visualization_msgs::Marker::POINTS;
+        marker.scale.x = point_size;
+        marker.scale.y = point_size;
+    } else if (draw_style == 1) {
+        // TODO: Does this support individual colors?
+        marker.type = visualization_msgs::Marker::SPHERE_LIST;
+        marker.scale.x = point_size;
+        marker.scale.y = point_size;
+        marker.scale.z = point_size;
+    } else {
+        throw OpenRAVE::openrave_exception(str(
+            format("Unsupported drawstyle %d; expected 0 or 1.")
+                % draw_style
+            ), OpenRAVE::ORE_InvalidArguments
+        );
+    }
+
+    int color_stride;
+    if (has_alpha) {
+        color_stride = 4;
+    } else {
+        color_stride = 3;
+    }
+
+    marker.points.resize(num_points);
+    for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
+        marker.points[ipoint].x = points[stride * ipoint + 0];
+        marker.points[ipoint].y = points[stride * ipoint + 1];
+        marker.points[ipoint].z = points[stride * ipoint + 2];
+        marker.colors[ipoint].r = points[color_stride * ipoint + 0];
+        marker.colors[ipoint].g = points[color_stride * ipoint + 1];
+        marker.colors[ipoint].b = points[color_stride * ipoint + 2];
+
+        if (has_alpha) {
+            marker.colors[ipoint].a = points[color_stride * ipoint + 3];
+        } else {
+            marker.colors[ipoint].a = 1.0;
+        }
+    }
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
 }
 
 bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istream &in)
@@ -350,6 +401,32 @@ void InteractiveMarkerViewer::ManipulatorMenuCallback(
     menu_queue_ << "manipulator " << manipulator->GetRobot()->GetName()
                 << " " << manipulator->GetName()
                 << " " << name << '\n';
+}
+
+InteractiveMarkerPtr InteractiveMarkerViewer::CreateMarker() const
+{
+    auto interactive_marker = boost::make_shared<InteractiveMarker>();
+
+    interactive_marker->header.frame_id = "/world"; // TODO: don't hardcode this
+    interactive_marker->pose = toROSPose(OpenRAVE::Transform());
+    interactive_marker->name = str(format("GraphHandle[%p]") % interactive_marker.get());
+    interactive_marker->scale = 1.0;
+
+    interactive_marker->controls.resize(1);
+    visualization_msgs::InteractiveMarkerControl &control = interactive_marker->controls.front();
+    control.orientation_mode = visualization_msgs::InteractiveMarkerControl::FIXED;
+    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
+    control.always_visible = true;
+
+    control.markers.resize(1);
+    visualization_msgs::Marker &marker = control.markers.front();
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 1.0;
+    marker.scale.y = 1.0;
+    marker.scale.z = 1.0;
+
+    return interactive_marker;
 }
 
 }
