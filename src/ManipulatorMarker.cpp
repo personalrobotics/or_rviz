@@ -160,7 +160,6 @@ bool ManipulatorMarker::EnvironmentSync()
             // Invalidate the IK solution if we change the free joint.
             JointMarkerPtr &joint_marker = it->second;
             if (joint_marker->angle() != current_free_[ifree]) {
-                std::cout << "Free Value: " << joint_marker->angle() << std::endl;
                 current_free_[ifree] = joint_marker->angle();
                 changed_free = true;
             }
