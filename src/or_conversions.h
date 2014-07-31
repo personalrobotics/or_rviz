@@ -9,15 +9,25 @@
 
 namespace or_interactivemarker {
 
-std_msgs::ColorRGBA toROSColor(OpenRAVE::Vector const &color);
-geometry_msgs::Vector3 toROSVector(OpenRAVE::Vector const &or_vector);
-geometry_msgs::Pose toROSPose(OpenRAVE::Transform const &or_pose);
-geometry_msgs::Point toROSPoint(OpenRAVE::Vector const &or_point);
-geometry_msgs::Quaternion toROSQuaternion(OpenRAVE::Vector const &or_point);
+// OpenRAVE to ROS
+template <class Scalar>
+std_msgs::ColorRGBA toROSColor(OpenRAVE::RaveVector<Scalar> const &color);
+template <class Scalar>
+geometry_msgs::Vector3 toROSVector(OpenRAVE::RaveVector<Scalar> const &or_vector);
+template <class Scalar>
+geometry_msgs::Pose toROSPose(OpenRAVE::RaveTransform<Scalar> const &or_pose);
+template <class Scalar>
+geometry_msgs::Point toROSPoint(OpenRAVE::RaveVector<Scalar> const &or_point);
+template <class Scalar>
+geometry_msgs::Quaternion toROSQuaternion(OpenRAVE::RaveVector<Scalar> const &or_quat);
 
-OpenRAVE::Vector toORPoint(geometry_msgs::Point const &point);
-OpenRAVE::Vector toORQuaternion(geometry_msgs::Quaternion const &quat);
-OpenRAVE::Transform toORPose(geometry_msgs::Pose const &pose);
+// ROS to OpenRAVE
+template <class Scalar>
+OpenRAVE::RaveVector<Scalar> toORPoint(geometry_msgs::Point const &point);
+template <class Scalar>
+OpenRAVE::RaveVector<Scalar> toORQuaternion(geometry_msgs::Quaternion const &quat);
+template <class Scalar>
+OpenRAVE::RaveTransform<Scalar> toORPose(geometry_msgs::Pose const &pose);
 
 }
 

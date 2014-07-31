@@ -57,14 +57,44 @@ public:
     InteractiveMarkerGraphHandle(
             InteractiveMarkerServerPtr const &interactive_marker_server,
             InteractiveMarkerPtr const &interactive_marker)
-        : interactive_marker_server_(interactive_marker_server)
+        : server_(interactive_marker_server)
         , interactive_marker_(interactive_marker)
+        , show_(true)
     {
+        BOOST_ASSERT(interactive_marker_server);
+        BOOST_ASSERT(interactive_marker);
+
+        server_->insert(*interactive_marker_);
+    }
+
+    virtual ~InteractiveMarkerGraphHandle()
+    {
+        server_->erase(interactive_marker_->name);
+    }
+
+    virtual void SetTransform(OpenRAVE::RaveTransform<float> const &t)
+    {
+        // TODO: This could SEGFAULT if it is called too quickly after the
+        // marker is created.
+        if (show_) {
+            server_->setPose(interactive_marker_->name, toROSPose<>(t));
+        }
+    }
+
+    virtual void SetShow(bool show)
+    {
+        if (show && !show_) {
+            server_->insert(*interactive_marker_);
+        } else if (!show && show_) {
+            server_->erase(interactive_marker_->name);
+        }
+        show_ = show;
     }
 
 private:
-    InteractiveMarkerServerPtr interactive_marker_server_;
+    InteractiveMarkerServerPtr server_;
     InteractiveMarkerPtr interactive_marker_;
+    bool show_;
 };
 
 }

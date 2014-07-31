@@ -11,6 +11,7 @@ using interactive_markers::InteractiveMarkerServer;
 using visualization_msgs::InteractiveMarkerControl;
 using visualization_msgs::InteractiveMarkerFeedback;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
+using OpenRAVE::dReal;
 using OpenRAVE::KinBody;
 using OpenRAVE::KinBodyPtr;
 
@@ -127,7 +128,7 @@ void JointMarker::JointCallback(InteractiveMarkerFeedbackConstPtr const &feedbac
     } else if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
         // Get the pose of the handle relative to the current joint position.
         // TODO: Why is this a rotation about the z-axis? It should be the y-axis.
-        OpenRAVE::Transform const pose = this->pose().inverse() * toORPose(feedback->pose);
+        OpenRAVE::Transform const pose = this->pose().inverse() * toORPose<dReal>(feedback->pose);
         OpenRAVE::Vector const axis_angle = OpenRAVE::geometry::axisAngleFromQuat(pose.rot);
 
         // TODO: Why is this negated?

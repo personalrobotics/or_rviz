@@ -1,5 +1,8 @@
 #include "or_conversions.h"
 
+using OpenRAVE::dReal;
+using OpenRAVE::RaveVector;
+using OpenRAVE::RaveTransform;
 using std_msgs::ColorRGBA;
 using geometry_msgs::Vector3;
 using geometry_msgs::Pose;
@@ -11,7 +14,8 @@ namespace or_interactivemarker {
 /*
  * OpenRAVE to ROS
  */
-ColorRGBA toROSColor(OpenRAVE::Vector const &or_color)
+template <class Scalar>
+ColorRGBA toROSColor(RaveVector<Scalar> const &or_color)
 {
     ColorRGBA color;
     color.r = or_color.x;
@@ -21,7 +25,8 @@ ColorRGBA toROSColor(OpenRAVE::Vector const &or_color)
     return color;
 }
 
-Vector3 toROSVector(OpenRAVE::Vector const &or_vector)
+template <class Scalar>
+Vector3 toROSVector(RaveVector<Scalar> const &or_vector)
 {
     Vector3 v;
     v.x = or_vector.x;
@@ -30,15 +35,17 @@ Vector3 toROSVector(OpenRAVE::Vector const &or_vector)
     return v;
 }
 
-Pose toROSPose(OpenRAVE::Transform const &or_pose)
+template <class Scalar>
+Pose toROSPose(RaveTransform<Scalar> const &or_pose)
 {
     Pose pose;
-    pose.position = toROSPoint(or_pose.trans);
-    pose.orientation = toROSQuaternion(or_pose.rot);
+    pose.position = toROSPoint<>(or_pose.trans);
+    pose.orientation = toROSQuaternion<>(or_pose.rot);
     return pose;
 }
 
-Point toROSPoint(OpenRAVE::Vector const &or_point)
+template <class Scalar>
+Point toROSPoint(RaveVector<Scalar> const &or_point)
 {
     Point point;
     point.x = or_point.x;
@@ -47,7 +54,8 @@ Point toROSPoint(OpenRAVE::Vector const &or_point)
     return point;
 }
 
-Quaternion toROSQuaternion(OpenRAVE::Vector const &or_quat)
+template <class Scalar>
+Quaternion toROSQuaternion(RaveVector<Scalar> const &or_quat)
 {
     Quaternion quaternion;
     quaternion.w = or_quat[0];
@@ -60,14 +68,16 @@ Quaternion toROSQuaternion(OpenRAVE::Vector const &or_quat)
 /*
  * ROS to OpenRAVE
  */
-OpenRAVE::Vector toORPoint(Point const &point)
+template <class Scalar>
+RaveVector<Scalar> toORPoint(Point const &point)
 {
-    return OpenRAVE::Vector(point.x, point.y, point.z);
+    return RaveVector<Scalar>(point.x, point.y, point.z);
 }
 
-OpenRAVE::Vector toORQuaternion(Quaternion const &quat)
+template <class Scalar>
+RaveVector<Scalar> toORQuaternion(Quaternion const &quat)
 {
-    OpenRAVE::Vector or_quat;
+    RaveVector<Scalar> or_quat;
     or_quat[0] = quat.w;
     or_quat[1] = quat.x;
     or_quat[2] = quat.y;
@@ -75,12 +85,26 @@ OpenRAVE::Vector toORQuaternion(Quaternion const &quat)
     return or_quat;
 }
 
-OpenRAVE::Transform toORPose(Pose const &pose)
+template <class Scalar>
+RaveTransform<Scalar> toORPose(Pose const &pose)
 {
-    OpenRAVE::Transform or_transform;
-    or_transform.trans = toORPoint(pose.position);
-    or_transform.rot = toORQuaternion(pose.orientation);
+    RaveTransform<Scalar> or_transform;
+    or_transform.trans = toORPoint<Scalar>(pose.position);
+    or_transform.rot = toORQuaternion<Scalar>(pose.orientation);
     return or_transform;
 }
+
+// Explicit instantiations.
+template ColorRGBA toROSColor<float>(RaveVector<float> const &color);
+template Vector3 toROSVector<float>(RaveVector<float> const &or_vector);
+template Pose toROSPose<float>(RaveTransform<float> const &or_pose);
+template Point toROSPoint<float>(RaveVector<float> const &or_point);
+template Quaternion toROSQuaternion<float>(RaveVector<float> const &or_point);
+
+template ColorRGBA toROSColor<double>(RaveVector<double> const &color);
+template Vector3 toROSVector<double>(RaveVector<double> const &or_vector);
+template Pose toROSPose<double>(RaveTransform<double> const &or_pose);
+template Point toROSPoint<double>(RaveVector<double> const &or_point);
+template Quaternion toROSQuaternion<double>(RaveVector<double> const &or_point);
 
 }

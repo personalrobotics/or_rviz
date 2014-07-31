@@ -305,7 +305,7 @@ void ManipulatorMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
 void ManipulatorMarker::IkFeedback(InteractiveMarkerFeedbackConstPtr const &feedback)
 {
     if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
-        current_pose_ = toORPose(feedback->pose);
+        current_pose_ = toORPose<OpenRAVE::dReal>(feedback->pose);
         changed_pose_ = true;
     }
 }

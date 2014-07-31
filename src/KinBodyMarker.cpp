@@ -10,6 +10,7 @@ using boost::format;
 using boost::str;
 using boost::algorithm::ends_with;
 using boost::adaptors::map_values;
+using OpenRAVE::dReal;
 using OpenRAVE::EnvironmentBasePtr;
 using OpenRAVE::KinBodyPtr;
 using OpenRAVE::KinBodyWeakPtr;
@@ -489,7 +490,7 @@ void KinBodyMarker::PoseCallback(InteractiveMarkerFeedbackConstPtr const &feedba
     OpenRAVE::KinBodyPtr const kinbody = kinbody_.lock();
 
     if (feedback->event_type == InteractiveMarkerFeedback::POSE_UPDATE) {
-        OpenRAVE::Transform const pose = toORPose(feedback->pose);
+        OpenRAVE::Transform const pose = toORPose<dReal>(feedback->pose);
         kinbody->SetTransform(pose);
     }
 }
