@@ -33,9 +33,32 @@ protected:
     virtual OpenRAVE::GraphHandlePtr drawlinestrip(
         float const *points, int num_points, int stride, float width,
         OpenRAVE::RaveVector<float> const &color);
+    virtual OpenRAVE::GraphHandlePtr drawlinestrip(
+        float const *points, int num_points, int stride, float width,
+        float const *colors);
+
+    virtual OpenRAVE::GraphHandlePtr drawlinelist(
+        float const *points, int num_points, int stride, float width,
+        OpenRAVE::RaveVector<float> const &color);
     virtual OpenRAVE::GraphHandlePtr drawlinelist(
         float const *points, int num_points, int stride, float width,
         float const *colors);
+
+    virtual OpenRAVE::GraphHandlePtr drawbox(
+        OpenRAVE::RaveVector<float> const &position,
+        OpenRAVE::RaveVector<float> const &extents);
+
+    virtual OpenRAVE::GraphHandlePtr drawplane(
+        OpenRAVE::RaveTransform<float> const &transform,
+        OpenRAVE::RaveVector<float> const &extents,
+        boost::multi_array<float, 3> const &texture);
+
+    virtual OpenRAVE::GraphHandlePtr drawtrimesh(
+        float const *points, int stride, int const *indices, int num_triangles,
+        OpenRAVE::RaveVector<float> const &color);
+    virtual OpenRAVE::GraphHandlePtr drawtrimesh(
+        float const *points, int stride, int const *pIndices, int num_triangles,
+        boost::multi_array<float, 2> const &colors);
 
 private:
     typedef void ViewerCallbackFn();
@@ -67,7 +90,9 @@ private:
                        std::vector<geometry_msgs::Point> *out_points) const;
     void ConvertColors(float const *colors, int num_colors, bool has_alpha,
                        std::vector<std_msgs::ColorRGBA> *out_colors) const;
-
+    void ConvertMesh(float const *points, int stride,
+                     int const *indices, int num_triangles,
+                     std::vector<geometry_msgs::Point> *out_points) const;
 };
 
 }

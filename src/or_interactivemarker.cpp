@@ -263,6 +263,41 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
 {
     InteractiveMarkerPtr interactive_marker = CreateMarker();
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.color = toROSColor<>(color);
+    marker.scale.x = width;
+
+    ConvertPoints(points, num_points, stride, &marker.points);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
+    float const *points, int num_points, int stride, float width,
+    float const *colors)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.scale.x = width;
+
+    ConvertPoints(points, num_points, stride, &marker.points);
+    ConvertColors(colors, num_points, false, &marker.colors);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
+    float const *points, int num_points, int stride, float width,
+    OpenRAVE::RaveVector<float> const &color)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::LINE_LIST;
     marker.color = toROSColor<>(color);
     marker.scale.x = width;
 
@@ -279,6 +314,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
 {
     InteractiveMarkerPtr interactive_marker = CreateMarker();
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::LINE_LIST;
     marker.scale.x = width;
 
     ConvertPoints(points, num_points, stride, &marker.points);
@@ -289,7 +325,110 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
     );
 }
 
-bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out, std::istream &in)
+GraphHandlePtr InteractiveMarkerViewer::drawbox(
+    OpenRAVE::RaveVector<float> const &pos,
+    OpenRAVE::RaveVector<float> const &extents)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.pose.position = toROSPoint<>(pos);
+    marker.scale = toROSVector<>(2.0 * extents);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::drawplane(
+    OpenRAVE::RaveTransform<float> const &transform,
+    OpenRAVE::RaveVector<float> const &extents,
+    boost::multi_array<float, 3> const &texture)
+{
+    throw OpenRAVE::openrave_exception(
+        "drawplane is not implemented on InteractiveMarkerViewer",
+        OpenRAVE::ORE_NotImplemented
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
+    float const *points, int stride, int const *indices, int num_triangles,
+    OpenRAVE::RaveVector<float> const &color)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+    marker.color = toROSColor<>(color);
+    marker.scale.x = 1;
+    marker.scale.y = 1;
+    marker.scale.z = 1;
+
+    ConvertMesh(points, stride, indices, num_triangles, &marker.points);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
+    float const *points, int stride, int const *indices, int num_triangles,
+    boost::multi_array<float, 2> const &colors)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+    marker.scale.x = 1;
+    marker.scale.y = 1;
+    marker.scale.z = 1;
+
+    ConvertMesh(points, stride, indices, num_triangles, &marker.points);
+
+    // TODO: Are these vertex colors or face colors?
+    size_t const *color_shape = colors.shape();
+    if (color_shape[0] != num_triangles) {
+        throw OpenRAVE::openrave_exception(str(
+            format("Number of colors does not equal number of triangles;"
+                   " expected %d, got %d.")
+                % color_shape[0] % num_triangles
+            ),
+            OpenRAVE::ORE_InvalidArguments
+        );
+    } else if (color_shape[1] != 3 && color_shape[1] != 4) {
+        throw OpenRAVE::openrave_exception(str(
+            format("Invalid number of channels; expected 3 or 4, got %d.")
+                % color_shape[1]
+            ),
+            OpenRAVE::ORE_InvalidArguments
+        );
+    }
+
+    marker.colors.resize(3 * num_triangles);
+    for (int itri = 0; itri < num_triangles; ++itri) {
+        std_msgs::ColorRGBA color;
+        color.r = colors[itri][0];
+        color.g = colors[itri][1];
+        color.b = colors[itri][2];
+
+        if (color_shape[1] == 4) {
+            color.a = colors[itri][3];
+        } else {
+            color.a = 1.0;
+        }
+
+        for (int ivertex = 0; ivertex < 3; ++ivertex) {
+            int const index_offset = 3 * itri + ivertex;
+            int const index = stride * indices[index_offset];
+            marker.colors[index] = color;
+        }
+    }
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
+                                                  std::istream &in)
 {
     std::string type, kinbody_name;
     in >> type >> kinbody_name;
@@ -484,6 +623,27 @@ void InteractiveMarkerViewer::ConvertColors(
     }
 }
 
+void InteractiveMarkerViewer::ConvertMesh(
+        float const *points, int stride, int const *indices, int num_triangles,
+        std::vector<geometry_msgs::Point> *out_points) const
+{
+    BOOST_ASSERT(points);
+    BOOST_ASSERT(stride > 0);
+    BOOST_ASSERT(indices);
+    BOOST_ASSERT(num_triangles >= 0);
+    BOOST_ASSERT(out_points);
 
+    out_points->resize(3 * num_triangles);
+    for (int iindex = 0; iindex < num_triangles; ++iindex) {
+        for (int ivertex = 0; ivertex < 3; ++ivertex) {
+            int const index_offset = 3 * iindex + ivertex;
+            float const *or_point = &points[stride * indices[index_offset]];
+            geometry_msgs::Point &out_point = out_points->at(3 * iindex + ivertex);
+            out_point.x = or_point[0];
+            out_point.y = or_point[1];
+            out_point.z = or_point[2];
+        }
+    }
+}
 
 }
