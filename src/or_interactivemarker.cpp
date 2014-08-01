@@ -217,12 +217,7 @@ GraphHandlePtr InteractiveMarkerViewer::plot3(
         );
     }
 
-    marker.points.resize(num_points);
-    for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
-        marker.points[ipoint].x = points[stride * ipoint + 0];
-        marker.points[ipoint].y = points[stride * ipoint + 1];
-        marker.points[ipoint].z = points[stride * ipoint + 2];
-    }
+    ConvertPoints(points, num_points, stride, &marker.points);
 
     return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
@@ -254,28 +249,40 @@ OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
         );
     }
 
-    int color_stride;
-    if (has_alpha) {
-        color_stride = 4;
-    } else {
-        color_stride = 3;
-    }
+    ConvertPoints(points, num_points, stride, &marker.points);
+    ConvertColors(colors, num_points, has_alpha, &marker.colors);
 
-    marker.points.resize(num_points);
-    for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
-        marker.points[ipoint].x = points[stride * ipoint + 0];
-        marker.points[ipoint].y = points[stride * ipoint + 1];
-        marker.points[ipoint].z = points[stride * ipoint + 2];
-        marker.colors[ipoint].r = points[color_stride * ipoint + 0];
-        marker.colors[ipoint].g = points[color_stride * ipoint + 1];
-        marker.colors[ipoint].b = points[color_stride * ipoint + 2];
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
 
-        if (has_alpha) {
-            marker.colors[ipoint].a = points[color_stride * ipoint + 3];
-        } else {
-            marker.colors[ipoint].a = 1.0;
-        }
-    }
+GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
+    float const *points, int num_points, int stride, float width,
+    OpenRAVE::RaveVector<float> const &color)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.color = toROSColor<>(color);
+    marker.scale.x = width;
+
+    ConvertPoints(points, num_points, stride, &marker.points);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
+    float const *points, int num_points, int stride, float width,
+    float const *colors)
+{
+    InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.scale.x = width;
+
+    ConvertPoints(points, num_points, stride, &marker.points);
+    ConvertColors(colors, num_points, false, &marker.colors);
 
     return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
@@ -428,5 +435,55 @@ InteractiveMarkerPtr InteractiveMarkerViewer::CreateMarker() const
 
     return interactive_marker;
 }
+
+void InteractiveMarkerViewer::ConvertPoints(
+        float const *points, int num_points, int stride,
+        std::vector<geometry_msgs::Point> *out_points) const
+{
+    BOOST_ASSERT(points);
+    BOOST_ASSERT(num_points >= 0);
+    BOOST_ASSERT(stride >= 0);
+    BOOST_ASSERT(out_points);
+
+    out_points->resize(num_points);
+    for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
+        geometry_msgs::Point &out_point = out_points->at(ipoint);
+        out_point.x = points[stride * ipoint + 0];
+        out_point.y = points[stride * ipoint + 1];
+        out_point.z = points[stride * ipoint + 2];
+    }
+}
+
+void InteractiveMarkerViewer::ConvertColors(
+        float const *colors, int num_colors, bool has_alpha,
+        std::vector<std_msgs::ColorRGBA> *out_colors) const
+{
+    BOOST_ASSERT(colors);
+    BOOST_ASSERT(num_colors >= 0);
+    BOOST_ASSERT(out_colors);
+
+    int stride;
+    if (has_alpha) {
+        stride = 4;
+    } else {
+        stride = 3;
+    }
+
+    out_colors->resize(num_colors);
+    for (size_t icolor = 0; icolor < num_colors; ++icolor) {
+        std_msgs::ColorRGBA &out_color = out_colors->at(icolor);
+        out_color.r = colors[icolor * stride + 0];
+        out_color.g = colors[icolor * stride + 1];
+        out_color.b = colors[icolor * stride + 2];
+
+        if (has_alpha) {
+            out_color.a = colors[icolor * stride + 3];
+        } else {
+            out_color.a = 1.0;
+        }
+    }
+}
+
+
 
 }

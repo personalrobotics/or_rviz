@@ -30,6 +30,13 @@ protected:
         float const *points, int num_points, int stride, float point_size,
         float const *colors, int draw_style = 0, bool has_alpha = false);
 
+    virtual OpenRAVE::GraphHandlePtr drawlinestrip(
+        float const *points, int num_points, int stride, float width,
+        OpenRAVE::RaveVector<float> const &color);
+    virtual OpenRAVE::GraphHandlePtr drawlinelist(
+        float const *points, int num_points, int stride, float width,
+        float const *colors);
+
 private:
     typedef void ViewerCallbackFn();
     typedef bool SelectionCallbackFn(OpenRAVE::KinBody::LinkPtr plink,
@@ -56,6 +63,11 @@ private:
                                  std::string const &name);
 
     visualization_msgs::InteractiveMarkerPtr CreateMarker() const;
+    void ConvertPoints(float const *points, int num_points, int stride,
+                       std::vector<geometry_msgs::Point> *out_points) const;
+    void ConvertColors(float const *colors, int num_colors, bool has_alpha,
+                       std::vector<std_msgs::ColorRGBA> *out_colors) const;
+
 };
 
 }
