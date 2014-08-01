@@ -106,6 +106,7 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     , env_(env)
     , server_(boost::make_shared<InteractiveMarkerServer>("openrave"))
     , running_(false)
+    , do_sync_(true)
 {
     BOOST_ASSERT(env);
 
@@ -129,7 +130,9 @@ int InteractiveMarkerViewer::main(bool bShow)
 
     running_ = true;
     while (running_) {
-        EnvironmentSync();
+        if (do_sync_) {
+            EnvironmentSync();
+        }
         viewer_callbacks_();
         rate.sleep();
     }
@@ -177,6 +180,12 @@ void InteractiveMarkerViewer::EnvironmentSync()
     server_->applyChanges();
     ros::spinOnce();
 }
+
+void InteractiveMarkerViewer::SetEnvironmentSync(bool do_update)
+{
+    do_sync_ = do_update;
+}
+
 
 OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterItemSelectionCallback(
     OpenRAVE::ViewerBase::ItemSelectionCallbackFn const &fncallback)

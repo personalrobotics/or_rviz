@@ -12,6 +12,7 @@ class InteractiveMarkerViewer : public OpenRAVE::ViewerBase {
 public:
     InteractiveMarkerViewer(OpenRAVE::EnvironmentBasePtr env);
 
+    virtual void SetEnvironmentSync(bool do_update);
     virtual void EnvironmentSync();
 
     virtual int main(bool bShow = true);
@@ -69,6 +70,7 @@ private:
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     bool running_;
+    bool do_sync_;
     int graph_id_;
 
     boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
