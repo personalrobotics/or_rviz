@@ -15,6 +15,7 @@ using OpenRAVE::GraphHandlePtr;
 typedef boost::shared_ptr<interactive_markers::InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
 static double const kRefreshRate = 30;
+static double const kWidthScaleFactor = 100;
 
 namespace or_interactivemarker {
 
@@ -157,6 +158,7 @@ void InteractiveMarkerViewer::EnvironmentSync()
     if (!lock) {
         return;
     }
+
 
     std::vector<KinBodyPtr> bodies;
     env_->GetBodies(bodies);
@@ -308,7 +310,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
     marker.type = visualization_msgs::Marker::LINE_LIST;
     marker.color = toROSColor<>(color);
-    marker.scale.x = width;
+    marker.scale.x = width / kWidthScaleFactor;
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
@@ -324,7 +326,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
     InteractiveMarkerPtr interactive_marker = CreateMarker();
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
     marker.type = visualization_msgs::Marker::LINE_LIST;
-    marker.scale.x = width;
+    marker.scale.x = width / kWidthScaleFactor;
 
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);
@@ -569,7 +571,7 @@ InteractiveMarkerPtr InteractiveMarkerViewer::CreateMarker() const
 
     interactive_marker->controls.resize(1);
     visualization_msgs::InteractiveMarkerControl &control = interactive_marker->controls.front();
-    control.orientation_mode = visualization_msgs::InteractiveMarkerControl::FIXED;
+    control.orientation_mode = visualization_msgs::InteractiveMarkerControl::INHERIT;
     control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
     control.always_visible = true;
 
@@ -590,8 +592,10 @@ void InteractiveMarkerViewer::ConvertPoints(
 {
     BOOST_ASSERT(points);
     BOOST_ASSERT(num_points >= 0);
-    BOOST_ASSERT(stride >= 0);
+    BOOST_ASSERT(stride >= 0 && stride % sizeof(float) == 0);
     BOOST_ASSERT(out_points);
+
+    stride = stride / sizeof(float);
 
     out_points->resize(num_points);
     for (size_t ipoint = 0; ipoint < num_points; ++ipoint) {
