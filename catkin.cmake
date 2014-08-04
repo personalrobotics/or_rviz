@@ -5,10 +5,9 @@ find_package(catkin REQUIRED COMPONENTS
     interactive_markers
     std_msgs
     visualization_msgs
+    openrave_catkin
 )
 catkin_package()
-
-find_package(OpenRAVE REQUIRED)
 
 include_directories(
     ${OpenRAVE_INCLUDE_DIRS}
@@ -36,22 +35,14 @@ target_link_libraries("${PROJECT_NAME}"
     ${catkin_LIBRARIES}
 )
 
-add_library("${PROJECT_NAME}_plugin" SHARED
+openrave_plugin("${PROJECT_NAME}_plugin"
     src/or_interactivemarker_plugin.cpp
 )
 target_link_libraries("${PROJECT_NAME}_plugin"
     "${PROJECT_NAME}"
-    ${OpenRAVE_LIBRARIES}
     ${catkin_LIBRARIES}
-)
-set_target_properties("${PROJECT_NAME}_plugin" PROPERTIES
-    PREFIX ""
-    LIBRARY_OUTPUT_DIRECTORY "${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
 )
 
 install(TARGETS "${PROJECT_NAME}"
     LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
-)
-install(TARGETS "${PROJECT_NAME}_plugin"
-    LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
 )
