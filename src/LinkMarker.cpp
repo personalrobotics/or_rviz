@@ -290,11 +290,15 @@ MarkerPtr LinkMarker::CreateVisualGeometry(GeometryPtr geometry)
         trimesh = env->ReadTrimeshURI(trimesh, render_mesh_path);
         if (trimesh) {
             TriMeshToMarker(*trimesh, marker);
+            marker->scale = toROSVector(geometry->GetInfo()._vCollisionScale);
 
-            RAVELOG_WARN("Loaded mesh '%s' with OpenRAVE because this format is not"
-                         " supported by RViz. This may be slow for large files.\n",
-                render_mesh_path.c_str()
-            );
+            static bool already_printed = false;
+            if (!already_printed) {
+                RAVELOG_WARN("Loaded one or more meshes OpenRAVE because this"
+                             " format is not" " supported by RViz. This may be"
+                             " slow for large files.\n");
+                already_printed = true;
+            }
             return marker;
         } else {
             RAVELOG_WARN("Loading trimesh '%s' using OpenRAVE failed.",
@@ -357,8 +361,6 @@ MarkerPtr LinkMarker::CreateCollisionGeometry(GeometryPtr geometry)
     }
 
     case OpenRAVE::GeometryType::GT_TriMesh:
-        // TODO: Fall back on the OpenRAVE's mesh loader if this format is not
-        // supported by RViz.
         TriMeshToMarker(geometry->GetCollisionMesh(), marker);
         break;
 
