@@ -100,11 +100,17 @@ template Vector3 toROSVector<float>(RaveVector<float> const &or_vector);
 template Pose toROSPose<float>(RaveTransform<float> const &or_pose);
 template Point toROSPoint<float>(RaveVector<float> const &or_point);
 template Quaternion toROSQuaternion<float>(RaveVector<float> const &or_point);
+template RaveVector<float> toORPoint(Point const &point);
+template RaveVector<float> toORQuaternion(Quaternion const &quat);
+template RaveTransform<float> toORPose(Pose const &pose);
 
 template ColorRGBA toROSColor<double>(RaveVector<double> const &color);
 template Vector3 toROSVector<double>(RaveVector<double> const &or_vector);
 template Pose toROSPose<double>(RaveTransform<double> const &or_pose);
 template Point toROSPoint<double>(RaveVector<double> const &or_point);
 template Quaternion toROSQuaternion<double>(RaveVector<double> const &or_point);
+template RaveVector<double> toORPoint(Point const &point);
+template RaveVector<double> toORQuaternion(Quaternion const &quat);
+template RaveTransform<double> toORPose(Pose const &pose);
 
 }
