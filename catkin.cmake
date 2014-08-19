@@ -20,7 +20,8 @@ link_directories(
 
 add_definitions(--std=c++0x)
 
-add_library("${PROJECT_NAME}"
+openrave_plugin("${PROJECT_NAME}_plugin"
+    src/or_interactivemarker_plugin.cpp
     src/or_interactivemarker.cpp
     src/or_conversions.cpp
     src/KinBodyMarker.cpp
@@ -30,19 +31,6 @@ add_library("${PROJECT_NAME}"
     src/JointMarker.cpp
     src/ManipulatorMarker.cpp
 )
-target_link_libraries("${PROJECT_NAME}"
-    ${OpenRAVE_LIBRARIES}
-    ${catkin_LIBRARIES}
-)
-
-openrave_plugin("${PROJECT_NAME}_plugin"
-    src/or_interactivemarker_plugin.cpp
-)
 target_link_libraries("${PROJECT_NAME}_plugin"
-    "${PROJECT_NAME}"
     ${catkin_LIBRARIES}
-)
-
-install(TARGETS "${PROJECT_NAME}"
-    LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 )
