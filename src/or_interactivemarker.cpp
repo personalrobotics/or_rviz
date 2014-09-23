@@ -394,7 +394,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
 
     ConvertMesh(points, stride, indices, num_triangles, &marker.points);
 
-    // TODO: Are these vertex colors or face colors?
+    // TODO: Colors should be per-vertex, not per-face.
     size_t const *color_shape = colors.shape();
     if (color_shape[0] != num_triangles) {
         throw OpenRAVE::openrave_exception(str(
@@ -646,11 +646,16 @@ void InteractiveMarkerViewer::ConvertMesh(
     BOOST_ASSERT(num_triangles >= 0);
     BOOST_ASSERT(out_points);
 
+    auto const points_raw = reinterpret_cast<uint8_t const *>(points);
+
     out_points->resize(3 * num_triangles);
     for (int iindex = 0; iindex < num_triangles; ++iindex) {
         for (int ivertex = 0; ivertex < 3; ++ivertex) {
             int const index_offset = 3 * iindex + ivertex;
-            float const *or_point = &points[stride * indices[index_offset]];
+            float const *or_point = reinterpret_cast<float const *>(
+                points_raw + stride * indices[index_offset]
+            );
+
             geometry_msgs::Point &out_point = out_points->at(3 * iindex + ivertex);
             out_point.x = or_point[0];
             out_point.y = or_point[1];
