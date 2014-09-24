@@ -40,16 +40,13 @@ bool KinBodyLinkMarker::EnvironmentSync()
 {
     bool const is_changed = LinkMarker::EnvironmentSync();
 
-    // Incrementally update the marker's pose. We can't do this if we just
-    // created the markers because the InteraciveMarkerServer will SEGFAULT.
-    if (!is_changed) {
-        OpenRAVE::Transform const link_pose = link()->GetTransform();
-        set_pose(link_pose);
-    }
+    OpenRAVE::Transform const link_pose = link()->GetTransform();
+    set_pose(link_pose);
 
     if (is_changed) {
         UpdateMenu();
     }
+
     return is_changed;
 }
 

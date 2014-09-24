@@ -168,14 +168,13 @@ bool LinkMarker::EnvironmentSync()
     // OpenRAVE environment.
     for (GeometryPtr const &geometry : link->GetGeometries()) {
         // Check if visibility changed.
-        auto const it = geometry_markers_.find(geometry.get());
-        bool const is_missing = it == geometry_markers_.end();
-        bool const is_visible = geometry->IsVisible();
+        auto const it1 = geometry_markers_.find(geometry.get());
+        bool const is_missing = it1 == geometry_markers_.end();
         is_changed = is_changed || is_missing;
 
-        // TODO: Figure out what the correct logic is for the different render
-        // modes.
-        //is_changed = is_changed || (render_mode_ == RenderMode::kVisual && is_visible == is_missing);
+        auto const it2 = visibility_map_.find(geometry.get());
+        bool const is_visible = (it2 != visibility_map_.end()) && it2->second;
+        is_changed = is_changed || (is_visible != geometry->IsVisible());
 
         // TODO  Check if color changed.
         // TODO: Check if the transform changed.
@@ -204,6 +203,9 @@ void LinkMarker::CreateGeometry()
     LinkPtr const link = this->link();
 
     for (GeometryPtr const geometry : link->GetGeometries()) {
+        // Update this geometry's visibility status.
+        visibility_map_[geometry.get()] = geometry->IsVisible();
+
         // Note that this inserts an empty vector if the entry does not already
         // exist. We depend on this for lazy marker creation.
         std::vector<visualization_msgs::Marker *> &markers

@@ -61,6 +61,8 @@ private:
     boost::optional<OpenRAVE::Vector> override_color_;
 
     boost::unordered_map<
+        OpenRAVE::KinBody::Link::Geometry *, bool> visibility_map_;
+    boost::unordered_map<
         OpenRAVE::KinBody::Link::Geometry *,
         std::vector<visualization_msgs::Marker *> > geometry_markers_;
 
