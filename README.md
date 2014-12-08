@@ -1,6 +1,8 @@
 or_interactivemarker
 ====================
-OpenRAVE viewer plugin that publishes the environment to RViz as InteractiveMarkers.
+
+This OpenRAVE viewer plugin publishes the environment as InteractiveMarkers
+that can be visualized in RViz.
 
 ## Usage ##
 
