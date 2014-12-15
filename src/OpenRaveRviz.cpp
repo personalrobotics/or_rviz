@@ -1259,7 +1259,7 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(
         OpenRAVE::InterfaceType type, std::string const& interfacename,
         std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
-    if (type == OpenRAVE::PT_Viewer && interfacename == "rviz")
+    if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
     {
 
         // Hack to prevent screen printing from RVIZ!
@@ -1284,7 +1284,7 @@ OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(
 
 void GetPluginAttributesValidated(OpenRAVE::PLUGININFO& info)
 {
-    info.interfacenames[OpenRAVE::PT_Viewer].push_back("RViz");
+    info.interfacenames[OpenRAVE::PT_Viewer].push_back("or_rviz");
 }
 
 OPENRAVE_PLUGIN_API void DestroyPlugin()

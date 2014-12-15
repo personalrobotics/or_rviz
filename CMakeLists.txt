@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(or_rviz)
 
-find_package(catkin REQUIRED COMPONENTS rviz)
-catkin_package()
+find_package(catkin REQUIRED COMPONENTS rviz openrave_catkin)
+catkin_package(
+    LIBRARIES ${PROJECT_NAME}
+    DEPENDS rviz
+)
 
 include_directories(${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
@@ -36,6 +39,7 @@ qt4_wrap_cpp(MOC_FILES
     src/Plugins/EnvironmentDisplay.h
     src/Plugins/KinBodyVisual.h
 )
+
 add_library("${PROJECT_NAME}_rvizplugin" SHARED
     src/Plugins/EnvironmentDisplay.cpp
     src/Plugins/KinBodyVisual.cpp
@@ -49,7 +53,7 @@ target_link_libraries("${PROJECT_NAME}_rvizplugin"
 )
 
 # Build the OpenRAVE viewer plugin.
-add_library("${PROJECT_NAME}_plugin" SHARED
+openrave_plugin("${PROJECT_NAME}_plugin" SHARED
     src/OpenRaveRviz.cpp
     ${MOC_FILES}
 )
@@ -60,14 +64,15 @@ target_link_libraries("${PROJECT_NAME}_plugin"
     ${OGRE_LIBRARIES}
     ${catkin_LIBRARIES}
 )
-set_target_properties("${PROJECT_NAME}_plugin" PROPERTIES
-    PREFIX ""
-    LIBRARY_OUTPUT_DIRECTORY "${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
-)
+#set_target_properties("${PROJECT_NAME}_plugin" PROPERTIES
+#    PREFIX ""
+#    LIBRARY_OUTPUT_DIRECTORY "${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
+#)
 
 install(TARGETS "${PROJECT_NAME}_rvizplugin"
     LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}"
 )
-install(TARGETS "${PROJECT_NAME}_plugin"
-    LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
-)
+
+#install(TARGETS "${PROJECT_NAME}_plugin"
+#    LIBRARY DESTINATION "${CATKIN_PACKAGE_LIB_DESTINATION}/openrave-${OpenRAVE_LIBRARY_SUFFIX}"
+#)
