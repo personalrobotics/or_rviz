@@ -27,3 +27,6 @@ $ rostopic list
 
 In an RViz instance, you should now be able to visualizat an InteractiveMarker topic
 called `/openrave`.
+
+*NOTE:*
+At the moment, due to a bug in the hydro branch of `interactive_marker`, in order for `or_interactivemarker` to work, you wil need to download the indigo-dev branch of `interactive_marker` and compile it from source before building `or_interactivemarker`. See [this issue](https://github.com/personalrobotics/or_interactivemarker/issues/2).
