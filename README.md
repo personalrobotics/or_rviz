@@ -7,7 +7,7 @@ To use, simply say:
 
     env.SetViewer('or_rviz')
     
-in an openrave python script.
+in an openrave python script. This will spin up a copy of RViz with the `openrave` plugin enabled. OpenRAVE kinbodies are displayed in a tf frame called `/map`, and can be drawn at the same time as any other RViz display type (such as markers or point clouds).
 
 
 The following barebones things are implemented:
