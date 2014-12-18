@@ -765,7 +765,6 @@ namespace or_rviz
     // Set the camera transformation.
     void OpenRaveRviz::SetCamera (const OpenRAVE::RaveTransform<float> &trans, float focalDistance)
     {
-        getManager()->getViewManager()->
         SetCamera(getManager()->getRenderPanel()->getCamera(), trans, focalDistance);
     }
 
