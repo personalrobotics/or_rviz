@@ -32,6 +32,7 @@ include(${QT_USE_FILE})
 
 find_package(Boost REQUIRED COMPONENTS thread)
 include_directories(${Boost_INCLUDE_DIRS})
+add_definitions(--std=c++0x)
 
 # Build the RViz plugin.
 qt4_wrap_cpp(MOC_FILES 
@@ -44,6 +45,13 @@ add_library("${PROJECT_NAME}_rvizplugin" SHARED
     src/Plugins/EnvironmentDisplay.cpp
     src/Plugins/KinBodyVisual.cpp
     src/Plugins/LinkVisual.cpp
+    src/Markers/JointMarker.cpp
+    src/Markers/KinBodyJointMarker.cpp
+    src/Markers/KinBodyLinkMarker.cpp
+    src/Markers/KinBodyMarker.cpp
+    src/Markers/LinkMarker.cpp
+    src/Markers/ManipulatorMarker.cpp
+    src/or_conversions.cpp
     ${RVIZ_PLUGIN_FILES}
 )
 target_link_libraries("${PROJECT_NAME}_rvizplugin"
