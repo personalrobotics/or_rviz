@@ -20,7 +20,7 @@ The following things are implemented:
 * Rendering the screen from a given viewpoint
 * Moving the RViz screen
 * Object picking/moving (duplicated from `or_interactivemarker`)
-* 
+
 The following openrave viewer features are **not** implemented:
 
 * Setting the camera position and parameters programatically
