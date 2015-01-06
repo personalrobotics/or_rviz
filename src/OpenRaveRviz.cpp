@@ -29,10 +29,94 @@
 #include <rviz/default_plugin/interactive_marker_display.h>
 #include <rviz/ogre_helpers/arrow.h>
 #include <boost/thread/locks.hpp>
-
+#include <boost/signals2.hpp>
+#include <boost/algorithm/string.hpp>
+#include <interactive_markers/interactive_marker_server.h>
+#include "or_conversions.h"
+static double const kRefreshRate = 30;
+static double const kWidthScaleFactor = 100;
 using namespace OpenRAVE;
 using namespace rviz;
+using namespace or_interactivemarker;
 
+namespace detail
+{
+
+    class ScopedConnection: public OpenRAVE::UserData
+    {
+        public:
+            ScopedConnection(boost::signals2::connection const &connection) :
+                    scoped_connection_(connection)
+            {
+            }
+
+            virtual ~ScopedConnection()
+            {
+            }
+
+        private:
+            boost::signals2::scoped_connection scoped_connection_;
+    };
+
+    static std::string GetRemainingContent(std::istream &stream, bool trim = false)
+    {
+
+        std::istreambuf_iterator<char> eos;
+        std::string str(std::istreambuf_iterator<char>(stream), eos);
+        if (trim)
+        {
+            boost::algorithm::trim(str);
+        }
+        return str;
+    }
+
+    class InteractiveMarkerGraphHandle: public OpenRAVE::GraphHandle
+    {
+        public:
+            InteractiveMarkerGraphHandle(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> const &interactive_marker_server, visualization_msgs::InteractiveMarkerPtr const &interactive_marker) :
+                    server_(interactive_marker_server), interactive_marker_(interactive_marker), show_(true)
+            {
+                BOOST_ASSERT(interactive_marker_server);
+                BOOST_ASSERT(interactive_marker);
+
+                server_->insert(*interactive_marker_);
+            }
+
+            virtual ~InteractiveMarkerGraphHandle()
+            {
+                server_->erase(interactive_marker_->name);
+            }
+
+            virtual void SetTransform(OpenRAVE::RaveTransform<float> const &t)
+            {
+                // TODO: This could SEGFAULT if it is called too quickly after the
+                // marker is created.
+                if (show_)
+                {
+                    server_->setPose(interactive_marker_->name, or_interactivemarker::toROSPose<>(t));
+                }
+            }
+
+            virtual void SetShow(bool show)
+            {
+                if (show && !show_)
+                {
+                    server_->insert(*interactive_marker_);
+                }
+                else if (!show && show_)
+                {
+                    server_->erase(interactive_marker_->name);
+                }
+                show_ = show;
+            }
+
+        private:
+            boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+            visualization_msgs::InteractiveMarkerPtr interactive_marker_;
+            bool show_;
+    };
+
+}
 
 namespace or_rviz
 {
@@ -44,8 +128,12 @@ namespace or_rviz
             m_mainRenderPanel(NULL),
             m_envDisplay(NULL),
             m_autoSync(false),
-            m_name("or_rviz")
+            m_name("or_rviz"),
+            server_(boost::make_shared<interactive_markers::InteractiveMarkerServer>("openrave")),
+            running_(false),
+            do_sync_(true)
     {
+        BOOST_ASSERT(env);
 
         SetCurrentViewEnv(env);
         setWindowTitle("Openrave Rviz Viewer[*]");
@@ -105,36 +193,14 @@ namespace or_rviz
         m_offscreenRenderer->setVisible(false);
         //m_offscreenRenderer->setHidden(true);
 
-        RegisterCommand("register", boost::bind(&OpenRaveRviz::RegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] [pointer] Registers a python object with the given pointer (as a string) to the menu of a kinbody.");
-        RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
-
+        //RegisterCommand("register", boost::bind(&OpenRaveRviz::RegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] [pointer] Registers a python object with the given pointer (as a string) to the menu of a kinbody.");
+        //RegisterCommand("unregister", boost::bind(&OpenRaveRviz::UnRegisterMenuCallback, this, _1, _2), "register [objectName] [menuItemName] Unregisters the menu command given.");
+        RegisterCommand("AddMenuEntry", boost::bind(&OpenRaveRviz::AddMenuEntryCommand, this, _1, _2), "Attach a custom menu entry to an object.");
+        RegisterCommand("GetMenuSelection", boost::bind(&OpenRaveRviz::GetMenuSelectionCommand, this, _1, _2), "Get the name of the last menu selection.");
         m_offscreenCamera = m_rvizManager->getSceneManager()->createCamera("OfscreenCamera");
-    }
 
-    bool OpenRaveRviz::RegisterMenuCallback(std::ostream& sout, std::istream& sinput)
-    {
-        std::string objectName;
-        sinput >> objectName;
-
-        std::string menuName;
-        sinput >> menuName;
-
-        std::string pyFunctionPtr;
-        sinput >> pyFunctionPtr;
-
-        return m_envDisplay->RegisterMenuCallback(objectName, menuName, pyFunctionPtr);
-    }
-
-    bool OpenRaveRviz::UnRegisterMenuCallback(std::ostream& sout, std::istream& sinput)
-    {
-
-        std::string objectName;
-        sinput >> objectName;
-
-        std::string menuName;
-        sinput >> menuName;
-
-        return m_envDisplay->UnRegisterMenuCallback(objectName, menuName);
+        rviz::InteractiveMarkerDisplay* markerDisplay =  dynamic_cast< rviz::InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarkers", "OpenRAVE Markers", true));
+        markerDisplay->setTopic("/openrave/update", "");
     }
 
 
@@ -170,13 +236,85 @@ namespace or_rviz
         {
             show();
         }
-
+        running_ = true;
         return qApp->exec();
     }
 
     void OpenRaveRviz::quitmainloop()
     {
+        running_ = false;
         qApp->quit();
+    }
+
+    bool OpenRaveRviz::AddMenuEntryCommand(std::ostream &out, std::istream &in)
+    {
+        std::string type, kinbody_name;
+        in >> type >> kinbody_name;
+
+        // Get the KinBodyMarker associated with the target object.
+        OpenRAVE::KinBodyPtr const kinbody = GetCurrentViewEnv()->GetKinBody(kinbody_name);
+        if (!kinbody)
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("There is no KinBody named '%s' in the environment.") % kinbody_name), OpenRAVE::ORE_Failed);
+        }
+
+        OpenRAVE::UserDataPtr const marker_raw = kinbody->GetUserData("interactive_marker");
+        auto const marker = boost::dynamic_pointer_cast<KinBodyMarker>(marker_raw);
+        if (!marker)
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("KinBody '%s' does not have an associated marker.") % kinbody_name), OpenRAVE::ORE_InvalidState);
+        }
+
+        if (type == "kinbody")
+        {
+            std::string const name = detail::GetRemainingContent(in, true);
+            auto const callback = boost::bind(&OpenRaveRviz::KinBodyMenuCallback, this, kinbody, name);
+            marker->AddMenuEntry(name, callback);
+        }
+        else if (type == "link")
+        {
+            std::string link_name;
+            in >> link_name;
+
+            OpenRAVE::KinBody::LinkPtr const link = kinbody->GetLink(link_name);
+            if (!link)
+            {
+                throw OpenRAVE::openrave_exception(boost::str(boost::format("KinBody '%s' has no link '%s'.") % kinbody_name % link_name), OpenRAVE::ORE_Failed);
+            }
+
+            std::string const name = detail::GetRemainingContent(in, true);
+            auto const callback = boost::bind(&OpenRaveRviz::LinkMenuCallback, this, link, name);
+            marker->AddMenuEntry(link, name, callback);
+        }
+        else if (type == "manipulator" || type == "ghost_manipulator")
+        {
+            std::string manipulator_name;
+            in >> manipulator_name;
+
+            if (!kinbody->IsRobot())
+            {
+                throw OpenRAVE::openrave_exception(boost::str(boost::format("KinBody '%s' is not a robot and does not support"
+                        " manipulator menus.") % kinbody_name), OpenRAVE::ORE_Failed);
+            }
+
+            auto const robot = boost::dynamic_pointer_cast<OpenRAVE::RobotBase>(kinbody);
+            OpenRAVE::RobotBase::ManipulatorPtr const manipulator = robot->GetManipulator(manipulator_name);
+            if (!manipulator)
+            {
+                throw OpenRAVE::openrave_exception(boost::str(boost::format("Robot '%s' has no manipulator '%s'.") % kinbody_name % manipulator_name), OpenRAVE::ORE_Failed);
+            }
+
+            std::string const name = detail::GetRemainingContent(in, true);
+            auto const callback = boost::bind(&OpenRaveRviz::ManipulatorMenuCallback, this, manipulator, name);
+            marker->AddMenuEntry(manipulator, name, callback);
+        }
+        return true;
+    }
+
+    bool OpenRaveRviz::GetMenuSelectionCommand(std::ostream &out, std::istream &in)
+    {
+        out << menu_queue_.rdbuf();
+        return true;
     }
 
 
@@ -269,8 +407,6 @@ namespace or_rviz
 
     void OpenRaveRviz::Reset()
     {
-        //TODO: FIXME
-        //m_rvizManager->removeDisplay(m_envDisplay->getName());
         delete m_envDisplay;
         m_envDisplay = NULL;
     }
@@ -278,8 +414,6 @@ namespace or_rviz
 
     void OpenRaveRviz::SetBkgndColor(const OpenRAVE::RaveVector<float> &color)
     {
-        // TODO: FIXME
-        //m_rvizManager->setBackgroundColor(rviz::Color(color.x, color.y, color.z));
         m_rvizManager->getRenderPanel()->setBackgroundColor(Ogre::ColourValue(color.x, color.y, color.z));
     }
 
@@ -314,6 +448,7 @@ namespace or_rviz
     // controls whether the viewer synchronizes with the newest environment automatically
     void OpenRaveRviz::SetEnvironmentSync(bool update)
     {
+        do_sync_ = update;
         SetAutoSync(update);
     }
 
@@ -356,6 +491,11 @@ namespace or_rviz
             OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(pbody->GetEnv()->GetMutex());
             m_envDisplay->RemoveKinBody(pbody->GetName());
         }
+
+        if (pbody)
+        {
+            pbody->RemoveUserData("interactive_marker");
+        }
     }
 
     void OpenRaveRviz::UpdateDisplay()
@@ -368,29 +508,6 @@ namespace or_rviz
         if (!m_envDisplay)
         {
             m_envDisplay = dynamic_cast<EnvironmentDisplay*>(m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true));
-            //rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true));
-           //setMarkerUpdateTopic("openrave_markers/update");
-            /*// TODO: FIXME
-            rviz::DisplayWrapper* wrapper = m_rvizManager->getDisplayWrapper("OpenRAVE");
-
-            if (!wrapper)
-            {
-                wrapper = m_rvizManager->createDisplay("or_rviz/Environment", "OpenRAVE", true);
-            }
-
-            m_envDisplay = dynamic_cast<EnvironmentDisplay*>(wrapper->getDisplay());
-
-
-
-            rviz::DisplayWrapper* interactiveWrapper = m_rvizManager->getDisplayWrapper("OpenRAVEInteraction");
-
-            if (!interactiveWrapper)
-            {
-                interactiveWrapper = m_rvizManager->createDisplay("rviz/InteractiveMarker", "OpenRAVEInteraction", true);
-            }
-            rviz::InteractiveMarkerDisplay* markerDisplay = dynamic_cast<InteractiveMarkerDisplay*>(interactiveWrapper->getDisplay());
-            markerDisplay->setMarkerUpdateTopic("openrave_markers/update");
-            */
         }
 
         if (m_envDisplay)
@@ -529,8 +646,6 @@ namespace or_rviz
                 continue;
             }
 
-          // RAVELOG_DEBUG("Creating texture %s, size: %d %d\n", req->name.c_str(), req->width, req->height);
-
             Ogre::TextureManager::getSingleton().unload(req->name);
             Ogre::TextureManager::getSingleton().remove(req->name);
 
@@ -548,8 +663,6 @@ namespace or_rviz
            Ogre::RenderTexture* renderTexture = req->texture->getBuffer()->getRenderTarget();
            renderTexture->addViewport(m_offscreenCamera);
            renderTexture->copyContentsToMemory(*req->pixelBox, Ogre::RenderTarget::FB_AUTO);
-
-
 
            req->valid = true;
 
@@ -586,23 +699,38 @@ namespace or_rviz
 
         HandleRenderTargetRequests();
         setWindowTitle("Openrave Rviz Viewer[*]");
+        if (GetCurrentViewEnv()->GetMutex().try_lock())
         {
-            if(GetCurrentViewEnv()->GetMutex().try_lock())
+            //UpdateDisplay();
+            HandleMenus();
+            GetCurrentViewEnv()->GetMutex().unlock();
+
+            std::vector<KinBodyPtr> bodies;
+            GetCurrentViewEnv()->GetBodies(bodies);
+
+            for (KinBodyPtr body : bodies)
             {
-                //OpenRAVE::EnvironmentMutex::scoped_lock environment_lock(GetCurrentViewEnv()->GetMutex());
-                UpdateDisplay();
-                HandleMenus();
-                GetCurrentViewEnv()->GetMutex().unlock();
+                OpenRAVE::UserDataPtr const raw = body->GetUserData("interactive_marker");
+                auto body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
+                BOOST_ASSERT(!raw || body_marker);
+
+                // Create the new geometry if neccessary.
+                if (!raw)
+                {
+                    RAVELOG_INFO("Creating KinBodyMarker for '%s'.\n", body->GetName().c_str());
+                    body_marker = boost::make_shared<KinBodyMarker>(server_, body);
+                    body->SetUserData("interactive_marker", body_marker);
+                }
+
+                body_marker->EnvironmentSync();
             }
         }
-
         for(std::map<size_t, ViewerThreadCallbackFn>::iterator it = m_syncCallbacks.begin(); it != m_syncCallbacks.end(); it++)
         {
             it->second();
         }
 
-        //ros::spinOnce();
-
+        server_->applyChanges();
     }
 
     // Viewer size and position can be set outside in the
@@ -711,10 +839,218 @@ namespace or_rviz
         return true;
     }
 
+    GraphHandlePtr OpenRaveRviz::plot3_marker(float const *points, int num_points, int stride, float point_size, OpenRAVE::RaveVector<float> const &color, int draw_style)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.color = toROSColor<>(color);
+
+        if (draw_style == 0)
+        {
+            marker.type = visualization_msgs::Marker::POINTS;
+            marker.scale.x = point_size;
+            marker.scale.y = point_size;
+        }
+        else if (draw_style == 1)
+        {
+            marker.type = visualization_msgs::Marker::SPHERE_LIST;
+            marker.scale.x = point_size;
+            marker.scale.y = point_size;
+            marker.scale.z = point_size;
+        }
+        else
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("Unsupported drawstyle %d; expected 0 or 1.") % draw_style), OpenRAVE::ORE_InvalidArguments);
+        }
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3_marker(float const *points, int num_points, int stride, float point_size, float const *colors, int draw_style, bool has_alpha)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+
+        if (draw_style == 0)
+        {
+            marker.type = visualization_msgs::Marker::POINTS;
+            marker.scale.x = point_size;
+            marker.scale.y = point_size;
+        }
+        else if (draw_style == 1)
+        {
+            // TODO: Does this support individual colors?
+            marker.type = visualization_msgs::Marker::SPHERE_LIST;
+            marker.scale.x = point_size;
+            marker.scale.y = point_size;
+            marker.scale.z = point_size;
+        }
+        else
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("Unsupported drawstyle %d; expected 0 or 1.") % draw_style), OpenRAVE::ORE_InvalidArguments);
+        }
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+        ConvertColors(colors, num_points, has_alpha, &marker.colors);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawarrow_marker (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::ARROW;
+        marker.color = toROSColor<>(color);
+        marker.scale.x = fwidth * 1.0f;
+        marker.scale.y = fwidth * 1.5f;
+        marker.scale.z = fwidth * 2.0f;
+        marker.points.push_back(toROSPoint(p1));
+        marker.points.push_back(toROSPoint(p2));
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawlinestrip_marker(float const *points, int num_points, int stride, float width, OpenRAVE::RaveVector<float> const &color)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::LINE_STRIP;
+        marker.color = toROSColor<>(color);
+        marker.scale.x = width;
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawlinestrip_marker(float const *points, int num_points, int stride, float width, float const *colors)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::LINE_STRIP;
+        marker.scale.x = width;
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+        ConvertColors(colors, num_points, false, &marker.colors);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawlinelist_marker(float const *points, int num_points, int stride, float width, OpenRAVE::RaveVector<float> const &color)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.color = toROSColor<>(color);
+        marker.scale.x = width / kWidthScaleFactor;
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawlinelist_marker(float const *points, int num_points, int stride, float width, float const *colors)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::LINE_LIST;
+        marker.scale.x = width / kWidthScaleFactor;
+
+        ConvertPoints(points, num_points, stride, &marker.points);
+        ConvertColors(colors, num_points, false, &marker.colors);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawbox_marker(OpenRAVE::RaveVector<float> const &pos, OpenRAVE::RaveVector<float> const &extents)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.pose.position = toROSPoint<>(pos);
+        marker.scale = toROSVector<>(2.0 * extents);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane_marker(OpenRAVE::RaveTransform<float> const &transform, OpenRAVE::RaveVector<float> const &extents, boost::multi_array<float, 3> const &texture)
+    {
+        throw OpenRAVE::openrave_exception("drawplane is not implemented on InteractiveMarkerViewer", OpenRAVE::ORE_NotImplemented);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawtrimesh_marker(float const *points, int stride, int const *indices, int num_triangles, OpenRAVE::RaveVector<float> const &color)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+        marker.color = toROSColor<>(color);
+        marker.scale.x = 1;
+        marker.scale.y = 1;
+        marker.scale.z = 1;
+
+        ConvertMesh(points, stride, indices, num_triangles, &marker.points);
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
+    GraphHandlePtr OpenRaveRviz::drawtrimesh_marker(float const *points, int stride, int const *indices, int num_triangles, boost::multi_array<float, 2> const &colors)
+    {
+        visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+        visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+        marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+        marker.scale.x = 1;
+        marker.scale.y = 1;
+        marker.scale.z = 1;
+
+        ConvertMesh(points, stride, indices, num_triangles, &marker.points);
+
+        // TODO: Colors should be per-vertex, not per-face.
+        size_t const *color_shape = colors.shape();
+        if (color_shape[0] != num_triangles)
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("Number of colors does not equal number of triangles;"
+                    " expected %d, got %d.") % color_shape[0] % num_triangles), OpenRAVE::ORE_InvalidArguments);
+        }
+        else if (color_shape[1] != 3 && color_shape[1] != 4)
+        {
+            throw OpenRAVE::openrave_exception(boost::str(boost::format("Invalid number of channels; expected 3 or 4, got %d.") % color_shape[1]), OpenRAVE::ORE_InvalidArguments);
+        }
+
+        marker.colors.resize(3 * num_triangles);
+        for (int itri = 0; itri < num_triangles; ++itri)
+        {
+            std_msgs::ColorRGBA color;
+            color.r = colors[itri][0];
+            color.g = colors[itri][1];
+            color.b = colors[itri][2];
+
+            if (color_shape[1] == 4)
+            {
+                color.a = colors[itri][3];
+            }
+            else
+            {
+                color.a = 1.0;
+            }
+
+            for (int ivertex = 0; ivertex < 3; ++ivertex)
+            {
+                int const index_offset = 3 * itri + ivertex;
+                int const index = stride * indices[index_offset];
+                marker.colors[index] = color;
+            }
+        }
+
+        return boost::make_shared<detail::InteractiveMarkerGraphHandle>(server_, interactive_marker);
+    }
+
 
     // Overloading OPENRAVE drawing functions....
     // Note: line width and point size are unsupported in Ogre
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3_native (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle)
     {
         if(numPoints <= 0)
         {
@@ -755,7 +1091,7 @@ namespace or_rviz
     }
 
     // Note: line width and point size are unsupported in Ogre
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3_native (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
     {
         if(numPoints <= 0)
         {
@@ -816,7 +1152,7 @@ namespace or_rviz
     }
 
     // Note: line width and point size are unsupported in Ogre
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip_native (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
@@ -862,7 +1198,7 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip_native (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
@@ -914,7 +1250,7 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist_native (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
@@ -950,7 +1286,7 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist_native (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
@@ -998,7 +1334,7 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow_native (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
 
@@ -1013,7 +1349,7 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawbox (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawbox_native (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
         Ogre::ManualObject* cube = render_panel_->getManager()->getSceneManager()->createManualObject();
@@ -1101,24 +1437,18 @@ namespace or_rviz
         return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane_native (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture)
     {
         RAVELOG_WARN("or_rviz does not yet support planes.\n");
         // This is not yet implemented
         return OpenRAVE::GraphHandlePtr();
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh_native (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color)
     {
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
-
-        if(color.w < 1)
-        {
-            RAVELOG_WARN("or_rviz does not yet support alpha-blended trimeshes.\n");
-        }
 
         if (pIndices != NULL)
         {
@@ -1150,13 +1480,12 @@ namespace or_rviz
          return ptr;
     }
 
-    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors)
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh_native (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors)
     {
 
         Ogre::SceneNode* sceneNode = m_envDisplay->GetNode()->createChildSceneNode();
         Ogre::ManualObject* manualObject = render_panel_->getManager()->getSceneManager()->createManualObject();
         manualObject->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
 
         if (pIndices != NULL)
         {
@@ -1179,26 +1508,217 @@ namespace or_rviz
                 manualObject->index(i);
             }
 
-
         }
-
 
          OpenRAVE::GraphHandlePtr ptr(new RvizGraphHandle(sceneNode, manualObject));
          m_graphsToInitialize.push_back(ptr);
          return ptr;
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3(const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector<float> &color, int drawstyle)
+    {
+        return plot3_marker(ppoints, numPoints, stride, fPointSize, color, drawstyle);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::plot3(const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle, bool bhasalpha)
+    {
+        return plot3_marker(ppoints, numPoints, stride, fPointSize, colors, drawstyle, bhasalpha);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip(const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector<float> &color)
+    {
+        return drawlinestrip_marker(ppoints, numPoints, stride, fwidth, color);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinestrip(const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
+    {
+        return drawlinestrip_marker(ppoints, numPoints, stride, fwidth, colors);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist(const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector<float> &color)
+    {
+        return drawlinelist_marker(ppoints, numPoints, stride, fwidth, color);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawlinelist(const float *ppoints, int numPoints, int stride, float fwidth, const float *colors)
+    {
+        return drawlinelist_marker(ppoints, numPoints, stride, fwidth, colors);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawarrow(const OpenRAVE::RaveVector<float> &p1, const OpenRAVE::RaveVector<float> &p2, float fwidth, const OpenRAVE::RaveVector<float> &color)
+    {
+        return drawarrow_marker(p1, p2, fwidth, color);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawbox(const OpenRAVE::RaveVector<float> &vpos, const OpenRAVE::RaveVector<float> &vextents)
+    {
+        return drawbox_marker(vpos, vextents);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawplane(const OpenRAVE::RaveTransform<float> &tplane, const OpenRAVE::RaveVector<float> &vextents, const boost::multi_array<float, 3> &vtexture)
+    {
+        return drawplane_marker(tplane, vextents, vtexture);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh(const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector<float> &color)
+    {
+        return drawtrimesh_marker(ppoints, stride, pIndices, numTriangles, color);
+    }
+
+    OpenRAVE::GraphHandlePtr OpenRaveRviz::drawtrimesh(const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array<float, 2> &colors)
+    {
+        return drawtrimesh_marker(ppoints, stride, pIndices, numTriangles, colors);
     }
 
     void OpenRaveRviz::Clear()
     {
-        m_envDisplay->Clear();
+        if(m_envDisplay)
+        {
+            m_envDisplay->Clear();
+        }
+
+        std::vector<KinBodyPtr> bodies;
+        GetCurrentViewEnv()->GetBodies(bodies);
+
+        for (KinBodyPtr body : bodies)
+        {
+           body->RemoveUserData("interactive_marker");
+        }
     }
 
     void OpenRaveRviz::syncUpdate()
     {
-        EnvironmentSync();
+        if(!running_) return;
+
+        if(do_sync_)
+        {
+            EnvironmentSync();
+        }
+        viewer_callbacks_();
     }
 
 
+    void OpenRaveRviz::KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name)
+    {
+        menu_queue_ << "kinbody " << kinbody->GetName() << " " << name << '\n';
+        selection_callbacks_(OpenRAVE::KinBody::LinkPtr(), OpenRAVE::RaveVector<float>(), OpenRAVE::RaveVector<float>());
+    }
+
+    void OpenRaveRviz::LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name)
+    {
+        menu_queue_ << "link " << link->GetParent()->GetName() << " " << link->GetName() << " " << name << '\n';
+    }
+
+    void OpenRaveRviz::ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator, std::string const &name)
+    {
+        menu_queue_ << "manipulator " << manipulator->GetRobot()->GetName() << " " << manipulator->GetName() << " " << name << '\n';
+    }
+
+    visualization_msgs::InteractiveMarkerPtr OpenRaveRviz::CreateMarker() const
+    {
+        boost::shared_ptr<visualization_msgs::InteractiveMarker> interactive_marker = boost::make_shared<visualization_msgs::InteractiveMarker>();
+
+        interactive_marker->header.frame_id = manager_->getFixedFrame().toStdString();
+        interactive_marker->pose = or_interactivemarker::toROSPose(OpenRAVE::Transform());
+        interactive_marker->name = boost::str(boost::format("GraphHandle[%p]") % interactive_marker.get());
+        interactive_marker->scale = 1.0;
+
+        interactive_marker->controls.resize(1);
+        visualization_msgs::InteractiveMarkerControl &control = interactive_marker->controls.front();
+        control.orientation_mode = visualization_msgs::InteractiveMarkerControl::INHERIT;
+        control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
+        control.always_visible = true;
+
+        control.markers.resize(1);
+        visualization_msgs::Marker &marker = control.markers.front();
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.x = 1.0;
+        marker.scale.y = 1.0;
+        marker.scale.z = 1.0;
+
+        return interactive_marker;
+    }
+
+    void OpenRaveRviz::ConvertPoints(float const *points, int num_points, int stride, std::vector<geometry_msgs::Point> *out_points) const
+    {
+        BOOST_ASSERT(points);
+        BOOST_ASSERT(num_points >= 0);
+        BOOST_ASSERT(stride >= 0 && stride % sizeof(float) == 0);
+        BOOST_ASSERT(out_points);
+
+        stride = stride / sizeof(float);
+
+        out_points->resize(num_points);
+        for (size_t ipoint = 0; ipoint < num_points; ++ipoint)
+        {
+            geometry_msgs::Point &out_point = out_points->at(ipoint);
+            out_point.x = points[stride * ipoint + 0];
+            out_point.y = points[stride * ipoint + 1];
+            out_point.z = points[stride * ipoint + 2];
+        }
+    }
+
+    void OpenRaveRviz::ConvertColors(float const *colors, int num_colors, bool has_alpha, std::vector<std_msgs::ColorRGBA> *out_colors) const
+    {
+        BOOST_ASSERT(colors);
+        BOOST_ASSERT(num_colors >= 0);
+        BOOST_ASSERT(out_colors);
+
+        int stride;
+        if (has_alpha)
+        {
+            stride = 4;
+        }
+        else
+        {
+            stride = 3;
+        }
+
+        out_colors->resize(num_colors);
+        for (size_t icolor = 0; icolor < num_colors; ++icolor)
+        {
+            std_msgs::ColorRGBA &out_color = out_colors->at(icolor);
+            out_color.r = colors[icolor * stride + 0];
+            out_color.g = colors[icolor * stride + 1];
+            out_color.b = colors[icolor * stride + 2];
+
+            if (has_alpha)
+            {
+                out_color.a = colors[icolor * stride + 3];
+            }
+            else
+            {
+                out_color.a = 1.0;
+            }
+        }
+    }
+
+    void OpenRaveRviz::ConvertMesh(float const *points, int stride, int const *indices, int num_triangles, std::vector<geometry_msgs::Point> *out_points) const
+    {
+        BOOST_ASSERT(points);
+        BOOST_ASSERT(stride > 0);
+        BOOST_ASSERT(indices);
+        BOOST_ASSERT(num_triangles >= 0);
+        BOOST_ASSERT(out_points);
+
+        auto const points_raw = reinterpret_cast<uint8_t const *>(points);
+
+        out_points->resize(3 * num_triangles);
+        for (int iindex = 0; iindex < num_triangles; ++iindex)
+        {
+            for (int ivertex = 0; ivertex < 3; ++ivertex)
+            {
+                int const index_offset = 3 * iindex + ivertex;
+                float const *or_point = reinterpret_cast<float const *>(points_raw + stride * indices[index_offset]);
+
+                geometry_msgs::Point &out_point = out_points->at(3 * iindex + ivertex);
+                out_point.x = or_point[0];
+                out_point.y = or_point[1];
+                out_point.z = or_point[2];
+            }
+        }
+    }
 
     RvizGraphHandle::RvizGraphHandle()
     {
@@ -1246,18 +1766,13 @@ namespace or_rviz
             manual->end();
             m_node->attachObject(m_object);
         }
-
     }
-
-
 }
 
 static char *argv[1] = { const_cast<char *>("or_rviz") };
 static int argc = 1;
 
-OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(
-        OpenRAVE::InterfaceType type, std::string const& interfacename,
-        std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
+OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, std::string const& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
 {
     if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
     {

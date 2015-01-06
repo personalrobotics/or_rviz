@@ -10,7 +10,8 @@
 #include <rviz/visualization_frame.h>
 #include "Plugins/EnvironmentDisplay.h"
 #include <map>
-
+#include <boost/signals2.hpp>
+#include "Markers/KinBodyMarker.h"
 
 namespace or_rviz
 {
@@ -169,8 +170,8 @@ namespace or_rviz
 
 
             // RAVE Commands
-            bool RegisterMenuCallback(std::ostream& sout, std::istream& sinput);
-            bool UnRegisterMenuCallback(std::ostream& sout, std::istream& sinput);
+            //virtual OpenRAVE::UserDataPtr RegisterItemSelectionCallback(OpenRAVE::ViewerBase::ItemSelectionCallbackFn const &fncallback);
+            //virtual OpenRAVE::UserDataPtr RegisterViewerThreadCallback(OpenRAVE::ViewerBase::ViewerThreadCallbackFn const &fncallback);
 
             public Q_SLOTS:
                  void syncUpdate();
@@ -207,6 +208,29 @@ namespace or_rviz
 
             bool m_autoSync;
             std::string m_name;
+            boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+            bool running_;
+            bool do_sync_;
+            int graph_id_;
+
+            typedef void ViewerCallbackFn();
+            typedef bool SelectionCallbackFn(OpenRAVE::KinBody::LinkPtr plink, OpenRAVE::RaveVector<float>, OpenRAVE::RaveVector<float>);
+
+            boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
+            boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
+            std::stringstream menu_queue_;
+
+            bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
+            bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
+
+            void KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name);
+            void LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name);
+            void ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator, std::string const &name);
+
+            visualization_msgs::InteractiveMarkerPtr CreateMarker() const;
+            void ConvertPoints(float const *points, int num_points, int stride, std::vector<geometry_msgs::Point> *out_points) const;
+            void ConvertColors(float const *colors, int num_colors, bool has_alpha, std::vector<std_msgs::ColorRGBA> *out_colors) const;
+            void ConvertMesh(float const *points, int stride, int const *indices, int num_triangles, std::vector<geometry_msgs::Point> *out_points) const;
 
             // Overloading OPENRAVE drawing functions....
             virtual OpenRAVE::GraphHandlePtr  plot3 (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle=0);
@@ -220,6 +244,32 @@ namespace or_rviz
             virtual OpenRAVE::GraphHandlePtr  drawplane (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture);
             virtual OpenRAVE::GraphHandlePtr  drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color);
             virtual OpenRAVE::GraphHandlePtr  drawtrimesh (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors);
+
+            // Using OpenGL
+            virtual OpenRAVE::GraphHandlePtr  plot3_native (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle=0);
+            virtual OpenRAVE::GraphHandlePtr  plot3_native (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle=0, bool bhasalpha=false);
+            virtual OpenRAVE::GraphHandlePtr  drawlinestrip_native (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawlinestrip_native (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors);
+            virtual OpenRAVE::GraphHandlePtr  drawlinelist_native (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawlinelist_native (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors);
+            virtual OpenRAVE::GraphHandlePtr  drawarrow_native (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawbox_native (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents);
+            virtual OpenRAVE::GraphHandlePtr  drawplane_native (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture);
+            virtual OpenRAVE::GraphHandlePtr  drawtrimesh_native (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawtrimesh_native (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors);
+
+            // Using interactive marker
+            virtual OpenRAVE::GraphHandlePtr  plot3_marker (const float *ppoints, int numPoints, int stride, float fPointSize, const OpenRAVE::RaveVector< float > &color, int drawstyle=0);
+            virtual OpenRAVE::GraphHandlePtr  plot3_marker (const float *ppoints, int numPoints, int stride, float fPointSize, const float *colors, int drawstyle=0, bool bhasalpha=false);
+            virtual OpenRAVE::GraphHandlePtr  drawlinestrip_marker (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawlinestrip_marker (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors);
+            virtual OpenRAVE::GraphHandlePtr  drawlinelist_marker (const float *ppoints, int numPoints, int stride, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawlinelist_marker (const float *ppoints, int numPoints, int stride, float fwidth, const float *colors);
+            virtual OpenRAVE::GraphHandlePtr  drawarrow_marker (const OpenRAVE::RaveVector< float > &p1, const OpenRAVE::RaveVector< float > &p2, float fwidth, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawbox_marker (const OpenRAVE::RaveVector< float > &vpos, const OpenRAVE::RaveVector< float > &vextents);
+            virtual OpenRAVE::GraphHandlePtr  drawplane_marker (const OpenRAVE::RaveTransform< float > &tplane, const OpenRAVE::RaveVector< float > &vextents, const boost::multi_array< float, 3 > &vtexture);
+            virtual OpenRAVE::GraphHandlePtr  drawtrimesh_marker (const float *ppoints, int stride, const int *pIndices, int numTriangles, const OpenRAVE::RaveVector< float > &color);
+            virtual OpenRAVE::GraphHandlePtr  drawtrimesh_marker (const float *ppoints, int stride, const int *pIndices, int numTriangles, const boost::multi_array< float, 2 > &colors);
     };
 }
 
