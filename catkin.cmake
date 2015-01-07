@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
@@ -8,6 +8,20 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     visualization_msgs
 )
+include_directories(${catkin_INCLUDE_DIRS} ${OpenRAVE_INCLUDE_DIRS})
+link_directories(${catkin_LIBRARY_DIRS} ${OpenRAVE_LIBRARY_DIRS})
+
+find_package(Boost REQUIRED COMPONENTS thread)
+include_directories(${Boost_INCLUDE_DIRS})
+link_directories(${Boost_LIBRARY_DIRS})
+
+find_package(OGRE REQUIRED)
+include_directories(${OGRE_INCLUDE_DIRS})
+link_directories(${OGRE_LIBRARY_DIRS})
+
+find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
+add_definitions(-DQT_NO_KEYWORDS)
+include(${QT_USE_FILE})
 
 catkin_package(
     INCLUDE_DIRS include
@@ -22,22 +36,14 @@ catkin_package(
         openrave
 )
 
-include_directories(
-    include/${PROJECT_NAME}
-    ${OpenRAVE_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
-)
-link_directories(
-    ${OpenRAVE_LIBRARY_DIRS}
-    ${catkin_LIBRARY_DIRS}
-)
-
-add_definitions(--std=c++0x)
+include_directories(include/${PROJECT_NAME})
+include(DetectCXX11Flags)
 
 # Helper library that implements core functionality. This includes the OpenRAVE
 # viewer plugins.
 add_library(${PROJECT_NAME} SHARED
     src/or_interactivemarker.cpp
+    #src/or_rviz.cpp
     src/markers/JointMarker.cpp
     src/markers/KinBodyJointMarker.cpp
     src/markers/KinBodyLinkMarker.cpp
