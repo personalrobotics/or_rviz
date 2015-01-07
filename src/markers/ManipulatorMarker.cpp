@@ -3,7 +3,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include "markers/ManipulatorMarker.h"
-#include "utils/or_conversions.h"
+#include "util/or_conversions.h"
 
 using boost::format;
 using boost::str;

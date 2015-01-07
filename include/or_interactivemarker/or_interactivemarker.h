@@ -4,7 +4,7 @@
 #include <boost/signals2.hpp>
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
-#include "KinBodyMarker.h"
+#include "markers/KinBodyMarker.h"
 
 namespace or_interactivemarker {
 
