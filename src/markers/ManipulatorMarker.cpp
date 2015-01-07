@@ -17,6 +17,8 @@ using OpenRAVE::RobotBasePtr;
 using OpenRAVE::KinBody;
 using OpenRAVE::IkSolverBasePtr;
 
+using namespace or_interactivemarker::util;
+
 typedef OpenRAVE::RobotBase::RobotStateSaver RobotStateSaver;
 
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;

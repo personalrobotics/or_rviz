@@ -23,6 +23,8 @@ using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 using interactive_markers::MenuHandler;
 
+using namespace or_interactivemarker::util;
+
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
 typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;

@@ -10,6 +10,7 @@ using geometry_msgs::Point;
 using geometry_msgs::Quaternion;
 
 namespace or_interactivemarker {
+namespace util {
 
 /*
  * OpenRAVE to ROS
@@ -113,4 +114,5 @@ template RaveVector<double> toORPoint(Point const &point);
 template RaveVector<double> toORQuaternion(Quaternion const &quat);
 template RaveTransform<double> toORPose(Pose const &pose);
 
+}
 }

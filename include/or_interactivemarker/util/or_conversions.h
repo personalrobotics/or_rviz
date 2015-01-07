@@ -8,6 +8,7 @@
 #include <openrave/openrave.h>
 
 namespace or_interactivemarker {
+namespace util {
 
 // OpenRAVE to ROS
 template <class Scalar>
@@ -29,6 +30,7 @@ OpenRAVE::RaveVector<Scalar> toORQuaternion(geometry_msgs::Quaternion const &qua
 template <class Scalar>
 OpenRAVE::RaveTransform<Scalar> toORPose(geometry_msgs::Pose const &pose);
 
+}
 }
 
 #endif

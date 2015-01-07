@@ -4,6 +4,8 @@
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 
+using namespace or_interactivemarker::util;
+
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef OpenRAVE::KinBody::LinkInfo LinkInfo;
 

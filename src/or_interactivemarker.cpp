@@ -14,6 +14,7 @@ using OpenRAVE::KinBodyPtr;
 using OpenRAVE::GraphHandlePtr;
 
 using namespace or_interactivemarker::markers;
+using namespace or_interactivemarker::util;
 
 typedef boost::shared_ptr<interactive_markers::InteractiveMarkerServer> InteractiveMarkerServerPtr;
 

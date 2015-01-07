@@ -27,6 +27,8 @@ using visualization_msgs::InteractiveMarkerControl;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 
+using namespace or_interactivemarker::util;
+
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef boost::shared_ptr<OpenRAVE::TriMesh> TriMeshPtr;
 typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;

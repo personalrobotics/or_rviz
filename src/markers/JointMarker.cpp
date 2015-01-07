@@ -15,6 +15,8 @@ using OpenRAVE::dReal;
 using OpenRAVE::KinBody;
 using OpenRAVE::KinBodyPtr;
 
+using namespace or_interactivemarker::util;
+
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
