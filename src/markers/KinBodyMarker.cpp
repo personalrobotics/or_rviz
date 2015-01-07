@@ -2,8 +2,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
-#include "KinBodyMarker.h"
-#include "or_conversions.h"
+#include "makers/KinBodyMarker.h"
+#include "util/or_conversions.h"
 
 using boost::ref;
 using boost::format;

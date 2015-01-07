@@ -2,8 +2,8 @@
 #include <openrave/openrave.h>
 #include <openrave/geometry.h>
 #include <interactive_markers/interactive_marker_server.h>
-#include "JointMarker.h"
-#include "or_conversions.h"
+#include "markers/JointMarker.h"
+#include "util/or_conversions.h"
 
 using boost::format;
 using boost::str;

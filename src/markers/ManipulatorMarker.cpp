@@ -2,8 +2,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
-#include "ManipulatorMarker.h"
-#include "or_conversions.h"
+#include "markers/ManipulatorMarker.h"
+#include "utils/or_conversions.h"
 
 using boost::format;
 using boost::str;

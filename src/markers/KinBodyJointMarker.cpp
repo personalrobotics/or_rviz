@@ -1,4 +1,4 @@
-#include "KinBodyJointMarker.h"
+#include "markers/KinBodyJointMarker.h"
 
 using interactive_markers::InteractiveMarkerServer;
 using OpenRAVE::KinBody;

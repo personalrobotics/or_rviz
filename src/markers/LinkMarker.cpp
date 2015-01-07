@@ -5,8 +5,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <ros/ros.h>
-#include "or_conversions.h"
-#include "LinkMarker.h"
+#include "markers/LinkMarker.h"
+#include "util/or_conversions.h"
 
 using boost::adaptors::map_keys;
 using boost::adaptors::transformed;

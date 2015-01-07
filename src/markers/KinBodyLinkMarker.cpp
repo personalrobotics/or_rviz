@@ -1,5 +1,5 @@
-#include "KinBodyLinkMarker.h"
-#include "or_conversions.h"
+#include "markers/KinBodyLinkMarker.h"
+#include "util/or_conversions.h"
 
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
