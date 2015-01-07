@@ -5,6 +5,7 @@
 #include "JointMarker.h"
 
 namespace or_interactivemarker {
+namespace markers {
 
 class KinBodyJointMarker;
 typedef boost::shared_ptr<KinBodyJointMarker> KinBodyJointMarkerPtr;
@@ -18,6 +19,7 @@ public:
     virtual bool EnvironmentSync();
 };
 
+}
 }
 
 #endif

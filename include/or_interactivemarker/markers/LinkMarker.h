@@ -10,6 +10,7 @@
 #include <interactive_markers/interactive_marker_server.h>
 
 namespace or_interactivemarker {
+namespace markers {
 
 class LinkMarker;
 typedef boost::shared_ptr<LinkMarker> LinkMarkerPtr;
@@ -78,6 +79,7 @@ private:
                          visualization_msgs::MarkerPtr const &marker);
 };
 
+}
 }
 
 #endif

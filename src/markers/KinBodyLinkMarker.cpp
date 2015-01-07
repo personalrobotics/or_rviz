@@ -22,7 +22,7 @@ static bool CheckStateToBool(MenuHandler::CheckState const &state)
 }
 
 namespace or_interactivemarker {
-
+namespace markers {
 
 KinBodyLinkMarker::KinBodyLinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
                                      OpenRAVE::KinBody::LinkPtr link)
@@ -157,4 +157,4 @@ void KinBodyLinkMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
 
 
 }
-
+}

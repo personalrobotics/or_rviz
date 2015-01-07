@@ -22,6 +22,7 @@ typedef OpenRAVE::KinBody::JointPtr JointPtr;
 static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
+namespace markers {
 
 JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     : server_(server)
@@ -144,4 +145,5 @@ OpenRAVE::Transform JointMarker::GetJointPose(JointPtr joint)
     return pose;
 }
 
+}
 }

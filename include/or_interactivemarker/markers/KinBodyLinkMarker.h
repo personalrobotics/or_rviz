@@ -4,6 +4,7 @@
 #include "LinkMarker.h"
 
 namespace or_interactivemarker {
+namespace markers {
 
 class KinBodyLinkMarker;
 typedef boost::shared_ptr<KinBodyLinkMarker> KinBodyLinkMarkerPtr;
@@ -38,7 +39,7 @@ private:
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
 
-
+}
 }
 
 #endif

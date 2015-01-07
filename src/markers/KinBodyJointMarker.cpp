@@ -8,6 +8,7 @@ typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
 namespace or_interactivemarker {
+namespace markers {
 
 KinBodyJointMarker::KinBodyJointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     : JointMarker(server, joint)
@@ -39,4 +40,5 @@ bool KinBodyJointMarker::EnvironmentSync()
     return JointMarker::EnvironmentSync();
 }
 
+}
 }

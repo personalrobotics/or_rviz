@@ -7,6 +7,7 @@
 #include "JointMarker.h"
 
 namespace or_interactivemarker {
+namespace markers {
 
 class ManipulatorMarker;
 typedef boost::shared_ptr<ManipulatorMarker> ManipulatorMarkerPtr;
@@ -53,6 +54,7 @@ private:
     void InferFreeJoints(std::vector<OpenRAVE::KinBody::JointPtr> *free_joints) const;
 };
 
+}
 }
 
 #endif

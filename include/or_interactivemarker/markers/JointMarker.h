@@ -4,6 +4,7 @@
 #include <interactive_markers/interactive_marker_server.h>
 
 namespace or_interactivemarker {
+namespace markers {
 
 class JointMarker;
 typedef boost::shared_ptr<JointMarker> JointMarkerPtr;
@@ -44,6 +45,7 @@ private:
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
 
+}
 }
 
 #endif

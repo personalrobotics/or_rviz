@@ -12,6 +12,9 @@ using visualization_msgs::InteractiveMarker;
 using visualization_msgs::InteractiveMarkerPtr;
 using OpenRAVE::KinBodyPtr;
 using OpenRAVE::GraphHandlePtr;
+
+using namespace or_interactivemarker::markers;
+
 typedef boost::shared_ptr<interactive_markers::InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
 static double const kRefreshRate = 30;

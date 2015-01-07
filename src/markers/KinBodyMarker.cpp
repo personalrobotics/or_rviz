@@ -32,6 +32,7 @@ typedef MenuHandler::EntryHandle EntryHandle;
 static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
+namespace markers {
 
 // TODO: Move this to a helper header.
 static MenuHandler::CheckState BoolToCheckState(bool const &flag)
@@ -542,4 +543,5 @@ void KinBodyMarker::GetManipulators(
     }
 }
 
+}
 }

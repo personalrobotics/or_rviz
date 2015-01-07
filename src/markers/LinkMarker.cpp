@@ -37,6 +37,7 @@ typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 static std::string const kWorldFrameId = "/world";
 
 namespace or_interactivemarker {
+namespace markers {
 
 OpenRAVE::Vector const LinkMarker::kCollisionColor(0.0, 0.0, 1.0, 0.5);
 
@@ -407,4 +408,5 @@ bool LinkMarker::HasRVizSupport(std::string const &uri) const
         || iends_with(uri, ".mesh");
 }
 
+}
 }

@@ -10,6 +10,7 @@
 #include "ManipulatorMarker.h"
 
 namespace or_interactivemarker {
+namespace markers {
 
 class KinBodyMarker;
 typedef boost::shared_ptr<KinBodyMarker> KinBodyMarkerPtr;
@@ -102,6 +103,7 @@ private:
                          std::vector<OpenRAVE::RobotBase::ManipulatorPtr> *manipulators) const;
 };
 
+}
 }
 
 #endif

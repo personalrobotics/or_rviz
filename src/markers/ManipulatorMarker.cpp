@@ -38,6 +38,7 @@ static std::string const kWorldFrameId = "/world";
 static std::string const kGhostKey = "interactive_marker::ghost";
 
 namespace or_interactivemarker {
+namespace markers {
 
 OpenRAVE::Vector const ManipulatorMarker::kValidColor(0, 1, 0, 0.4);
 OpenRAVE::Vector const ManipulatorMarker::kInvalidColor(1, 0, 0, 0.4);
@@ -363,4 +364,5 @@ void ManipulatorMarker::InferFreeJoints(std::vector<JointPtr> *free_joints) cons
     }
 }
 
+}
 }
