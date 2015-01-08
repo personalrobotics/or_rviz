@@ -1,5 +1,14 @@
 or_rviz
 =======
+NOTE: Currently this will not work with herby unless you checkout a patch to  interactive_markers.  To do this, clone the indigo-devel branch of interative_markers into your local catkin_workspace:
+
+cmd> git clone https://github.com/ros-visualization/interactive_markers.git
+cmd> cd interactive_markers
+cmd> git checkout indigo-devel
+
+After you do this you will need to run catkin_make to build the batch.
+
+=======
 
 OpenRAVE viewer plugin built using librviz. This package is *both* an openrave viewer plugin, *and* an RViz plugin. The drawing is done inside RViz using Ogre's internal draw tools and interactive markers.
 
