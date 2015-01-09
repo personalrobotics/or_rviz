@@ -5,7 +5,7 @@
  *      Author: mklingen
  */
 
-#include "../Converters.h"
+#include "Converters.h"
 
 #include "KinBodyVisual.h"
 

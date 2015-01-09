@@ -7,7 +7,7 @@
 
 #include "LinkVisual.h"
 
-#include "../Converters.h"
+#include "Converters.h"
 #include <boost/make_shared.hpp>
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
