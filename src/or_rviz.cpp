@@ -1,4 +1,5 @@
-#include "OpenRaveRviz.h"
+#include "or_rviz.h"
+
 //#include "RenderWindow.h"
 #include <qapplication.h>
 #include <openrave/config.h>

@@ -8,10 +8,10 @@
 #include <rviz/visualization_manager.h>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_frame.h>
-#include "Plugins/EnvironmentDisplay.h"
+#include "rviz/EnvironmentDisplay.h"
 #include <map>
 #include <boost/signals2.hpp>
-#include "Markers/KinBodyMarker.h"
+#include "markers/KinBodyMarker.h"
 
 namespace or_rviz
 {
