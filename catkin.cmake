@@ -25,7 +25,9 @@ include(${QT_USE_FILE})
 
 catkin_package(
     INCLUDE_DIRS include
-    LIBRARIES ${PROJECT_NAME}
+    LIBRARIES
+        ${PROJECT_NAME}
+        ${PROJECT_NAME}_markers
     CATKIN_DEPENDS
         geometry_msgs
         interactive_markers
@@ -39,11 +41,8 @@ catkin_package(
 include_directories(include/${PROJECT_NAME})
 include(DetectCXX11Flags)
 
-# Helper library that implements core functionality. This includes the OpenRAVE
-# viewer plugins.
-add_library(${PROJECT_NAME} SHARED
-    src/or_interactivemarker.cpp
-    #src/or_rviz.cpp
+# Helper library that implements core functionality.
+add_library(${PROJECT_NAME}_markers SHARED
     src/markers/JointMarker.cpp
     src/markers/KinBodyJointMarker.cpp
     src/markers/KinBodyLinkMarker.cpp
@@ -52,9 +51,36 @@ add_library(${PROJECT_NAME} SHARED
     src/markers/ManipulatorMarker.cpp
     src/util/or_conversions.cpp
 )
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}_markers
     ${catkin_LIBRARIES}
 )
+
+# OpenRAVE viewer classes.
+qt4_wrap_cpp(MOC_FILES 
+    include/${PROJECT_NAME}/or_rviz.h
+    src/rviz/EnvironmentDisplay.h
+    src/rviz/KinBodyVisual.h
+)
+
+add_library(${PROJECT_NAME} SHARED
+    src/or_interactivemarker.cpp
+    src/or_rviz.cpp
+    ${MOC_FILES}
+)
+target_link_libraries(${PROJECT_NAME}
+    ${PROJECT_NAME}_markers
+    ${catkin_LIBRARIES}
+    ${OGRE_LIBRARIES}
+    ${QT_LIBRARIES}
+)
+
+# RViz viewer plugins.
+add_library(${PROJECT_NAME}_rviz SHARED
+    src/rviz/EnvironmentDisplay.cpp
+    src/rviz/KinBodyVisual.cpp
+    src/rviz/LinkVisual.cpp
+)
+message(STATUS "MOC Files: ${MOC_FILES}")
 
 # Stub library that registers the plugins with OpenRAVE.
 openrave_plugin(${PROJECT_NAME}_plugin
