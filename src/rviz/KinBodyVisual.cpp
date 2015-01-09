@@ -5,15 +5,14 @@
  *      Author: mklingen
  */
 
-#include "Converters.h"
-
-#include "KinBodyVisual.h"
-
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 #include <OgreMesh.h>
 
-#include "LinkVisual.h"
+#include "rviz/LinkVisual.h"
+#include "rviz/Converters.h"
+#include "rviz/KinBodyVisual.h"
+
 
 namespace or_rviz
 {

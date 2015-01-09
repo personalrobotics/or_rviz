@@ -5,11 +5,11 @@
  *      Author: mklingen
  */
 
-#include "Converters.h"
-#include "KinBodyDisplay.h"
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 #include <pluginlib/class_list_macros.h>
+#include "rviz/Converters.h"
+#include "rviz/KinBodyDisplay.h"
 
 
 namespace or_rviz

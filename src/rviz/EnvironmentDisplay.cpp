@@ -5,9 +5,9 @@
  *      Author: mklingen
  */
 
-#include "EnvironmentDisplay.h"
 #include <rviz/frame_manager.h>
-#include "../Converters.h"
+#include "rviz/Converters.h"
+#include "rviz/EnvironmentDisplay.h"
 //#include "PythonInterface/PyCallbacks.h"
 
 

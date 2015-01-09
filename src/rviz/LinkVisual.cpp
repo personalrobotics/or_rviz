@@ -4,10 +4,6 @@
  *  Created on: Sep 24, 2013
  *      Author: mklingen
  */
-
-#include "LinkVisual.h"
-
-#include "Converters.h"
 #include <boost/make_shared.hpp>
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
@@ -23,8 +19,10 @@
 #include <OgreMaterialManager.h>
 #include <OgreMaterial.h>
 #include <OgreMeshSerializer.h>
-#include "KinBodyVisual.h"
 #include <boost/filesystem.hpp>
+#include "rviz/Converters.h"
+#include "rviz/LinkVisual.h"
+#include "rviz/KinBodyVisual.h"
 
 namespace or_rviz
 {
