@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.4.6)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 find_package(catkin REQUIRED COMPONENTS
+    rviz
     geometry_msgs
     interactive_markers
     openrave_catkin
@@ -39,6 +40,7 @@ catkin_package(
 )
 
 include_directories(include/${PROJECT_NAME})
+
 include(DetectCXX11Flags)
 
 # Helper library that implements core functionality.
@@ -55,32 +57,33 @@ target_link_libraries(${PROJECT_NAME}_markers
     ${catkin_LIBRARIES}
 )
 
+# RViz viewer plugins.
+qt4_wrap_cpp(RVIZ_MOC
+    include/${PROJECT_NAME}/rviz/EnvironmentDisplay.h
+)
+
+add_library(${PROJECT_NAME}_rviz SHARED
+    src/rviz/EnvironmentDisplay.cpp
+    ${RVIZ_MOC}
+)
+
 # OpenRAVE viewer classes.
-qt4_wrap_cpp(MOC_FILES 
+qt4_wrap_cpp(VIEWER_MOC
     include/${PROJECT_NAME}/or_rviz.h
-    src/rviz/EnvironmentDisplay.h
-    src/rviz/KinBodyVisual.h
 )
 
 add_library(${PROJECT_NAME} SHARED
     src/or_interactivemarker.cpp
     src/or_rviz.cpp
-    ${MOC_FILES}
+    ${VIEWER_MOC}
 )
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_NAME}_markers
+    ${PROJECT_NAME}_rviz
     ${catkin_LIBRARIES}
     ${OGRE_LIBRARIES}
     ${QT_LIBRARIES}
 )
-
-# RViz viewer plugins.
-add_library(${PROJECT_NAME}_rviz SHARED
-    src/rviz/EnvironmentDisplay.cpp
-    src/rviz/KinBodyVisual.cpp
-    src/rviz/LinkVisual.cpp
-)
-message(STATUS "MOC Files: ${MOC_FILES}")
 
 # Stub library that registers the plugins with OpenRAVE.
 openrave_plugin(${PROJECT_NAME}_plugin

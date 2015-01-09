@@ -5,7 +5,6 @@
 #include <openrave/config.h>
 #include <QDockWidget>
 #include <OgreCamera.h>
-#include "Converters.h"
 #include <rviz/display.h>
 //#include <rviz/display_wrapper.h>
 #include <rviz/default_plugin/marker_display.h>
@@ -33,12 +32,16 @@
 #include <boost/signals2.hpp>
 #include <boost/algorithm/string.hpp>
 #include <interactive_markers/interactive_marker_server.h>
-#include "or_conversions.h"
+#include "rviz/Converters.h"
+#include "util/or_conversions.h"
+
 static double const kRefreshRate = 30;
 static double const kWidthScaleFactor = 100;
 using namespace OpenRAVE;
 using namespace rviz;
-using namespace or_interactivemarker;
+using namespace or_rviz;
+using namespace or_interactivemarker::markers;
+using namespace or_interactivemarker::util;
 
 namespace detail
 {
@@ -94,7 +97,7 @@ namespace detail
                 // marker is created.
                 if (show_)
                 {
-                    server_->setPose(interactive_marker_->name, or_interactivemarker::toROSPose<>(t));
+                    server_->setPose(interactive_marker_->name, toROSPose<>(t));
                 }
             }
 
@@ -1620,7 +1623,7 @@ namespace or_rviz
         boost::shared_ptr<visualization_msgs::InteractiveMarker> interactive_marker = boost::make_shared<visualization_msgs::InteractiveMarker>();
 
         interactive_marker->header.frame_id = manager_->getFixedFrame().toStdString();
-        interactive_marker->pose = or_interactivemarker::toROSPose(OpenRAVE::Transform());
+        interactive_marker->pose = toROSPose(OpenRAVE::Transform());
         interactive_marker->name = boost::str(boost::format("GraphHandle[%p]") % interactive_marker.get());
         interactive_marker->scale = 1.0;
 
@@ -1768,42 +1771,4 @@ namespace or_rviz
             m_node->attachObject(m_object);
         }
     }
-}
-
-static char *argv[1] = { const_cast<char *>("or_rviz") };
-static int argc = 1;
-
-OpenRAVE::InterfaceBasePtr CreateInterfaceValidated(OpenRAVE::InterfaceType type, std::string const& interfacename, std::istream& sinput, OpenRAVE::EnvironmentBasePtr penv)
-{
-    if (type == OpenRAVE::PT_Viewer && interfacename == "or_rviz")
-    {
-
-        // Hack to prevent screen printing from RVIZ!
-        Ogre::LogManager* logger = new Ogre::LogManager();
-        logger->createLog("ogre_log.log", true, false, false);
-
-
-        if (!ros::isInitialized())
-        {
-            ros::init(argc, argv, "or_rviz", ros::init_options::AnonymousName);
-        }
-        else
-        {
-            RAVELOG_DEBUG("Using existing ROS node '%s'\n", ros::this_node::getName().c_str());
-        }
-        new QApplication(argc, argv);
-        return OpenRAVE::InterfaceBasePtr(new or_rviz::OpenRaveRviz(penv));
-    }
-
-    return OpenRAVE::InterfaceBasePtr();
-}
-
-void GetPluginAttributesValidated(OpenRAVE::PLUGININFO& info)
-{
-    info.interfacenames[OpenRAVE::PT_Viewer].push_back("or_rviz");
-}
-
-OPENRAVE_PLUGIN_API void DestroyPlugin()
-{
-    return;
 }

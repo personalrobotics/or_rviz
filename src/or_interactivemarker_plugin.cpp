@@ -1,8 +1,15 @@
+#include <QApplication>
+#include <boost/make_shared.hpp>
 #include <sstream>
 #include <string>
 #include <ros/ros.h>
 #include <openrave/plugin.h>
 #include "or_interactivemarker.h"
+#include "or_rviz.h"
+
+static QApplication *qt_application = NULL;
+static char *qt_argv[1] = { const_cast<char *>("or_rviz") };
+static int qt_argc = 1;
 
 using namespace OpenRAVE;
 
@@ -12,7 +19,8 @@ InterfaceBasePtr CreateInterfaceValidated(
 {
     using namespace or_interactivemarker;
 
-    if (type == PT_Viewer && interfacename == "interactivemarker") {
+    if (type == PT_Viewer && (interfacename == "interactivemarker"
+                           || interfacename == "rviz")) {
         std::string node_name;
         sinput >> node_name;
 
@@ -31,7 +39,21 @@ InterfaceBasePtr CreateInterfaceValidated(
                           ros::this_node::getName().c_str());
         }
 
-        return InterfaceBasePtr(new InteractiveMarkerViewer(env));
+        if (interfacename == "interactivemarker") {
+            return boost::make_shared<InteractiveMarkerViewer>(env);
+        } else if (interfacename == "rviz") {
+            // Use one, global QApplication for all or_rviz windows.
+            if (!qt_application) {
+                qt_application =  new QApplication(qt_argc, qt_argv);
+            }
+            
+            // TODO: Shouldn't this only happen once?
+            return boost::make_shared<or_rviz::OpenRaveRviz>(env);
+        } else {
+            // This should never happen.
+            BOOST_ASSERT(false);
+            return InterfaceBasePtr();
+        }
     } else {
         return InterfaceBasePtr();
     }
@@ -39,6 +61,7 @@ InterfaceBasePtr CreateInterfaceValidated(
 
 void GetPluginAttributesValidated(PLUGININFO &info)
 {
+    info.interfacenames[OpenRAVE::PT_Viewer].push_back("RViz");
     info.interfacenames[OpenRAVE::PT_Viewer].push_back("InteractiveMarker");
 }
 
