@@ -48,7 +48,7 @@ InterfaceBasePtr CreateInterfaceValidated(
             }
             
             // TODO: Shouldn't this only happen once?
-            return boost::make_shared<or_rviz::OpenRaveRviz>(env);
+            return boost::make_shared<RVizViewer>(env);
         } else {
             // This should never happen.
             BOOST_ASSERT(false);
