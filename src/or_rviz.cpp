@@ -1,66 +1,137 @@
-#include <QMenu>
+#include <qapplication.h>
+#include <QFileDialog>
+#include <QMainWindow>
+#include <QMessageBox>
 #include <QMenuBar>
+#include <QString>
 #include <QTimer>
+#include <rviz/visualization_manager.h>
 #include "or_rviz.h"
+
+static double const kRefreshRate = 30;
 
 namespace or_interactivemarker {
 
 RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env)
     : InteractiveMarkerViewer(env)
+    , timer_(NULL)
 {
     initialize();
 
-#if 0
-    QMenu* openRaveMenu = new QMenu("OpenRAVE", this);
-    openRaveMenu->addAction(LoadEnvironmentAction());
-    m_environmentsMenu = openRaveMenu->addMenu("Environments");
+    rviz_manager_ = getManager();
+    rviz_main_panel_ = rviz_manager_->getRenderPanel();
 
-    menuBar()->addMenu(openRaveMenu);
+    InitializeLighting();
+    InitializeInteractiveMarkers();
+    InitializeMenus();
 
-    m_rvizManager = getManager();
+    installEventFilter(this);
+}
 
-    m_mainRenderPanel = this->getManager()->getRenderPanel();
+int RVizViewer::main(bool bShow)
+{
+    qApp->setActiveWindow(this);
 
-    m_rvizManager->getSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
+    timer_ = new QTimer(this);
+    timer_->setInterval(33);
+    timer_->setSingleShot(false);
+    timer_->start();
 
-    Ogre::Light* light = m_rvizManager->getSceneManager()->createLight("FillLight");
+    connect(timer_, SIGNAL(timeout()), this, SLOT(EnvironmentSyncSlot()));
+
+    running_ = true;
+    show();
+    return qApp->exec();
+}
+
+void RVizViewer::quitmainloop()
+{
+    // TODO: Disconnect the timer.
+    running_ = false;
+    qApp->quit();
+}
+
+/*
+ * Slots
+ */
+void RVizViewer::LoadEnvironmentSlot()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Load", ".");
+    if (file.count() > 0) {
+        if (!GetEnv()->Load(file.toStdString())) {
+            QMessageBox::warning(this, "Load", "Failed to load environment.");
+        }
+    }
+}
+
+void RVizViewer::EnvironmentSyncSlot()
+{
+    if (running_) {
+        if(do_sync_) {
+            EnvironmentSync();
+        }
+        viewer_callbacks_();
+    }
+}
+
+/*
+ * Private
+ */
+void RVizViewer::InitializeLighting()
+{
+    Ogre::SceneManager *scene_manager = rviz_manager_->getSceneManager();
+
+    scene_manager->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
+
+    Ogre::Light *light = scene_manager->createLight("FillLight");
     light->setType(Ogre::Light::LT_DIRECTIONAL);
     light->setDiffuseColour(0.6, 0.55, 0.5);
     light->setSpecularColour(1, 1, 1);
     light->setDirection(0.05, 0.01, -1);
     light->setCastShadows(true);
 
-    Ogre::Light* light2 = m_rvizManager->getSceneManager()->createLight("Backlight");
+    Ogre::Light *light2 = scene_manager->createLight("Backlight");
     light2->setType(Ogre::Light::LT_DIRECTIONAL);
     light2->setDiffuseColour(0.2, 0.25, 0.3);
     light2->setSpecularColour(1, 1, 1);
     light2->setDirection(-0.1, -0.1, 0.05);
     light2->setCastShadows(false);
 
-    Ogre::Light* light3 = m_rvizManager->getSceneManager()->createLight("Keylight");
+    Ogre::Light *light3 = scene_manager->createLight("Keylight");
     light3->setType(Ogre::Light::LT_DIRECTIONAL);
     light3->setDiffuseColour(0.4, 0.4, 0.4);
     light3->setSpecularColour(1, 1, 1);
     light3->setDirection(0.1, 0.1, -0.05);
     light3->setCastShadows(false);
 
-    m_rvizManager->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
-    m_rvizManager->getSceneManager()->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
-    installEventFilter(this);
-
-    rviz::RenderPanel* offScreenPanel = new rviz::RenderPanel(this);
-
-    offScreenPanel->setVisible(false);
-
-    m_offscreenRenderer = (offScreenPanel)->getRenderWindow();
-    m_offscreenRenderer->setVisible(false);
-    //m_offscreenRenderer->setHidden(true);
-
-    m_offscreenCamera = m_rvizManager->getSceneManager()->createCamera("OfscreenCamera");
-
-    rviz::InteractiveMarkerDisplay* markerDisplay =  dynamic_cast< rviz::InteractiveMarkerDisplay*>(m_rvizManager->createDisplay("rviz/InteractiveMarkers", "OpenRAVE Markers", true));
-    markerDisplay->setTopic("/openrave/update", "");
-#endif
+    scene_manager->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
+    scene_manager->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
 }
+
+void RVizViewer::InitializeMenus()
+{
+    menu_openrave_ = new QMenu("OpenRAVE", this);
+    menu_openrave_->addAction(LoadEnvironmentAction());
+    menu_environments_ = menu_openrave_->addMenu("Environments");
+    menuBar()->addMenu(menu_openrave_);
+}
+
+void RVizViewer::InitializeInteractiveMarkers()
+{
+    markers_display_ = dynamic_cast<rviz::InteractiveMarkerDisplay *>(
+        rviz_manager_->createDisplay("rviz/InteractiveMarkers",
+                                     "OpenRAVE Markers", true)
+    );
+    // TODO: Set this to an auto-generated string.
+    markers_display_->setTopic("/openrave/update", "");
+}
+
+QAction *RVizViewer::LoadEnvironmentAction()
+{
+    QAction* toReturn = new QAction("Load", this);
+    connect(toReturn, SIGNAL(triggered(bool)), this, SLOT(LoadEnvironmentSlot()));
+    return toReturn;
+}
+
 
 }

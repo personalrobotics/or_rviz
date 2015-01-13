@@ -61,19 +61,22 @@ protected:
         float const *points, int stride, int const *pIndices, int num_triangles,
         boost::multi_array<float, 2> const &colors);
 
-private:
+protected:
     typedef void ViewerCallbackFn();
+
+    bool running_;
+    bool do_sync_;
+    boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
+
+private:
     typedef bool SelectionCallbackFn(OpenRAVE::KinBody::LinkPtr plink,
                                      OpenRAVE::RaveVector<float>,
                                      OpenRAVE::RaveVector<float>);
 
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    bool running_;
-    bool do_sync_;
     int graph_id_;
 
-    boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
     std::stringstream menu_queue_;
 
