@@ -2,8 +2,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <interactive_markers/interactive_marker_server.h>
-#include "or_interactivemarker.h"
 #include "util/or_conversions.h"
+#include "InteractiveMarkerViewer.h"
 
 using boost::format;
 using boost::str;

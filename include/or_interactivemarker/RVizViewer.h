@@ -5,7 +5,7 @@
 #include <QTimer>
 #include <rviz/default_plugin/interactive_marker_display.h>
 #include <rviz/visualization_frame.h>
-#include "or_interactivemarker.h"
+#include "InteractiveMarkerViewer.h"
 
 namespace or_interactivemarker {
 

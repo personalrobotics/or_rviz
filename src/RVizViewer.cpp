@@ -9,7 +9,7 @@
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
 #include "rviz/Converters.h"
-#include "or_rviz.h"
+#include "RVizViewer.h"
 
 using boost::format;
 using boost::str;

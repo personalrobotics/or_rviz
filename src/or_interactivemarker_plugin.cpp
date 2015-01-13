@@ -4,8 +4,8 @@
 #include <string>
 #include <ros/ros.h>
 #include <openrave/plugin.h>
-#include "or_interactivemarker.h"
-#include "or_rviz.h"
+#include "InteractiveMarkerViewer.h"
+#include "RVizViewer.h"
 
 static std::string const kDefaultTopicName = "openrave";
 
