@@ -126,7 +126,7 @@ void KinBodyMarker::set_parent_frame(std::string const &frame_id)
     parent_frame_id_ = frame_id;
     interactive_marker_->header.frame_id = frame_id;
 
-    if (has_joint_controls_) {
+    if (has_pose_controls_) {
         server_->insert(*interactive_marker_);
     }
 
