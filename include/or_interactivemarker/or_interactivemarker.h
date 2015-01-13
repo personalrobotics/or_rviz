@@ -10,7 +10,8 @@ namespace or_interactivemarker {
 
 class InteractiveMarkerViewer : public OpenRAVE::ViewerBase {
 public:
-    InteractiveMarkerViewer(OpenRAVE::EnvironmentBasePtr env);
+    InteractiveMarkerViewer(OpenRAVE::EnvironmentBasePtr env,
+                            std::string const &topic_name);
 
     virtual void SetEnvironmentSync(bool do_update);
     virtual void EnvironmentSync();
@@ -66,6 +67,7 @@ protected:
 
     bool running_;
     bool do_sync_;
+    std::string topic_name_;
     boost::signals2::signal<ViewerCallbackFn> viewer_callbacks_;
 
 private:

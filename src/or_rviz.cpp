@@ -5,15 +5,21 @@
 #include <QMenuBar>
 #include <QString>
 #include <QTimer>
+#include <boost/format.hpp>
 #include <rviz/visualization_manager.h>
 #include "or_rviz.h"
+
+using boost::format;
+using boost::str;
 
 static double const kRefreshRate = 30;
 
 namespace or_interactivemarker {
 
-RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env)
-    : InteractiveMarkerViewer(env)
+RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
+                       std::string const &topic_name,
+                       bool anonymize)
+    : InteractiveMarkerViewer(env, GenerateTopicName(topic_name, anonymize))
     , timer_(NULL)
 {
     initialize();
@@ -122,8 +128,9 @@ void RVizViewer::InitializeInteractiveMarkers()
         rviz_manager_->createDisplay("rviz/InteractiveMarkers",
                                      "OpenRAVE Markers", true)
     );
-    // TODO: Set this to an auto-generated string.
-    markers_display_->setTopic("/openrave/update", "");
+
+    std::string const update_topic = str(format("%s/update") % topic_name_);
+    markers_display_->setTopic(QString::fromStdString(update_topic), "");
 }
 
 QAction *RVizViewer::LoadEnvironmentAction()
@@ -133,5 +140,14 @@ QAction *RVizViewer::LoadEnvironmentAction()
     return toReturn;
 }
 
+std::string RVizViewer::GenerateTopicName(std::string const &base_name,
+                                          bool anonymize)
+{
+    if (anonymize) {
+        return str(format("%s_%p") % base_name % this);
+    } else {
+        return base_name;
+    }
+}
 
 }

@@ -106,12 +106,14 @@ private:
 
 
 InteractiveMarkerViewer::InteractiveMarkerViewer(
-        OpenRAVE::EnvironmentBasePtr env)
+        OpenRAVE::EnvironmentBasePtr env,
+        std::string const &topic_name)
     : OpenRAVE::ViewerBase(env)
-    , env_(env)
-    , server_(boost::make_shared<InteractiveMarkerServer>("openrave"))
     , running_(false)
     , do_sync_(true)
+    , topic_name_(topic_name)
+    , env_(env)
+    , server_(boost::make_shared<InteractiveMarkerServer>(topic_name))
 {
     BOOST_ASSERT(env);
 

@@ -14,7 +14,8 @@ class RVizViewer : public rviz::VisualizationFrame,
     Q_OBJECT
 
 public:
-    RVizViewer(OpenRAVE::EnvironmentBasePtr env);
+    RVizViewer(OpenRAVE::EnvironmentBasePtr env,
+               std::string const &topic_name, bool anonymize);
 
     int main(bool bShow);
     void quitmainloop();
@@ -37,6 +38,8 @@ private:
     void InitializeInteractiveMarkers();
 
     QAction *LoadEnvironmentAction();
+
+    std::string GenerateTopicName(std::string const &base_name, bool anonymize);
 };
 
 }

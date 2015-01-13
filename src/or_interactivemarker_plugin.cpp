@@ -7,6 +7,8 @@
 #include "or_interactivemarker.h"
 #include "or_rviz.h"
 
+static std::string const kDefaultTopicName = "openrave";
+
 static QApplication *qt_application = NULL;
 static char *qt_argv[1] = { const_cast<char *>("or_rviz") };
 static int qt_argc = 1;
@@ -40,7 +42,7 @@ InterfaceBasePtr CreateInterfaceValidated(
         }
 
         if (interfacename == "interactivemarker") {
-            return boost::make_shared<InteractiveMarkerViewer>(env);
+            return boost::make_shared<InteractiveMarkerViewer>(env, kDefaultTopicName);
         } else if (interfacename == "rviz") {
             // Use one, global QApplication for all or_rviz windows.
             if (!qt_application) {
@@ -48,7 +50,7 @@ InterfaceBasePtr CreateInterfaceValidated(
             }
             
             // TODO: Shouldn't this only happen once?
-            return boost::make_shared<RVizViewer>(env);
+            return boost::make_shared<RVizViewer>(env, kDefaultTopicName, true);
         } else {
             // This should never happen.
             BOOST_ASSERT(false);
