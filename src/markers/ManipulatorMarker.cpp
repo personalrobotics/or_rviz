@@ -143,6 +143,11 @@ bool ManipulatorMarker::EnvironmentSync()
     IkSolverBasePtr const ik_solver = manipulator->GetIkSolver();
     RobotStateSaver const saver(robot, KinBody::Save_LinkTransformation);
 
+    // Hack to avoid crashing if no IK solver is set.
+    if (!ik_solver) {
+        return false;
+    }
+
     // Figure out what the free joints are.
     size_t const num_free = ik_solver->GetNumFreeParameters();
     std::vector<JointPtr> free_joints;
