@@ -10,6 +10,8 @@
 namespace or_interactivemarker {
 namespace util {
 
+extern std::string const kDefaultWorldFrameId;
+
 // OpenRAVE to ROS
 template <class Scalar>
 std_msgs::ColorRGBA toROSColor(OpenRAVE::RaveVector<Scalar> const &color);

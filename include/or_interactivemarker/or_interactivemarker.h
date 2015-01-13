@@ -13,6 +13,8 @@ public:
     InteractiveMarkerViewer(OpenRAVE::EnvironmentBasePtr env,
                             std::string const &topic_name);
 
+    void set_parent_frame(std::string const &frame_id);
+
     virtual void SetEnvironmentSync(bool do_update);
     virtual void EnvironmentSync();
 
@@ -77,10 +79,12 @@ private:
 
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
-    int graph_id_;
 
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
     std::stringstream menu_queue_;
+
+    bool parent_frame_id_changed_;
+    std::string parent_frame_id_;
 
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);

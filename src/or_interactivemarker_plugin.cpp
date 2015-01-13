@@ -45,11 +45,11 @@ InterfaceBasePtr CreateInterfaceValidated(
             return boost::make_shared<InteractiveMarkerViewer>(env, kDefaultTopicName);
         } else if (interfacename == "rviz") {
             // Use one, global QApplication for all or_rviz windows.
+            // TODO: Does this need to be re-created if the viewer is closed?
             if (!qt_application) {
                 qt_application =  new QApplication(qt_argc, qt_argv);
             }
             
-            // TODO: Shouldn't this only happen once?
             return boost::make_shared<RVizViewer>(env, kDefaultTopicName, true);
         } else {
             // This should never happen.

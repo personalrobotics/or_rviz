@@ -58,6 +58,8 @@ public:
 
     std::string id() const;
 
+    void set_parent_frame(std::string const &frame_id);
+
     void AddMenuEntry(std::string const &name, boost::function<void ()> const &callback);
     void AddMenuEntry(OpenRAVE::KinBody::LinkPtr link,
                       std::string const &name, boost::function<void ()> const &callback);
@@ -73,11 +75,11 @@ private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBodyWeakPtr kinbody_;
     OpenRAVE::RobotBaseWeakPtr robot_;
+    std::string parent_frame_id_;
     bool has_pose_controls_;
     bool has_joint_controls_;
 
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
-    bool new_marker_;
 
     std::vector<CustomMenuEntry> menu_custom_kinbody_;
     boost::unordered_map<OpenRAVE::KinBody::Link *, std::vector<CustomMenuEntry> > menu_custom_links_;

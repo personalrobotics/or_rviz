@@ -35,10 +35,6 @@ typedef OpenRAVE::RobotBase::ManipulatorInfoConstPtr ManipulatorInfoConstPtr;
 typedef OpenRAVE::RobotBase::AttachedSensorInfo AttachedSensorInfo;
 typedef OpenRAVE::RobotBase::AttachedSensorInfoConstPtr AttachedSensorInfoConstPtr;
 
-// TODO: Don't hardcode this.
-static std::string const kWorldFrameId = "/world";
-static std::string const kGhostKey = "interactive_marker::ghost";
-
 namespace or_interactivemarker {
 namespace markers {
 
@@ -51,6 +47,7 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
     , manipulator_(manipulator)
     , changed_pose_(true)
     , has_ik_(true)
+    , force_update_(false)
     , current_pose_(manipulator->GetEndEffectorTransform())
 {
     BOOST_ASSERT(server_);
@@ -60,7 +57,7 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
     CreateGeometry();
 
     // Create a 6-DOF pose control.
-    ik_marker_.header.frame_id = kWorldFrameId;
+    ik_marker_.header.frame_id = kDefaultWorldFrameId;
     ik_marker_.name = id();
     ik_marker_.description = manipulator_->GetName();
     ik_marker_.pose = toROSPose(manipulator->GetEndEffectorTransform());
@@ -125,6 +122,20 @@ std::string ManipulatorMarker::id() const
                % environment_id % robot->GetName() % manipulator_->GetName());
 }
 
+void ManipulatorMarker::set_parent_frame(std::string const &frame_id)
+{
+    ik_marker_.header.frame_id = frame_id;
+    force_update_ = true;
+
+    for (LinkMarkerPtr const &link_marker : link_markers_ | map_values) {
+        link_marker->set_parent_frame(frame_id);
+    }
+
+    for (JointMarkerPtr const &joint_marker : free_joint_markers_ | map_values) {
+        joint_marker->set_parent_frame(frame_id);
+    }
+}
+
 bool ManipulatorMarker::EnvironmentSync()
 {
     ManipulatorPtr const manipulator = manipulator_;
@@ -186,6 +197,12 @@ bool ManipulatorMarker::EnvironmentSync()
         }
     }
     changed_pose_ = false;
+
+    // Re-create the IK marker if necessary.
+    if (force_update_) {
+        server_->insert(ik_marker_);
+        force_update_ = false;
+    }
 
     // Update the pose of the ghost manipulator.
     auto const dof_indices = manipulator->GetArmIndices();

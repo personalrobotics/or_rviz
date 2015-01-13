@@ -39,6 +39,8 @@ public:
     bool is_view_collision() const;
     void set_view_collision(bool flag);
 
+    void set_parent_frame(std::string const &frame_id);
+
     std::vector<std::string> group_names() const;
     void SwitchGeometryGroup(std::string const &group);
 

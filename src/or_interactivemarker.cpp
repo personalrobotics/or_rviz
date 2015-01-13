@@ -114,6 +114,8 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     , topic_name_(topic_name)
     , env_(env)
     , server_(boost::make_shared<InteractiveMarkerServer>(topic_name))
+    , parent_frame_id_changed_(false)
+    , parent_frame_id_(kDefaultWorldFrameId)
 {
     BOOST_ASSERT(env);
 
@@ -125,6 +127,13 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
         boost::bind(&InteractiveMarkerViewer::GetMenuSelectionCommand, this, _1, _2),
         "Get the name of the last menu selection."
     );
+}
+
+void InteractiveMarkerViewer::set_parent_frame(std::string const &frame_id)
+{
+    parent_frame_id_changed_ = (frame_id != parent_frame_id_);
+    parent_frame_id_ = frame_id;
+    RAVELOG_INFO("Set parent frame ID to '%s'.\n", frame_id.c_str());
 }
 
 int InteractiveMarkerViewer::main(bool bShow)
@@ -165,14 +174,15 @@ void InteractiveMarkerViewer::EnvironmentSync()
         return;
     }
 
-
     std::vector<KinBodyPtr> bodies;
     env_->GetBodies(bodies);
 
-    for (KinBodyPtr body : bodies) {
+    for (KinBodyPtr const &body : bodies) {
         OpenRAVE::UserDataPtr const raw = body->GetUserData("interactive_marker"); 
         auto body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
         BOOST_ASSERT(!raw || body_marker);
+
+        bool is_frame_changed = parent_frame_id_changed_;
 
         // Create the new geometry if neccessary.
         if (!raw) {
@@ -180,11 +190,19 @@ void InteractiveMarkerViewer::EnvironmentSync()
                 body->GetName().c_str()
             );
             body_marker = boost::make_shared<KinBodyMarker>(server_, body);
+            is_frame_changed = (parent_frame_id_ != kDefaultWorldFrameId);
             body->SetUserData("interactive_marker", body_marker);
+        }
+
+        if (is_frame_changed) {
+            body_marker->set_parent_frame(parent_frame_id_);
         }
 
         body_marker->EnvironmentSync();
     }
+
+    parent_frame_id_changed_ = false;
+
     server_->applyChanges();
     ros::spinOnce();
 }

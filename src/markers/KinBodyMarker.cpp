@@ -31,8 +31,6 @@ typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef MenuHandler::EntryHandle EntryHandle;
 
-static std::string const kWorldFrameId = "/world";
-
 namespace or_interactivemarker {
 namespace markers {
 
@@ -57,22 +55,59 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     : server_(server)
     , kinbody_(kinbody)
     , robot_(boost::dynamic_pointer_cast<RobotBase>(kinbody))
+    , parent_frame_id_(kDefaultWorldFrameId)
     , has_pose_controls_(false)
     , has_joint_controls_(false)
-    , new_marker_(false)
 {
     BOOST_ASSERT(server);
     BOOST_ASSERT(kinbody);
 
-    EnablePoseControls(false);
+    // Create the pose controls.
+    interactive_marker_ = boost::make_shared<InteractiveMarker>();
+    interactive_marker_->header.frame_id = kDefaultWorldFrameId;
+    interactive_marker_->name = id();
+    interactive_marker_->description = "";
+    interactive_marker_->pose = toROSPose(kinbody->GetTransform());
+    interactive_marker_->scale = 1.0; // TODO: Infer a good scale.
 
-#if 0
-#endif
+    InteractiveMarkerControl control;
+    control.orientation.w = 1;
+    control.orientation.x = 1;
+    control.orientation.y = 0;
+    control.orientation.z = 0;
+    control.name = "rotate_x";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    interactive_marker_->controls.push_back(control);
+    control.name = "move_x";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    interactive_marker_->controls.push_back(control);
+
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 1;
+    control.orientation.z = 0;
+    control.name = "rotate_z";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    interactive_marker_->controls.push_back(control);
+    control.name = "move_z";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    interactive_marker_->controls.push_back(control);
+
+    control.orientation.w = 1;
+    control.orientation.x = 0;
+    control.orientation.y = 0;
+    control.orientation.z = 1;
+    control.name = "rotate_y";
+    control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
+    interactive_marker_->controls.push_back(control);
+    control.name = "move_y";
+    control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
+    interactive_marker_->controls.push_back(control);
 }
 
 KinBodyMarker::~KinBodyMarker()
 {
-    if (interactive_marker_) {
+    if (has_pose_controls_) {
         server_->erase(interactive_marker_->name);
     }
 }
@@ -84,6 +119,29 @@ std::string KinBodyMarker::id() const
     int const environment_id = OpenRAVE::RaveGetEnvironmentId(env);
     return str(format("Environment[%d].KinBody[%s]")
                % environment_id % body->GetName());
+}
+
+void KinBodyMarker::set_parent_frame(std::string const &frame_id)
+{
+    parent_frame_id_ = frame_id;
+    interactive_marker_->header.frame_id = frame_id;
+
+    if (has_joint_controls_) {
+        server_->insert(*interactive_marker_);
+    }
+
+    for (LinkMarkerWrapper const &link_wrapper: link_markers_ | map_values) {
+        link_wrapper.link_marker->set_parent_frame(frame_id);
+        std::cout << (format("Set parent ID of %s to %s.") % link_wrapper.link_marker->id() % frame_id) << std::endl;
+    }
+    
+    for (KinBodyJointMarkerPtr const &joint_marker : joint_markers_ | map_values) {
+        joint_marker->set_parent_frame(frame_id);
+    }
+
+    for (ManipulatorMarkerPtr const &manip_marker : manipulator_markers_ | map_values) {
+        manip_marker->set_parent_frame(frame_id);
+    }
 }
 
 std::vector<std::string> KinBodyMarker::group_names() const
@@ -164,11 +222,10 @@ void KinBodyMarker::EnvironmentSync()
     KinBodyPtr const kinbody = kinbody_.lock();
 
     // Update the KinBody's marker.
-    if (interactive_marker_ && !new_marker_) {
+    if (has_pose_controls_) {
         OpenRAVE::Transform const kinbody_pose = kinbody->GetTransform();
         server_->setPose(interactive_marker_->name, toROSPose(kinbody_pose));
     }
-    new_marker_ = false;
 
     // Update links. This includes the geometry of the KinBody.
     for (LinkPtr link : kinbody->GetLinks()) {
@@ -176,6 +233,7 @@ void KinBodyMarker::EnvironmentSync()
         KinBodyLinkMarkerPtr &link_marker = wrapper.link_marker;
         if (!link_marker) {
             link_marker = boost::make_shared<KinBodyLinkMarker>(server_, link);
+            link_marker->set_parent_frame(parent_frame_id_);
             CreateMenu(wrapper);
             UpdateMenu(wrapper);
         }
@@ -193,6 +251,7 @@ void KinBodyMarker::EnvironmentSync()
         // Lazily construct a new marker if necessary.
         if (!joint_marker) {
             joint_marker = boost::make_shared<KinBodyJointMarker>(server_, joint);
+            joint_marker->set_parent_frame(parent_frame_id_);
         }
         joint_marker->EnvironmentSync();
     }
@@ -418,6 +477,7 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
             ManipulatorMarkerPtr &manipulator_marker = manipulator_markers_[manipulator.get()];
             if (!manipulator_marker) {
                 manipulator_marker = boost::make_shared<ManipulatorMarker>(server_, manipulator);
+                manipulator_marker->set_parent_frame(parent_frame_id_);
             }
         } else {
             manipulator_markers_.erase(manipulator.get());
@@ -435,56 +495,11 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
 void KinBodyMarker::EnablePoseControls(bool enabled)
 {
     if (enabled) {
-        OpenRAVE::KinBodyPtr const kinbody = kinbody_.lock();
-
-        interactive_marker_ = boost::make_shared<InteractiveMarker>();
-        interactive_marker_->header.frame_id = kWorldFrameId;
-        interactive_marker_->name = id();
-        interactive_marker_->description = "";
-        interactive_marker_->pose = toROSPose(kinbody->GetTransform());
-        interactive_marker_->scale = 1.0; // TODO: Infer a good scale.
-
-        InteractiveMarkerControl control;
-        control.orientation.w = 1;
-        control.orientation.x = 1;
-        control.orientation.y = 0;
-        control.orientation.z = 0;
-        control.name = "rotate_x";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        interactive_marker_->controls.push_back(control);
-        control.name = "move_x";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        interactive_marker_->controls.push_back(control);
-
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 1;
-        control.orientation.z = 0;
-        control.name = "rotate_z";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        interactive_marker_->controls.push_back(control);
-        control.name = "move_z";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        interactive_marker_->controls.push_back(control);
-
-        control.orientation.w = 1;
-        control.orientation.x = 0;
-        control.orientation.y = 0;
-        control.orientation.z = 1;
-        control.name = "rotate_y";
-        control.interaction_mode = InteractiveMarkerControl::ROTATE_AXIS;
-        interactive_marker_->controls.push_back(control);
-        control.name = "move_y";
-        control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
-        interactive_marker_->controls.push_back(control);
-
         server_->insert(*interactive_marker_);
         server_->setCallback(interactive_marker_->name,
             boost::bind(&KinBodyMarker::PoseCallback, this, _1));
-        new_marker_ = true;
-    } else if (interactive_marker_) {
+    } else {
         server_->erase(interactive_marker_->name);
-        interactive_marker_.reset();
     }
 }
 

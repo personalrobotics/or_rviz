@@ -18,6 +18,8 @@ public:
     std::string id() const;
     OpenRAVE::KinBody::JointPtr joint() const;
 
+    void set_parent_frame(std::string const &frame_id);
+
     OpenRAVE::Transform pose() const;
     void set_pose(OpenRAVE::Transform const &pose);
 
@@ -40,6 +42,7 @@ private:
     double joint_initial_;
     double joint_delta_;
     bool created_;
+    bool force_update_;
     bool active_;
 
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);

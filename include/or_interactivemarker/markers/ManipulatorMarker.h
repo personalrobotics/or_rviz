@@ -22,6 +22,9 @@ public:
     virtual ~ManipulatorMarker();
 
     std::string id() const;
+
+    void set_parent_frame(std::string const &frame_id);
+
     bool EnvironmentSync();
     void UpdateMenu();
 
@@ -36,6 +39,7 @@ private:
 
     bool changed_pose_;
     bool has_ik_;
+    bool force_update_;
     OpenRAVE::Transform current_pose_;
     std::vector<OpenRAVE::dReal> current_ik_;
     std::vector<OpenRAVE::dReal> current_free_;

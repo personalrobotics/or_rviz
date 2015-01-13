@@ -20,9 +20,6 @@ using namespace or_interactivemarker::util;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
-// TODO: Don't hardcode this.
-static std::string const kWorldFrameId = "/world";
-
 namespace or_interactivemarker {
 namespace markers {
 
@@ -31,6 +28,7 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     , joint_(joint)
     , joint_delta_(0.0)
     , created_(false)
+    , force_update_(true)
     , active_(false)
 {
     BOOST_ASSERT(joint);
@@ -47,7 +45,7 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
         return;
     }
 
-    marker_.header.frame_id = kWorldFrameId;
+    marker_.header.frame_id = kDefaultWorldFrameId;
     marker_.name = id();
     marker_.description = "";
     marker_.pose = toROSPose(pose());
@@ -107,12 +105,23 @@ double JointMarker::angle() const
     return joint_initial_ + joint_delta_;
 }
 
+void JointMarker::set_parent_frame(std::string const &frame_id)
+{
+    marker_.header.frame_id = frame_id;
+    force_update_ = true;
+}
+
 bool JointMarker::EnvironmentSync()
 {
-    // Update the pose of the marker.
-    if (created_) {
-        server_->setPose(marker_.name, toROSPose(pose()));
+    // Re-create the marker, if necessary.
+    if (force_update_) {
+        server_->insert(marker_);
+        force_update_ = false;
     }
+
+    // Update pose.
+    server_->setPose(marker_.name, toROSPose(pose()));
+
     if (!active_) {
         joint_initial_ = joint()->GetValue(0);
         joint_delta_ = 0;

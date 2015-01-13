@@ -35,9 +35,6 @@ typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef OpenRAVE::KinBody::Link::GeometryPtr GeometryPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
-// TODO: Don't hardcode this.
-static std::string const kWorldFrameId = "/world";
-
 namespace or_interactivemarker {
 namespace markers {
 
@@ -59,7 +56,7 @@ LinkMarker::LinkMarker(boost::shared_ptr<InteractiveMarkerServer> server,
     // TODO: How should we handle this?
     //manipulator_ = InferManipulator();
 
-    interactive_marker_->header.frame_id = kWorldFrameId;
+    interactive_marker_->header.frame_id = kDefaultWorldFrameId;
     interactive_marker_->name = id();
     interactive_marker_->description = "";
     interactive_marker_->pose = toROSPose(link->GetTransform());
@@ -154,6 +151,12 @@ std::vector<std::string> LinkMarker::group_names() const
     OpenRAVE::KinBody::LinkInfo const &link_info = link()->GetInfo();
     auto const range = link_info._mapExtraGeometries | map_keys;
     return std::vector<std::string>(range.begin(), range.end());
+}
+
+void LinkMarker::set_parent_frame(std::string const &frame_id)
+{
+    interactive_marker_->header.frame_id = frame_id;
+    force_update_ = true;
 }
 
 void LinkMarker::SwitchGeometryGroup(std::string const &group)

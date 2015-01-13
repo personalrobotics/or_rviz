@@ -12,6 +12,8 @@ using geometry_msgs::Quaternion;
 namespace or_interactivemarker {
 namespace util {
 
+std::string const kDefaultWorldFrameId = "/map";
+
 /*
  * OpenRAVE to ROS
  */
