@@ -87,7 +87,7 @@ target_link_libraries(${PROJECT_NAME}
 
 # Stub library that registers the plugins with OpenRAVE.
 openrave_plugin(${PROJECT_NAME}_plugin
-    src/or_interactivemarker_plugin.cpp
+    src/plugin.cpp
 )
 target_link_libraries(${PROJECT_NAME}_plugin
     ${PROJECT_NAME}
