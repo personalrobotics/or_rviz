@@ -26,6 +26,8 @@ namespace or_interactivemarker {
 JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     : server_(server)
     , joint_(joint)
+    , joint_pose_(GetJointPose(joint))
+    , joint_initial_(joint->GetValue(0))
     , joint_delta_(0.0)
     , created_(false)
     , active_(false)
