@@ -6,14 +6,14 @@
  */
 
 #include <rviz/frame_manager.h>
-#include "rviz/Converters.h"
 #include "rviz/EnvironmentDisplay.h"
+#include "util/ros_conversions.h"
 //#include "PythonInterface/PyCallbacks.h"
-
 
 using namespace interactive_markers;
 using namespace visualization_msgs;
 
+namespace util = or_interactivemarker::util;
 
 namespace or_rviz
 {
@@ -300,7 +300,7 @@ void EnvironmentDisplay::UpdateJointControlPoses(KinBodyVisual* visual)
 
         joint_marker.header.frame_id = m_frame;
         OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
-        Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+        Ogre::Quaternion ogreQuat = util::ToOgreQuaternion(transform.rot);
 
         joint_marker.pose.orientation.x = ogreQuat.x;
         joint_marker.pose.orientation.y = ogreQuat.y;
@@ -401,7 +401,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
 
     OpenRAVE::Transform transform = visual->GetKinBody()->GetTransform();
     transform.trans = aabb.pos;
-    int_marker.pose = converters::ToGeomMsgPose(transform);
+    int_marker.pose = util::ToGeomMsgPose(transform);
 
     if(mode == control_mode::PoseControl)
     {
@@ -418,7 +418,7 @@ void EnvironmentDisplay::CreateControls(KinBodyVisual* visual, control_mode::Con
 
             OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
             transform.trans = joint->GetAnchor();
-            Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+            Ogre::Quaternion ogreQuat = util::ToOgreQuaternion(transform.rot);
             joint_marker.pose.orientation.x = ogreQuat.x;
             joint_marker.pose.orientation.y = ogreQuat.y;
             joint_marker.pose.orientation.z = ogreQuat.z;
@@ -486,7 +486,7 @@ void EnvironmentDisplay::OnJointMoved(const visualization_msgs::InteractiveMarke
 
         InteractiveMarker joint_marker;
         OpenRAVE::Transform transform = ComputeFacingMatrix(joint->GetAxis(0));
-        Ogre::Quaternion ogreQuat = converters::ToOgreQuaternion(transform.rot);
+        Ogre::Quaternion ogreQuat = util::ToOgreQuaternion(transform.rot);
 
         joint_marker.pose.orientation.x = ogreQuat.x;
         joint_marker.pose.orientation.y = ogreQuat.y;
@@ -497,8 +497,8 @@ void EnvironmentDisplay::OnJointMoved(const visualization_msgs::InteractiveMarke
         joint_marker.pose.position.z = joint->GetAnchor().z;
 
 
-        OpenRAVE::Transform prevPose = converters::ToRaveTransform(joint_marker.pose);
-        OpenRAVE::Transform newPose = converters::ToRaveTransform(feedback->pose);
+        OpenRAVE::Transform prevPose = util::ToRaveTransform(joint_marker.pose);
+        OpenRAVE::Transform newPose = util::ToRaveTransform(feedback->pose);
         OpenRAVE::Transform prevToNew = newPose.inverse() * prevPose;
 
 
@@ -541,7 +541,7 @@ void  EnvironmentDisplay::OnKinbodyMoved(const visualization_msgs::InteractiveMa
 
     if(GetEnvironment()->GetKinBody(objectName).get())
     {
-        GetEnvironment()->GetKinBody(objectName)->SetTransform(converters::ToRaveTransform(feedback->pose));
+        GetEnvironment()->GetKinBody(objectName)->SetTransform(util::ToRaveTransform(feedback->pose));
     }
 }
 
@@ -633,7 +633,7 @@ void EnvironmentDisplay::UpdateObjects()
         else
         {
             m_bodyVisuals[bodies[i]->GetName()]->UpdateTransforms();
-            //m_markerServer->setPose(bodies[i]->GetName(), converters::ToGeomMsgPose(bodies[i]->GetTransform()));
+            //m_markerServer->setPose(bodies[i]->GetName(), util::ToGeomMsgPose(bodies[i]->GetTransform()));
             //UpdateJointControlPoses(m_bodyVisuals[bodies[i]->GetName()]);
         }
     }

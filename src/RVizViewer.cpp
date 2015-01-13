@@ -8,7 +8,7 @@
 #include <boost/format.hpp>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
-#include "rviz/Converters.h"
+#include "util/ros_conversions.h"
 #include "RVizViewer.h"
 
 using boost::format;
@@ -101,8 +101,8 @@ OpenRAVE::RaveTransform<float> RVizViewer::GetCameraTransform() const
     Ogre::Camera *const camera = rviz_main_panel_->getCamera();
 
     OpenRAVE::RaveTransform<float> pose;
-    pose.trans = converters::ToRaveVector(camera->getPosition());
-    pose.rot = converters::ToRaveQuaternion(camera->getOrientation());
+    pose.trans = util::ToRaveVector(camera->getPosition());
+    pose.rot = util::ToRaveQuaternion(camera->getOrientation());
 
     return pose;
 }
@@ -219,8 +219,8 @@ void RVizViewer::SetCamera(Ogre::Camera *camera,
                            OpenRAVE::RaveTransform<float> &trans,
                            float focalDistance) const
 {
-    camera->setPosition(converters::ToOgreVector(trans.trans));
-    camera->setOrientation(converters::ToOgreQuaternion(trans.rot));
+    camera->setPosition(util::ToOgreVector(trans.trans));
+    camera->setOrientation(util::ToOgreQuaternion(trans.rot));
     camera->setFocalLength(std::max(focalDistance, 0.01f));
 }
 

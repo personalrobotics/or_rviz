@@ -52,6 +52,7 @@ add_library(${PROJECT_NAME}_markers SHARED
     src/markers/LinkMarker.cpp
     src/markers/ManipulatorMarker.cpp
     src/util/or_conversions.cpp
+    src/util/ros_conversions.cpp
 )
 target_link_libraries(${PROJECT_NAME}_markers
     ${catkin_LIBRARIES}
