@@ -6,16 +6,22 @@
 #include <QString>
 #include <QTimer>
 #include <boost/format.hpp>
+#include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
+#include "rviz/Converters.h"
 #include "or_rviz.h"
 
 using boost::format;
 using boost::str;
 
 static double const kRefreshRate = 30;
+static std::string const kOffscreenCameraName = "OffscreenCamera";
 
 namespace or_interactivemarker {
 
+/*
+ * Public
+ */
 RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
                        std::string const &topic_name,
                        bool anonymize)
@@ -26,6 +32,10 @@ RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
 
     rviz_manager_ = getManager();
     rviz_main_panel_ = rviz_manager_->getRenderPanel();
+    rviz_scene_manager_ = rviz_manager_->getSceneManager();
+
+    // Create an extra camera to use for off-screen rendering.
+    offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
 
     InitializeLighting();
     InitializeInteractiveMarkers();
@@ -57,6 +67,62 @@ void RVizViewer::quitmainloop()
     qApp->quit();
 }
 
+void RVizViewer::SetSize(int w, int h)
+{
+    resize(w, h);
+}
+
+void RVizViewer::Move(int x, int y)
+{
+    move(x, y);
+}
+
+std::string const &RVizViewer::GetName() const
+{
+    // We need to store the string in member variable to avoid returning a
+    // temporary reference. This isn't great, but it's the best we can do.
+    window_title_ = windowTitle().toStdString();
+    return window_title_;
+}
+
+void RVizViewer::SetName(std::string const &name)
+{
+    setWindowTitle(QString::fromStdString(name));
+}
+
+void RVizViewer::SetCamera(OpenRAVE::RaveTransform<float> &trans,
+                           float focalDistance)
+{
+    SetCamera(rviz_main_panel_->getCamera(), trans, focalDistance);
+}
+
+OpenRAVE::RaveTransform<float> RVizViewer::GetCameraTransform() const
+{
+    Ogre::Camera *const camera = rviz_main_panel_->getCamera();
+
+    OpenRAVE::RaveTransform<float> pose;
+    pose.trans = converters::ToRaveVector(camera->getPosition());
+    pose.rot = converters::ToRaveQuaternion(camera->getOrientation());
+
+    return pose;
+}
+
+OpenRAVE::geometry::RaveCameraIntrinsics<float> RVizViewer::GetCameraIntrinsics() const
+{
+    Ogre::Camera* camera = rviz_main_panel_->getCamera();
+    Ogre::Matrix4 projection_matrix = camera->getProjectionMatrix();
+
+    OpenRAVE::geometry::RaveCameraIntrinsics<float> intrinsics;
+    intrinsics.focal_length = camera->getFocalLength();
+    intrinsics.fx = projection_matrix[0][0];
+    intrinsics.fy = projection_matrix[1][1];
+    intrinsics.cx = projection_matrix[0][2];
+    intrinsics.cy = projection_matrix[1][2];
+    intrinsics.distortion_model = "";
+    return intrinsics;
+}
+
+
 /*
  * Slots
  */
@@ -80,38 +146,37 @@ void RVizViewer::EnvironmentSyncSlot()
     }
 }
 
+
 /*
  * Private
  */
 void RVizViewer::InitializeLighting()
 {
-    Ogre::SceneManager *scene_manager = rviz_manager_->getSceneManager();
+    rviz_scene_manager_->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
 
-    scene_manager->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
-
-    Ogre::Light *light = scene_manager->createLight("FillLight");
+    Ogre::Light *light = rviz_scene_manager_->createLight("FillLight");
     light->setType(Ogre::Light::LT_DIRECTIONAL);
     light->setDiffuseColour(0.6, 0.55, 0.5);
     light->setSpecularColour(1, 1, 1);
     light->setDirection(0.05, 0.01, -1);
     light->setCastShadows(true);
 
-    Ogre::Light *light2 = scene_manager->createLight("Backlight");
+    Ogre::Light *light2 = rviz_scene_manager_->createLight("Backlight");
     light2->setType(Ogre::Light::LT_DIRECTIONAL);
     light2->setDiffuseColour(0.2, 0.25, 0.3);
     light2->setSpecularColour(1, 1, 1);
     light2->setDirection(-0.1, -0.1, 0.05);
     light2->setCastShadows(false);
 
-    Ogre::Light *light3 = scene_manager->createLight("Keylight");
+    Ogre::Light *light3 = rviz_scene_manager_->createLight("Keylight");
     light3->setType(Ogre::Light::LT_DIRECTIONAL);
     light3->setDiffuseColour(0.4, 0.4, 0.4);
     light3->setSpecularColour(1, 1, 1);
     light3->setDirection(0.1, 0.1, -0.05);
     light3->setCastShadows(false);
 
-    scene_manager->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
-    scene_manager->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
+    rviz_scene_manager_->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
+    rviz_scene_manager_->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
 }
 
 void RVizViewer::InitializeMenus()
@@ -141,13 +206,22 @@ QAction *RVizViewer::LoadEnvironmentAction()
 }
 
 std::string RVizViewer::GenerateTopicName(std::string const &base_name,
-                                          bool anonymize)
+                                          bool anonymize) const
 {
     if (anonymize) {
         return str(format("%s_%p") % base_name % this);
     } else {
         return base_name;
     }
+}
+
+void RVizViewer::SetCamera(Ogre::Camera *camera,
+                           OpenRAVE::RaveTransform<float> &trans,
+                           float focalDistance) const
+{
+    camera->setPosition(converters::ToOgreVector(trans.trans));
+    camera->setOrientation(converters::ToOgreQuaternion(trans.rot));
+    camera->setFocalLength(std::max(focalDistance, 0.01f));
 }
 
 }
