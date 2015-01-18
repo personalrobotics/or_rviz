@@ -37,11 +37,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QTimer>
 #include <rviz/default_plugin/interactive_marker_display.h>
 #include <rviz/visualization_frame.h>
+#include "rviz/EnvironmentDisplay.h"
 #include "InteractiveMarkerViewer.h"
 
 namespace or_interactivemarker {
 
-class RVizViewer : public rviz::VisualizationFrame,
+class RVizViewer : public ::rviz::VisualizationFrame,
                    public InteractiveMarkerViewer {
     Q_OBJECT
 
@@ -67,10 +68,13 @@ public Q_SLOTS:
     void EnvironmentSyncSlot();
 
 private:
-    rviz::VisualizationManager *rviz_manager_;
-    rviz::RenderPanel *rviz_main_panel_;
+    ::rviz::VisualizationManager *rviz_manager_;
+    ::rviz::RenderPanel *rviz_main_panel_;
     Ogre::SceneManager *rviz_scene_manager_;
-    rviz::InteractiveMarkerDisplay *markers_display_;
+    ::rviz::InteractiveMarkerDisplay *markers_display_;
+
+    rviz::EnvironmentDisplay *environment_display_;
+    boost::signals2::connection environment_frame_handle_;
 
     Ogre::Camera *offscreen_camera_;
 

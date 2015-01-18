@@ -18,4 +18,8 @@
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
+  <depend>rviz</depend>
+  <export>
+    <rviz plugin="${prefix}/plugins.xml"/>
+  </export>
 </package>

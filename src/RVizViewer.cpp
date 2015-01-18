@@ -66,6 +66,14 @@ RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
     rviz_main_panel_ = rviz_manager_->getRenderPanel();
     rviz_scene_manager_ = rviz_manager_->getSceneManager();
 
+    environment_display_ = dynamic_cast<rviz::EnvironmentDisplay *>(
+        rviz_manager_->createDisplay("or_interactivemarker::rviz::EnvironmentDisplay",
+                                     "OpenRAVE Environment", true)
+    );
+    environment_display_->set_environment(env);
+    environment_frame_handle_ = environment_display_->RegisterFrameChangeCallback(
+        boost::bind(&RVizViewer::set_parent_frame, this, _1));
+
     // Create an extra camera to use for off-screen rendering.
     offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
 
@@ -221,7 +229,7 @@ void RVizViewer::InitializeMenus()
 
 void RVizViewer::InitializeInteractiveMarkers()
 {
-    markers_display_ = dynamic_cast<rviz::InteractiveMarkerDisplay *>(
+    markers_display_ = dynamic_cast<::rviz::InteractiveMarkerDisplay *>(
         rviz_manager_->createDisplay("rviz/InteractiveMarkers",
                                      "OpenRAVE Markers", true)
     );
