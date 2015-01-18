@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/unordered_map.hpp>
 #include <boost/signals2.hpp>
 #include <rviz/display.h>
+#include <rviz/properties/enum_property.h>
 #include <rviz/properties/tf_frame_property.h>
 #include <openrave/openrave.h>
 
@@ -48,17 +49,23 @@ class EnvironmentDisplay : public ::rviz::Display
 
 public:
     typedef void FrameChangeCallback(std::string const &frame_id);
+    typedef void EnvironmentChangeCallback(OpenRAVE::EnvironmentBasePtr const &env);
 
     EnvironmentDisplay();
     virtual ~EnvironmentDisplay();
 
     void set_environment(OpenRAVE::EnvironmentBasePtr const &env);
 
+    void EnvironmentSync();
+
     boost::signals2::connection RegisterFrameChangeCallback(
         boost::function<FrameChangeCallback> const &callback);
+    boost::signals2::connection RegisterEnvironmentChangeCallback(
+        boost::function<EnvironmentChangeCallback> const &callback);
 
 public Q_SLOTS:
     void FrameChangeSlot();
+    void EnvironmentChangeSlot();
 
 protected:
     virtual void onInitialize();
@@ -66,11 +73,15 @@ protected:
 private:
     OpenRAVE::EnvironmentBasePtr env_;
     OpenRAVE::UserDataPtr env_callback_handle_;
-    ::rviz::TfFrameProperty *property_frame_;
-    ::rviz::Property *property_bodies_;
     boost::unordered_map<OpenRAVE::KinBody *, ::rviz::Property *> body_properties_;
-    boost::signals2::signal<FrameChangeCallback> frame_callbacks_;
+    std::set<int> environment_ids_;
 
+    ::rviz::TfFrameProperty *property_frame_;
+    ::rviz::EnumProperty *property_environment_;
+    ::rviz::Property *property_bodies_;
+
+    boost::signals2::signal<FrameChangeCallback> frame_callbacks_;
+    boost::signals2::signal<EnvironmentChangeCallback> env_changed_callbacks_;
 
     void CreateProperties(::rviz::Property *parent);
     void BodyCallback(OpenRAVE::KinBodyPtr body, int flag);

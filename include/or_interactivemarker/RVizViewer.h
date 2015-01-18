@@ -53,6 +53,10 @@ public:
     int main(bool bShow);
     void quitmainloop();
 
+    void set_environment(OpenRAVE::EnvironmentBasePtr const &env);
+
+    virtual void EnvironmentSync();
+
     virtual void SetSize(int w, int h);
     virtual void Move(int x, int y);
 
@@ -74,6 +78,7 @@ private:
     ::rviz::InteractiveMarkerDisplay *markers_display_;
 
     rviz::EnvironmentDisplay *environment_display_;
+    boost::signals2::connection environment_change_handle_;
     boost::signals2::connection environment_frame_handle_;
 
     Ogre::Camera *offscreen_camera_;
