@@ -186,6 +186,8 @@ void InteractiveMarkerViewer::set_parent_frame(std::string const &frame_id)
     }
 
     parent_frame_id_ = frame_id;
+
+    // TODO: Also re-create any visualization markers in the correct frame.
 }
 
 int InteractiveMarkerViewer::main(bool bShow)
@@ -331,6 +333,27 @@ OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
 
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, has_alpha, &marker.colors);
+
+    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker
+    );
+}
+
+GraphHandlePtr InteractiveMarkerViewer::drawarrow(
+    OpenRAVE::RaveVector<float> const &p1,
+    OpenRAVE::RaveVector<float> const &p2,
+    float fwidth,
+    OpenRAVE::RaveVector<float> const &color)
+{
+    visualization_msgs::InteractiveMarkerPtr interactive_marker = CreateMarker();
+    visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
+    marker.type = visualization_msgs::Marker::ARROW;
+    marker.color = toROSColor<>(color);
+    marker.scale.x = fwidth * 1.0f;
+    marker.scale.y = fwidth * 1.5f;
+    marker.scale.z = fwidth * 2.0f;
+    marker.points.push_back(toROSPoint(p1));
+    marker.points.push_back(toROSPoint(p2));
 
     return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
         server_, interactive_marker

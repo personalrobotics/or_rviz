@@ -66,6 +66,12 @@ protected:
         float const *points, int num_points, int stride, float point_size,
         float const *colors, int draw_style = 0, bool has_alpha = false);
 
+    virtual OpenRAVE::GraphHandlePtr drawarrow(
+        OpenRAVE::RaveVector<float> const &p1,
+        OpenRAVE::RaveVector<float> const &p2,
+        float fwidth,
+        OpenRAVE::RaveVector<float> const &color);
+
     virtual OpenRAVE::GraphHandlePtr drawlinestrip(
         float const *points, int num_points, int stride, float width,
         OpenRAVE::RaveVector<float> const &color);

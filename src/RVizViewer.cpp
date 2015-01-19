@@ -176,6 +176,22 @@ OpenRAVE::geometry::RaveCameraIntrinsics<float> RVizViewer::GetCameraIntrinsics(
     return intrinsics;
 }
 
+unsigned char *RVizViewer::OffscreenRender(int width, int height, int depth)
+{
+    Ogre::PixelFormat const pixel_format = GetPixelFormat(depth);
+
+    try {
+#if 0
+        return WaitForRenderTarget(width, height, depth, pixel_format, "RttTex");
+#else
+        return NULL;
+#endif
+    } catch (std::bad_alloc const &error) {
+        RAVELOG_ERROR("Offscreen render failed: %s\n", error.what());
+        return NULL;
+    }
+}
+
 bool RVizViewer::eventFilter(QObject *o, QEvent *e)
 {
     bool result = ::rviz::VisualizationFrame::eventFilter(o, e);
@@ -316,6 +332,27 @@ unsigned char *RVizViewer::WriteCurrentView(int *width, int *height, int *depth)
         pb, Ogre::RenderTarget::FB_AUTO);
 
     return data;
+}
+
+Ogre::PixelFormat RVizViewer::GetPixelFormat(int depth) const
+{
+    switch (depth) {
+    case 8:
+        return Ogre::PF_L8;
+    case 16:
+        return Ogre::PF_FLOAT16_GR;
+    case 24:
+        return Ogre::PF_R8G8B8;
+    case 32:
+        return Ogre::PF_R8G8B8A8;
+    default:
+        RAVELOG_ERROR(
+            "Error: Unsupported depth %d. Supported depths: 8 (gray byte),"
+            " 16 (float16 gray), 24 (RGB bytes), 32 (RGBA bytes)\n",
+            depth
+        );
+        return Ogre::PF_R8G8B8;
+    }
 }
 
 std::string RVizViewer::GenerateTopicName(std::string const &base_name,

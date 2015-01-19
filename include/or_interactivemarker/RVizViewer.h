@@ -105,8 +105,11 @@ private:
 
     QAction *LoadEnvironmentAction();
 
+    
+    unsigned char *OffscreenRender(int width, int height, int depth);
     unsigned char *WriteCurrentView(int *width, int *height, int *depth);
 
+    Ogre::PixelFormat GetPixelFormat(int depth) const;
     std::string GenerateTopicName(std::string const &base_name, bool anonymize) const;
     virtual void SetCamera(Ogre::Camera *camera, OpenRAVE::RaveTransform<float> &trans,
                            float focalDistance) const;
