@@ -108,6 +108,12 @@ void RVizViewer::EnvironmentSync()
     environment_display_->EnvironmentSync();
 }
 
+void RVizViewer::SetBkgndColor(OpenRAVE::RaveVector<float> const &color)
+{
+    render_panel_->setBackgroundColor(
+        Ogre::ColourValue(color.x, color.y, color.z));
+}
+
 void RVizViewer::SetSize(int w, int h)
 {
     resize(w, h);

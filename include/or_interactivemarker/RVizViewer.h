@@ -59,6 +59,7 @@ public:
 
     virtual void EnvironmentSync();
 
+    virtual void SetBkgndColor(OpenRAVE::RaveVector<float> const &color);
     virtual void SetSize(int w, int h);
     virtual void Move(int x, int y);
 
