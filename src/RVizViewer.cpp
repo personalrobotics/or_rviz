@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/format.hpp>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
+#include "util/ogre_conversions.h"
 #include "util/ros_conversions.h"
 #include "util/ScopedConnection.h"
 #include "RVizViewer.h"
@@ -170,9 +171,8 @@ OpenRAVE::RaveTransform<float> RVizViewer::GetCameraTransform() const
     Ogre::Camera *const camera = rviz_main_panel_->getCamera();
 
     OpenRAVE::RaveTransform<float> pose;
-    pose.trans = util::ToRaveVector(camera->getPosition());
-    pose.rot = util::ToRaveQuaternion(camera->getOrientation());
-
+    pose.trans = util::toORVector<float>(camera->getPosition());
+    pose.rot = util::toORQuaternion<float>(camera->getOrientation());
     return pose;
 }
 
@@ -241,14 +241,18 @@ void RVizViewer::ProcessOffscreenRenderRequests()
         }
 
         RAVELOG_DEBUG(
-            "Processing OffscreenRenderRequest(%p): Size[%d x %d], Depth[%d].\n",
-            request, request->width, request->height, request->depth
+            "Processing OffscreenRenderRequest(%p): size = [%d x %d],"
+            " depth = %d, focal_length = %f.\n",
+            request, request->width, request->height,
+            request->depth, request->intrinsics.focal_length
         );
 
         // Setup the camera.
-        float const &focal_length = request->intrinsics.focal_length;
+        //float const &focal_length = request->intrinsics.focal_length;
+        float const focal_length = 0.785;
         SetCamera(offscreen_camera_, request->extrinsics, focal_length);
 
+#if 0
         offscreen_camera_->setNearClipDistance(focal_length);
         offscreen_camera_->setFarClipDistance(focal_length * 10000);
         offscreen_camera_->setAspectRatio(
@@ -259,9 +263,7 @@ void RVizViewer::ProcessOffscreenRenderRequests()
             Ogre::Radian(2.0f * std::atan(
                 0.5f * request->height / request->intrinsics.fy))
         );
-
-        // TODO Temporary hack.
-        offscreen_camera_ = rviz_main_panel_->getCamera();
+#endif
 
         // Render the texture into a texture.
         std::string const name = str(format("offscreen[%p]") % request);
@@ -284,6 +286,7 @@ void RVizViewer::ProcessOffscreenRenderRequests()
         // Copy the texture into the output buffer.
         Ogre::Box const extents(0, 0,  request->width, request->height);
         Ogre::PixelBox const pb(extents, pixel_format, request->memory);
+        render_texture->update();
         render_texture->copyContentsToMemory(pb, Ogre::RenderTarget::FB_AUTO);
 
         // Delete the texture.
@@ -488,8 +491,8 @@ void RVizViewer::SetCamera(Ogre::Camera *camera,
                            OpenRAVE::RaveTransform<float> const &trans,
                            float focalDistance) const
 {
-    camera->setPosition(util::ToOgreVector(trans.trans));
-    camera->setOrientation(util::ToOgreQuaternion(trans.rot));
+    camera->setPosition(util::toOgreVector(trans.trans));
+    camera->setOrientation(util::toOgreQuaternion(trans.rot));
     camera->setFocalLength(std::max(focalDistance, 0.01f));
 }
 

@@ -3,7 +3,7 @@
 Copyright (c) 2015, Carnegie Mellon University
 All rights reserved.
 
-Authors: Michael Koval <mkoval@cs.cmu.edu>
+Authors: Matthew Klingensmith <mklingen@cs.cmu.edu>
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -29,41 +29,58 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
-#ifndef ROS_CONVERSIONS_H_
-#define ROS_CONVERSIONS_H_
-#include <std_msgs/ColorRGBA.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Vector3.h>
-#include <openrave/openrave.h>
+#include "util/ogre_conversions.h"
+
+using OpenRAVE::geometry::RaveVector;
+using OpenRAVE::geometry::RaveTransform;
 
 namespace or_interactivemarker {
 namespace util {
 
-extern std::string const kDefaultWorldFrameId;
+template <class Scalar>
+RaveVector<Scalar> toORVector(Ogre::Vector3 const &vec)
+{
+    return RaveVector<Scalar>(vec.x, vec.y, vec.z);
+}
 
-// OpenRAVE to ROS
 template <class Scalar>
-std_msgs::ColorRGBA toROSColor(OpenRAVE::RaveVector<Scalar> const &color);
-template <class Scalar>
-geometry_msgs::Vector3 toROSVector(OpenRAVE::RaveVector<Scalar> const &or_vector);
-template <class Scalar>
-geometry_msgs::Pose toROSPose(OpenRAVE::RaveTransform<Scalar> const &or_pose);
-template <class Scalar>
-geometry_msgs::Point toROSPoint(OpenRAVE::RaveVector<Scalar> const &or_point);
-template <class Scalar>
-geometry_msgs::Quaternion toROSQuaternion(OpenRAVE::RaveVector<Scalar> const &or_quat);
+Ogre::Vector3 toOgreVector(RaveVector<Scalar> const &vec)
+{
+    return Ogre::Vector3(vec.x, vec.y, vec.z);
+}
 
-// ROS to OpenRAVE
 template <class Scalar>
-OpenRAVE::RaveVector<Scalar> toORPoint(geometry_msgs::Point const &point);
+RaveVector<Scalar> toORQuaternion(Ogre::Quaternion const &quat)
+{
+    RaveVector<Scalar> or_quat;
+    or_quat[0] = quat.w;
+    or_quat[1] = quat.x;
+    or_quat[2] = quat.y;
+    or_quat[3] = quat.z;
+    return or_quat;
+}
+
 template <class Scalar>
-OpenRAVE::RaveVector<Scalar> toORQuaternion(geometry_msgs::Quaternion const &quat);
-template <class Scalar>
-OpenRAVE::RaveTransform<Scalar> toORPose(geometry_msgs::Pose const &pose);
+Ogre::Quaternion toOgreQuaternion(RaveVector<Scalar> const &vec)
+{
+    Ogre::Quaternion ogre_quat;
+    ogre_quat.w = vec[0];
+    ogre_quat.x = vec[1];
+    ogre_quat.y = vec[2];
+    ogre_quat.z = vec[3];
+    return ogre_quat;
+}
+
+// Explicit instantiations.
+template RaveVector<float> toORVector<float>(Ogre::Vector3 const &vec);
+template Ogre::Vector3 toOgreVector(RaveVector<float> const &vec);
+template RaveVector<float> toORQuaternion(Ogre::Quaternion const &quat);
+template Ogre::Quaternion toOgreQuaternion(RaveVector<float> const &vec);
+
+template RaveVector<double> toORVector<double>(Ogre::Vector3 const &vec);
+template Ogre::Vector3 toOgreVector(RaveVector<double> const &vec);
+template RaveVector<double> toORQuaternion(Ogre::Quaternion const &quat);
+template Ogre::Quaternion toOgreQuaternion(RaveVector<double> const &vec);
 
 }
 }
-
-#endif

@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include "markers/KinBodyMarker.h"
-#include "util/or_conversions.h"
+#include "util/ros_conversions.h"
 
 using boost::ref;
 using boost::format;

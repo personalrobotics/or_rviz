@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <openrave/geometry.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include "markers/JointMarker.h"
-#include "util/or_conversions.h"
+#include "util/ros_conversions.h"
 
 using boost::format;
 using boost::str;

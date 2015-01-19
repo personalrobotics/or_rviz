@@ -53,7 +53,7 @@ add_library(${PROJECT_NAME}_markers SHARED
     src/markers/LinkMarker.cpp
     src/markers/ManipulatorMarker.cpp
     src/util/ScopedConnection.cpp
-    src/util/or_conversions.cpp
+    src/util/ogre_conversions.cpp
     src/util/ros_conversions.cpp
 )
 target_link_libraries(${PROJECT_NAME}_markers

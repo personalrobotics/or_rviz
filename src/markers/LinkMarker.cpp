@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/range/adaptor/map.hpp>
 #include <ros/ros.h>
 #include "markers/LinkMarker.h"
-#include "util/or_conversions.h"
+#include "util/ros_conversions.h"
 
 using boost::adaptors::map_keys;
 using boost::adaptors::transformed;
