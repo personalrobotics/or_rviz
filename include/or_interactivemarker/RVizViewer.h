@@ -72,7 +72,9 @@ public:
     virtual OpenRAVE::RaveTransform<float> GetCameraTransform() const;
     virtual OpenRAVE::geometry::RaveCameraIntrinsics<float> GetCameraIntrinsics() const;
     virtual void SetCamera(OpenRAVE::RaveTransform<float> &trans, float focalDistance = 0);
-
+    bool GetCameraImage(std::vector<uint8_t> &memory, int width, int height,
+                        OpenRAVE::RaveTransform<float> const &t,
+                        OpenRAVE::SensorBase::CameraIntrinsics const &intrinsics);
 
 public Q_SLOTS:
     void LoadEnvironmentSlot();
@@ -111,8 +113,10 @@ private:
 
     Ogre::PixelFormat GetPixelFormat(int depth) const;
     std::string GenerateTopicName(std::string const &base_name, bool anonymize) const;
-    virtual void SetCamera(Ogre::Camera *camera, OpenRAVE::RaveTransform<float> &trans,
-                           float focalDistance) const;
+    virtual void SetCamera(
+        Ogre::Camera *camera,
+        OpenRAVE::RaveTransform<float> const &trans,
+        float focalDistance) const;
 
 };
 

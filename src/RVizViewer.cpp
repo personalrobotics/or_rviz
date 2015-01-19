@@ -176,6 +176,45 @@ OpenRAVE::geometry::RaveCameraIntrinsics<float> RVizViewer::GetCameraIntrinsics(
     return intrinsics;
 }
 
+bool RVizViewer::GetCameraImage(
+        std::vector<uint8_t> &memory, int width, int height,
+        OpenRAVE::RaveTransform<float> const &t,
+        OpenRAVE::SensorBase::CameraIntrinsics const &intrinsics)
+{
+    static int const depth = 24;
+
+    BOOST_ASSERT(width > 0);
+    BOOST_ASSERT(height > 0);
+
+    size_t const expected_size = width * height * (depth / 8);
+    if (memory.size() != expected_size) {
+        RAVELOG_ERROR(
+            "Output buffer has incorrect size: expected %d bytes, got %d bytes.",
+            expected_size, memory.size()
+        );
+        return false;
+    }
+
+    SetCamera(offscreen_camera_, t, intrinsics.focal_length);
+    offscreen_camera_->setNearClipDistance(intrinsics.focal_length);
+    offscreen_camera_->setFarClipDistance(intrinsics.focal_length*10000);
+    offscreen_camera_->setAspectRatio(
+          (intrinsics.fy / static_cast<float>(height))
+        / (intrinsics.fx / static_cast<float>(width))
+    );
+    offscreen_camera_->setFOVy(
+        Ogre::Radian(2.0f * std::atan(0.5f * height / intrinsics.fy))
+    );
+
+    // TODO: Can we cutout the middle-man with an output parameter?
+    uint8_t *data = OffscreenRender(width, height, depth);
+    BOOST_ASSERT(data);
+    memory.assign(data, data + memory.size());
+    delete data;
+
+    return true;
+}
+
 unsigned char *RVizViewer::OffscreenRender(int width, int height, int depth)
 {
     Ogre::PixelFormat const pixel_format = GetPixelFormat(depth);
@@ -184,7 +223,10 @@ unsigned char *RVizViewer::OffscreenRender(int width, int height, int depth)
 #if 0
         return WaitForRenderTarget(width, height, depth, pixel_format, "RttTex");
 #else
-        return NULL;
+        throw OpenRAVE::openrave_exception(
+            "Offscreen rendering is not currently implemented.",
+            OpenRAVE::ORE_NotImplemented
+        );
 #endif
     } catch (std::bad_alloc const &error) {
         RAVELOG_ERROR("Offscreen render failed: %s\n", error.what());
@@ -366,7 +408,7 @@ std::string RVizViewer::GenerateTopicName(std::string const &base_name,
 }
 
 void RVizViewer::SetCamera(Ogre::Camera *camera,
-                           OpenRAVE::RaveTransform<float> &trans,
+                           OpenRAVE::RaveTransform<float> const &trans,
                            float focalDistance) const
 {
     camera->setPosition(util::ToOgreVector(trans.trans));
