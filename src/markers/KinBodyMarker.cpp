@@ -154,6 +154,10 @@ std::string KinBodyMarker::id() const
 
 void KinBodyMarker::set_parent_frame(std::string const &frame_id)
 {
+    if (frame_id == parent_frame_id_) {
+        return; // no change
+    }
+
     parent_frame_id_ = frame_id;
     interactive_marker_->header.frame_id = frame_id;
 
@@ -163,7 +167,6 @@ void KinBodyMarker::set_parent_frame(std::string const &frame_id)
 
     for (LinkMarkerWrapper const &link_wrapper: link_markers_ | map_values) {
         link_wrapper.link_marker->set_parent_frame(frame_id);
-        std::cout << (format("Set parent ID of %s to %s.") % link_wrapper.link_marker->id() % frame_id) << std::endl;
     }
     
     for (KinBodyJointMarkerPtr const &joint_marker : joint_markers_ | map_values) {

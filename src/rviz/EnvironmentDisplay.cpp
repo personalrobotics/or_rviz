@@ -31,14 +31,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *************************************************************************/
 #include <QVariant>
 #include <QString>
-#include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 #include <pluginlib/class_list_macros.h>
 #include <rviz/display_context.h>
 #include "rviz/EnvironmentDisplay.h"
 #include "util/ros_conversions.h"
 
-using boost::format;
-using boost::str;
+using boost::lexical_cast;
 
 static QString const kDefaultFrame = "map";
 
@@ -69,8 +68,16 @@ void EnvironmentDisplay::onInitialize()
 
 void EnvironmentDisplay::set_environment(OpenRAVE::EnvironmentBasePtr const &env)
 {
-    // Listen for bodies added and removed from the environment.
+    BOOST_ASSERT(env);
+
+    RAVELOG_DEBUG("Switching to Environment(%d)\n",
+        OpenRAVE::RaveGetEnvironmentId(env));
+
     env_ = env;
+    int const id = OpenRAVE::RaveGetEnvironmentId(env_);
+    property_environment_->setStringStd(lexical_cast<std::string>(id));
+
+    // Listen for bodies added and removed from the environment.
     env_callback_handle_ = env->RegisterBodyCallback(
         boost::bind(&EnvironmentDisplay::BodyCallback, this, _1, _2)
     );
@@ -85,9 +92,6 @@ void EnvironmentDisplay::set_environment(OpenRAVE::EnvironmentBasePtr const &env
     for (OpenRAVE::KinBodyPtr const &body : bodies) {
         BodyCallback(body, 1);
     }
-
-    // TODO: Should we do this here?
-    frame_callbacks_(property_frame_->getFrameStd());
 }
 
 void EnvironmentDisplay::EnvironmentSync()
@@ -106,8 +110,8 @@ void EnvironmentDisplay::EnvironmentSync()
     if (new_environment_ids != environment_ids_) {
         property_environment_->clearOptions();
         for (int const &id : new_environment_ids) {
-            std::string const label = str(format("%d") % id);
-            property_environment_->addOptionStd(label, id);
+            property_environment_->addOptionStd(
+                lexical_cast<std::string>(id), id);
         }
 
         int const current_id = property_environment_->getOptionInt();

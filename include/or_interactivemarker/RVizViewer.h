@@ -53,8 +53,6 @@ public:
     int main(bool bShow);
     void quitmainloop();
 
-    void set_environment(OpenRAVE::EnvironmentBasePtr const &env);
-
     virtual void EnvironmentSync();
 
     virtual void SetSize(int w, int h);

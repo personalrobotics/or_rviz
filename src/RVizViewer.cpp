@@ -71,10 +71,12 @@ RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
                                      "OpenRAVE Environment", true)
     );
     environment_display_->set_environment(env);
-    environment_frame_handle_ = environment_display_->RegisterFrameChangeCallback(
-        boost::bind(&RVizViewer::set_parent_frame, this, _1));
-    environment_change_handle_ = environment_display_->RegisterEnvironmentChangeCallback(
-        boost::bind(&RVizViewer::set_environment, this, _1));
+    environment_frame_handle_
+        = environment_display_->RegisterFrameChangeCallback(
+            boost::bind(&RVizViewer::set_parent_frame, this, _1));
+    environment_change_handle_
+        = environment_display_->RegisterEnvironmentChangeCallback(
+            boost::bind(&RVizViewer::set_environment, this, _1));
 
     // Create an extra camera to use for off-screen rendering.
     offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
@@ -107,11 +109,6 @@ void RVizViewer::quitmainloop()
     // TODO: Disconnect the timer.
     running_ = false;
     qApp->quit();
-}
-
-void RVizViewer::set_environment(OpenRAVE::EnvironmentBasePtr const &env)
-{
-    RAVELOG_INFO("Switching to environment: %p\n", env.get());
 }
 
 void RVizViewer::EnvironmentSync()

@@ -143,9 +143,7 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     , running_(false)
     , do_sync_(true)
     , topic_name_(topic_name)
-    , env_(env)
     , server_(boost::make_shared<InteractiveMarkerServer>(topic_name))
-    , parent_frame_id_changed_(false)
     , parent_frame_id_(kDefaultWorldFrameId)
 {
     BOOST_ASSERT(env);
@@ -158,13 +156,53 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
         boost::bind(&InteractiveMarkerViewer::GetMenuSelectionCommand, this, _1, _2),
         "Get the name of the last menu selection."
     );
+
+    set_environment(env);
+}
+
+void InteractiveMarkerViewer::set_environment(
+    OpenRAVE::EnvironmentBasePtr const &env)
+{
+    BOOST_ASSERT(env);
+
+    RAVELOG_DEBUG("Switching to environment %d.\n",
+        OpenRAVE::RaveGetEnvironmentId(env));
+
+    // Register a callback to listen for bodies being added and remove.
+    body_callback_handle_ = env->RegisterBodyCallback(
+        boost::bind(&InteractiveMarkerViewer::BodyCallback, this, _1, _2)
+    );
+
+    // Manually remove all bodies in the old environment.
+    if (env_) {
+        std::vector<OpenRAVE::KinBodyPtr> old_bodies;
+        env_->GetBodies(old_bodies);
+
+        for (OpenRAVE::KinBodyPtr const &body : old_bodies) {
+            BodyCallback(body, 0);
+        }
+    }
+
+    // Switch to the new environment.
+    env_ = env;
+
+    // Manually insert all bodies in the new environment.
+    std::vector<OpenRAVE::KinBodyPtr> new_bodies;
+    env_->GetBodies(new_bodies);
+
+    for (OpenRAVE::KinBodyPtr const &body : new_bodies) {
+        BodyCallback(body, 1);
+    }
 }
 
 void InteractiveMarkerViewer::set_parent_frame(std::string const &frame_id)
 {
-    parent_frame_id_changed_ = (frame_id != parent_frame_id_);
+    if (frame_id != parent_frame_id_) {
+        RAVELOG_DEBUG("Changed parent frame ID from '%s' to '%s'.\n",
+            parent_frame_id_.c_str(), frame_id.c_str());
+    }
+
     parent_frame_id_ = frame_id;
-    RAVELOG_INFO("Set parent frame ID to '%s'.\n", frame_id.c_str());
 }
 
 int InteractiveMarkerViewer::main(bool bShow)
@@ -209,30 +247,23 @@ void InteractiveMarkerViewer::EnvironmentSync()
     env_->GetBodies(bodies);
 
     for (KinBodyPtr const &body : bodies) {
-        OpenRAVE::UserDataPtr const raw = body->GetUserData("interactive_marker"); 
+        OpenRAVE::UserDataPtr raw = body->GetUserData("interactive_marker"); 
         auto body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
-        BOOST_ASSERT(!raw || body_marker);
 
-        bool is_frame_changed = parent_frame_id_changed_;
+        // It's possibe to get here without the body's KinBodyMarker being
+        // fully initialized due to a race condition and/or environment
+        // cloning, which doesn't call BodyCallback.
+        if (!body_marker) {
+            BodyCallback(body, 1);
 
-        // Create the new geometry if neccessary.
-        if (!raw) {
-            RAVELOG_DEBUG("Creating KinBodyMarker for '%s'.\n",
-                body->GetName().c_str()
-            );
-            body_marker = boost::make_shared<KinBodyMarker>(server_, body);
-            is_frame_changed = (parent_frame_id_ != kDefaultWorldFrameId);
-            body->SetUserData("interactive_marker", body_marker);
+            raw = body->GetUserData("interactive_marker"); 
+            body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
+            BOOST_ASSERT(body_marker);
         }
 
-        if (is_frame_changed) {
-            body_marker->set_parent_frame(parent_frame_id_);
-        }
-
+        body_marker->set_parent_frame(parent_frame_id_);
         body_marker->EnvironmentSync();
     }
-
-    parent_frame_id_changed_ = false;
 
     server_->applyChanges();
     ros::spinOnce();
@@ -586,7 +617,22 @@ bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
 
 void InteractiveMarkerViewer::RemoveKinBody(OpenRAVE::KinBodyPtr body)
 {
-    body->RemoveUserData("interactive_marker");
+}
+
+void InteractiveMarkerViewer::BodyCallback(OpenRAVE::KinBodyPtr body, int flag)
+{
+    RAVELOG_DEBUG("BodyCallback %s -> %d\n", body->GetName().c_str(), flag);
+
+    // Added.
+    if (flag == 1) {
+        auto const body_marker = boost::make_shared<KinBodyMarker>(server_, body);
+        body_marker->set_parent_frame(parent_frame_id_);
+        body->SetUserData("interactive_marker", body_marker);
+    }
+    // Removed.
+    else if (flag == 0) {
+        body->RemoveUserData("interactive_marker");
+    }
 }
 
 void InteractiveMarkerViewer::KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody,

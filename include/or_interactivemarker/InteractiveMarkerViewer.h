@@ -44,6 +44,7 @@ public:
     InteractiveMarkerViewer(OpenRAVE::EnvironmentBasePtr env,
                             std::string const &topic_name);
 
+    void set_environment(OpenRAVE::EnvironmentBasePtr const &env);
     void set_parent_frame(std::string const &frame_id);
 
     virtual void SetEnvironmentSync(bool do_update);
@@ -110,6 +111,7 @@ private:
 
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+    OpenRAVE::UserDataPtr body_callback_handle_;
 
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
     std::stringstream menu_queue_;
@@ -122,6 +124,7 @@ private:
 
     virtual void RemoveKinBody(OpenRAVE::KinBodyPtr body);
 
+    void BodyCallback(OpenRAVE::KinBodyPtr kinbody, int flag);
     void KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name);
     void LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name);
     void ManipulatorMenuCallback(OpenRAVE::RobotBase::ManipulatorPtr manipulator,
