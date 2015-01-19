@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QString>
 #include <QTimer>
 #include <OgreRenderWindow.h>
+#include <OgreHardwarePixelBuffer.h>
 #include <boost/format.hpp>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
@@ -54,6 +55,22 @@ static std::string const kOffscreenCameraName = "OffscreenCamera";
 namespace or_interactivemarker {
 
 /*
+ * Helpers
+ */
+namespace detail {
+
+OffscreenRenderRequest::OffscreenRenderRequest()
+    : done(false)
+    , width(0)
+    , height(0)
+    , depth(0)
+    , memory(NULL)
+{
+}
+
+}
+
+/*
  * Public
  */
 RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
@@ -68,11 +85,9 @@ RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
     rviz_main_panel_ = rviz_manager_->getRenderPanel();
     rviz_scene_manager_ = rviz_manager_->getSceneManager();
 
-    // Create an extra camera to use for off-screen rendering.
-    offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
-
     markers_display_ = InitializeInteractiveMarkers();
     environment_display_ = InitializeEnvironmentDisplay(env);
+    InitializeOffscreenRendering();
     InitializeLighting();
     InitializeMenus();
 
@@ -185,52 +200,101 @@ bool RVizViewer::GetCameraImage(
 
     BOOST_ASSERT(width > 0);
     BOOST_ASSERT(height > 0);
+    BOOST_ASSERT(depth >= 8 && depth % 8 == 0);
 
-    size_t const expected_size = width * height * (depth / 8);
-    if (memory.size() != expected_size) {
-        RAVELOG_ERROR(
-            "Output buffer has incorrect size: expected %d bytes, got %d bytes.",
-            expected_size, memory.size()
-        );
-        return false;
+    memory.resize(width * height * (depth / 8), 0x00);
+
+    detail::OffscreenRenderRequest request;
+    request.done = false;
+    request.width = width;
+    request.height = height;
+    request.depth = depth;
+    request.memory = &memory.front();
+    request.extrinsics = t;
+    request.intrinsics = intrinsics;
+
+    RAVELOG_DEBUG("Submitting OffscreenRenderRequest(%p).\n", &request);
+    {
+        // Make the request.
+        boost::mutex::scoped_lock lock(offscreen_mutex_);
+        offscreen_requests_.push_back(&request);
+
+        // Wait for the request to finish. At this point, the output buffer has
+        // been populated by the render thread.
+        while (!request.done) {
+            offscreen_condition_.wait(lock);
+        }
     }
-
-    SetCamera(offscreen_camera_, t, intrinsics.focal_length);
-    offscreen_camera_->setNearClipDistance(intrinsics.focal_length);
-    offscreen_camera_->setFarClipDistance(intrinsics.focal_length*10000);
-    offscreen_camera_->setAspectRatio(
-          (intrinsics.fy / static_cast<float>(height))
-        / (intrinsics.fx / static_cast<float>(width))
-    );
-    offscreen_camera_->setFOVy(
-        Ogre::Radian(2.0f * std::atan(0.5f * height / intrinsics.fy))
-    );
-
-    // TODO: Can we cutout the middle-man with an output parameter?
-    uint8_t *data = OffscreenRender(width, height, depth);
-    BOOST_ASSERT(data);
-    memory.assign(data, data + memory.size());
-    delete data;
+    RAVELOG_DEBUG("Completed OffscreenRenderRequest(%p).\n", &request);
 
     return true;
 }
 
-unsigned char *RVizViewer::OffscreenRender(int width, int height, int depth)
+void RVizViewer::ProcessOffscreenRenderRequests()
 {
-    Ogre::PixelFormat const pixel_format = GetPixelFormat(depth);
+    while (!offscreen_requests_.empty()) {
+        detail::OffscreenRenderRequest *request;
+        {
+            boost::mutex::scoped_lock lock(offscreen_mutex_);
+            request = offscreen_requests_.front();
+            offscreen_requests_.pop_front();
+        }
 
-    try {
-#if 0
-        return WaitForRenderTarget(width, height, depth, pixel_format, "RttTex");
-#else
-        throw OpenRAVE::openrave_exception(
-            "Offscreen rendering is not currently implemented.",
-            OpenRAVE::ORE_NotImplemented
+        RAVELOG_DEBUG(
+            "Processing OffscreenRenderRequest(%p): Size[%d x %d], Depth[%d].\n",
+            request, request->width, request->height, request->depth
         );
-#endif
-    } catch (std::bad_alloc const &error) {
-        RAVELOG_ERROR("Offscreen render failed: %s\n", error.what());
-        return NULL;
+
+        // Setup the camera.
+        float const &focal_length = request->intrinsics.focal_length;
+        SetCamera(offscreen_camera_, request->extrinsics, focal_length);
+
+        offscreen_camera_->setNearClipDistance(focal_length);
+        offscreen_camera_->setFarClipDistance(focal_length * 10000);
+        offscreen_camera_->setAspectRatio(
+              (request->intrinsics.fy / static_cast<float>(request->height))
+            / (request->intrinsics.fx / static_cast<float>(request->width))
+        );
+        offscreen_camera_->setFOVy(
+            Ogre::Radian(2.0f * std::atan(
+                0.5f * request->height / request->intrinsics.fy))
+        );
+
+        // TODO Temporary hack.
+        offscreen_camera_ = rviz_main_panel_->getCamera();
+
+        // Render the texture into a texture.
+        std::string const name = str(format("offscreen[%p]") % request);
+        Ogre::PixelFormat const pixel_format = GetPixelFormat(request->depth);
+
+        Ogre::TexturePtr const texture
+            = Ogre::TextureManager::getSingleton().createManual(
+                name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+                Ogre::TEX_TYPE_2D, request->width, request->height, 0,
+                pixel_format, Ogre::TU_RENDERTARGET
+        );
+        BOOST_ASSERT(!texture.isNull());
+
+        // Render into the texture.
+        Ogre::RenderTexture *render_texture
+            = texture->getBuffer()->getRenderTarget();
+        BOOST_ASSERT(render_texture);
+        render_texture->addViewport(offscreen_camera_);
+
+        // Copy the texture into the output buffer.
+        Ogre::Box const extents(0, 0,  request->width, request->height);
+        Ogre::PixelBox const pb(extents, pixel_format, request->memory);
+        render_texture->copyContentsToMemory(pb, Ogre::RenderTarget::FB_AUTO);
+
+        // Delete the texture.
+        Ogre::TextureManager::getSingleton().unload(name);
+        Ogre::TextureManager::getSingleton().remove(name);
+
+        {
+            boost::mutex::scoped_lock lock(offscreen_mutex_);
+            request->done = true;
+            offscreen_condition_.notify_all();
+        }
     }
 }
 
@@ -269,6 +333,9 @@ void RVizViewer::EnvironmentSyncSlot()
         if(do_sync_) {
             EnvironmentSync();
         }
+
+        ProcessOffscreenRenderRequests();
+
         viewer_callbacks_();
     }
 }
@@ -304,6 +371,16 @@ void RVizViewer::InitializeLighting()
 
     rviz_scene_manager_->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
     rviz_scene_manager_->setShadowColour(Ogre::ColourValue(0.3, 0.3, 0.3, 1.0));
+}
+
+void RVizViewer::InitializeOffscreenRendering()
+{
+    offscreen_panel_ = new ::rviz::RenderPanel(this);
+    offscreen_panel_->setVisible(false);
+    offscreen_main_panel_ = offscreen_panel_->getRenderWindow();
+    offscreen_main_panel_->setVisible(false);
+
+    offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
 }
 
 void RVizViewer::InitializeMenus()

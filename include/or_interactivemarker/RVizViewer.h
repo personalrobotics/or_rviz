@@ -42,6 +42,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace or_interactivemarker {
 
+namespace detail {
+
+struct OffscreenRenderRequest {
+    OffscreenRenderRequest();
+
+    bool done;
+    int width;
+    int height;
+    int depth;
+    uint8_t *memory;
+    OpenRAVE::RaveTransform<float> extrinsics;
+    OpenRAVE::SensorBase::CameraIntrinsics intrinsics;
+};
+
+}
+
 class RVizViewer : public ::rviz::VisualizationFrame,
                    public InteractiveMarkerViewer {
     Q_OBJECT
@@ -90,6 +106,12 @@ private:
     boost::signals2::connection environment_change_handle_;
     boost::signals2::connection environment_frame_handle_;
 
+    boost::mutex offscreen_mutex_;
+    boost::condition_variable offscreen_condition_;
+    std::list<detail::OffscreenRenderRequest *> offscreen_requests_;
+
+    ::rviz::RenderPanel *offscreen_panel_;
+    Ogre::RenderWindow *offscreen_main_panel_;
     Ogre::Camera *offscreen_camera_;
     boost::signals2::signal<ViewerImageCallbackFn> viewer_image_callbacks_;
 
@@ -101,14 +123,14 @@ private:
 
     void InitializeMenus();
     void InitializeLighting();
+    void InitializeOffscreenRendering();
     ::rviz::InteractiveMarkerDisplay *InitializeInteractiveMarkers();
     rviz::EnvironmentDisplay *InitializeEnvironmentDisplay(
         OpenRAVE::EnvironmentBasePtr const &env);
 
     QAction *LoadEnvironmentAction();
-
     
-    unsigned char *OffscreenRender(int width, int height, int depth);
+    void ProcessOffscreenRenderRequests();
     unsigned char *WriteCurrentView(int *width, int *height, int *depth);
 
     Ogre::PixelFormat GetPixelFormat(int depth) const;
