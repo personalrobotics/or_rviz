@@ -47,6 +47,8 @@ class RVizViewer : public ::rviz::VisualizationFrame,
     Q_OBJECT
 
 public:
+    typedef void ViewerImageCallbackFn(uint8_t const *, int, int, int);
+
     RVizViewer(OpenRAVE::EnvironmentBasePtr env,
                std::string const &topic_name, bool anonymize);
 
@@ -60,10 +62,14 @@ public:
 
     virtual std::string const &GetName() const;
     virtual void SetName(std::string const &name);
+    
+    virtual OpenRAVE::UserDataPtr RegisterViewerImageCallback(
+        OpenRAVE::ViewerBase::ViewerImageCallbackFn const &cb);
 
     virtual OpenRAVE::RaveTransform<float> GetCameraTransform() const;
     virtual OpenRAVE::geometry::RaveCameraIntrinsics<float> GetCameraIntrinsics() const;
     virtual void SetCamera(OpenRAVE::RaveTransform<float> &trans, float focalDistance = 0);
+
 
 public Q_SLOTS:
     void LoadEnvironmentSlot();
@@ -80,6 +86,7 @@ private:
     boost::signals2::connection environment_frame_handle_;
 
     Ogre::Camera *offscreen_camera_;
+    boost::signals2::signal<ViewerImageCallbackFn> viewer_image_callbacks_;
 
     QTimer *timer_;
     QMenu *menu_openrave_;
@@ -89,7 +96,11 @@ private:
 
     void InitializeMenus();
     void InitializeLighting();
-    void InitializeInteractiveMarkers();
+ 
+
+    ::rviz::InteractiveMarkerDisplay *InitializeInteractiveMarkers();
+    rviz::EnvironmentDisplay *InitializeEnvironmentDisplay(
+        OpenRAVE::EnvironmentBasePtr const &env);
 
     QAction *LoadEnvironmentAction();
 

@@ -52,6 +52,7 @@ add_library(${PROJECT_NAME}_markers SHARED
     src/markers/KinBodyMarker.cpp
     src/markers/LinkMarker.cpp
     src/markers/ManipulatorMarker.cpp
+    src/util/ScopedConnection.cpp
     src/util/or_conversions.cpp
     src/util/ros_conversions.cpp
 )

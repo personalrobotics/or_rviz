@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
 #include "util/ros_conversions.h"
+#include "util/ScopedConnection.h"
 #include "RVizViewer.h"
 
 using boost::format;
@@ -66,23 +67,12 @@ RVizViewer::RVizViewer(OpenRAVE::EnvironmentBasePtr env,
     rviz_main_panel_ = rviz_manager_->getRenderPanel();
     rviz_scene_manager_ = rviz_manager_->getSceneManager();
 
-    environment_display_ = dynamic_cast<rviz::EnvironmentDisplay *>(
-        rviz_manager_->createDisplay("or_interactivemarker::rviz::EnvironmentDisplay",
-                                     "OpenRAVE Environment", true)
-    );
-    environment_display_->set_environment(env);
-    environment_frame_handle_
-        = environment_display_->RegisterFrameChangeCallback(
-            boost::bind(&RVizViewer::set_parent_frame, this, _1));
-    environment_change_handle_
-        = environment_display_->RegisterEnvironmentChangeCallback(
-            boost::bind(&RVizViewer::set_environment, this, _1));
-
     // Create an extra camera to use for off-screen rendering.
     offscreen_camera_ = rviz_scene_manager_->createCamera(kOffscreenCameraName);
 
+    markers_display_ = InitializeInteractiveMarkers();
+    environment_display_ = InitializeEnvironmentDisplay(env);
     InitializeLighting();
-    InitializeInteractiveMarkers();
     InitializeMenus();
 
     installEventFilter(this);
@@ -138,6 +128,13 @@ std::string const &RVizViewer::GetName() const
 void RVizViewer::SetName(std::string const &name)
 {
     setWindowTitle(QString::fromStdString(name));
+}
+
+OpenRAVE::UserDataPtr RVizViewer::RegisterViewerImageCallback(
+        OpenRAVE::ViewerBase::ViewerImageCallbackFn const &cb)
+{
+    boost::signals2::connection const con = viewer_image_callbacks_.connect(cb);
+    return boost::make_shared<util::ScopedConnection>(con);
 }
 
 void RVizViewer::SetCamera(OpenRAVE::RaveTransform<float> &trans,
@@ -237,15 +234,37 @@ void RVizViewer::InitializeMenus()
     menuBar()->addMenu(menu_openrave_);
 }
 
-void RVizViewer::InitializeInteractiveMarkers()
+::rviz::InteractiveMarkerDisplay *RVizViewer::InitializeInteractiveMarkers()
 {
-    markers_display_ = dynamic_cast<::rviz::InteractiveMarkerDisplay *>(
+    auto *const display = dynamic_cast<::rviz::InteractiveMarkerDisplay *>(
         rviz_manager_->createDisplay("rviz/InteractiveMarkers",
                                      "OpenRAVE Markers", true)
     );
 
     std::string const update_topic = str(format("%s/update") % topic_name_);
-    markers_display_->setTopic(QString::fromStdString(update_topic), "");
+    display->setTopic(QString::fromStdString(update_topic), "");
+
+    return display;
+}
+
+rviz::EnvironmentDisplay *RVizViewer::InitializeEnvironmentDisplay(
+    OpenRAVE::EnvironmentBasePtr const &env)
+{
+    auto *const display = dynamic_cast<rviz::EnvironmentDisplay *>(
+        rviz_manager_->createDisplay(
+            "or_interactivemarker::rviz::EnvironmentDisplay",
+            "OpenRAVE Environment", true)
+    );
+
+    display->set_environment(env);
+
+    environment_frame_handle_ = display->RegisterFrameChangeCallback(
+            boost::bind(&RVizViewer::set_parent_frame, this, _1));
+    environment_change_handle_
+        = display->RegisterEnvironmentChangeCallback(
+            boost::bind(&RVizViewer::set_environment, this, _1));
+
+    return display;
 }
 
 QAction *RVizViewer::LoadEnvironmentAction()

@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <interactive_markers/interactive_marker_server.h>
+#include "util/ScopedConnection.h"
 #include "util/or_conversions.h"
 #include "InteractiveMarkerViewer.h"
 
@@ -55,24 +56,6 @@ static double const kWidthScaleFactor = 100;
 namespace or_interactivemarker {
 
 namespace detail {
-
-/*
- * ScopedConnection
- */
-class ScopedConnection : public OpenRAVE::UserData {
-public:
-    ScopedConnection(boost::signals2::connection const &connection)
-        : scoped_connection_(connection)
-    {
-    }
-
-    virtual ~ScopedConnection()
-    {
-    }
-
-private:
-    boost::signals2::scoped_connection scoped_connection_;
-};
 
 static std::string GetRemainingContent(std::istream &stream, bool trim = false)
 {
@@ -274,19 +257,19 @@ void InteractiveMarkerViewer::SetEnvironmentSync(bool do_update)
     do_sync_ = do_update;
 }
 
-
 OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterItemSelectionCallback(
     OpenRAVE::ViewerBase::ItemSelectionCallbackFn const &fncallback)
 {
     boost::signals2::connection const con = selection_callbacks_.connect(fncallback);
-    return boost::make_shared<detail::ScopedConnection>(con);
+    return boost::make_shared<util::ScopedConnection>(con);
+    return OpenRAVE::UserDataPtr();
 }
 
 OpenRAVE::UserDataPtr InteractiveMarkerViewer::RegisterViewerThreadCallback(
     OpenRAVE::ViewerBase::ViewerThreadCallbackFn const &fncallback)
 {
     boost::signals2::connection const con = viewer_callbacks_.connect(fncallback);
-    return boost::make_shared<detail::ScopedConnection>(con);
+    return boost::make_shared<util::ScopedConnection>(con);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::plot3(
