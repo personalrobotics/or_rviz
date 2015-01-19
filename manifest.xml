@@ -1,10 +1,11 @@
 <package>
     <description brief="or_interactivemarker">
+    or_interactivemarker is an OpenRAVE plugin that renders content to a ROS Interactive Marker topic.
     </description>
     <author>Michael Koval</author>
     <license>BSD</license>
     <review status="unreviewed" notes=""/>
-    <url>http://ros.org/wiki/or_interactivemarker</url>
+    <url>https://github.com/personalrobotics/or_interactivemarker</url>
     <depend package="visualization_msgs"/>
     <depend package="std_msgs"/>
     <depend package="interactive_markers"/>
