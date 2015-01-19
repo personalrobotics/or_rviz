@@ -1,6 +1,7 @@
 <package>
     <description brief="or_interactivemarker">
-    or_interactivemarker is an OpenRAVE plugin that renders content to a ROS Interactive Marker topic.
+        OpenRAVE viewer plugin that publishes the environment as InteractiveMarkers
+        that can be visualized in RViz.
     </description>
     <author>Michael Koval</author>
     <license>BSD</license>
