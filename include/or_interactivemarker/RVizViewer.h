@@ -55,6 +55,8 @@ public:
     int main(bool bShow);
     void quitmainloop();
 
+    virtual bool eventFilter(QObject *o, QEvent *e);
+
     virtual void EnvironmentSync();
 
     virtual void SetSize(int w, int h);
@@ -96,13 +98,13 @@ private:
 
     void InitializeMenus();
     void InitializeLighting();
- 
-
     ::rviz::InteractiveMarkerDisplay *InitializeInteractiveMarkers();
     rviz::EnvironmentDisplay *InitializeEnvironmentDisplay(
         OpenRAVE::EnvironmentBasePtr const &env);
 
     QAction *LoadEnvironmentAction();
+
+    unsigned char *WriteCurrentView(int *width, int *height, int *depth);
 
     std::string GenerateTopicName(std::string const &base_name, bool anonymize) const;
     virtual void SetCamera(Ogre::Camera *camera, OpenRAVE::RaveTransform<float> &trans,

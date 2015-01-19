@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMenuBar>
 #include <QString>
 #include <QTimer>
+#include <OgreRenderWindow.h>
 #include <boost/format.hpp>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
@@ -169,6 +170,21 @@ OpenRAVE::geometry::RaveCameraIntrinsics<float> RVizViewer::GetCameraIntrinsics(
     return intrinsics;
 }
 
+bool RVizViewer::eventFilter(QObject *o, QEvent *e)
+{
+    bool result = ::rviz::VisualizationFrame::eventFilter(o, e);
+
+    if (e->type() == QEvent::Paint) {
+        if (!viewer_image_callbacks_.empty()) {
+            int width, height, bytes_per_pixel;
+            unsigned char *data = WriteCurrentView(&width, &height,
+                                                   &bytes_per_pixel);
+            viewer_image_callbacks_(data, width, height, bytes_per_pixel);
+        }
+    }
+
+    return result;
+}
 
 /*
  * Slots
@@ -272,6 +288,28 @@ QAction *RVizViewer::LoadEnvironmentAction()
     QAction* toReturn = new QAction("Load", this);
     connect(toReturn, SIGNAL(triggered(bool)), this, SLOT(LoadEnvironmentSlot()));
     return toReturn;
+}
+
+unsigned char *RVizViewer::WriteCurrentView(int *width, int *height, int *depth)
+{
+    BOOST_ASSERT(width && height && depth);
+
+    int left, top;
+    render_panel_->getViewport()->getActualDimensions(left, top, *width, *height);
+
+    Ogre::PixelFormat format = Ogre::PF_BYTE_RGBA;
+    int outWidth = *width;
+    int outHeight = *height;
+    *depth = Ogre::PixelUtil::getNumElemBytes(format);
+
+    unsigned char *data = new unsigned char[outWidth * outHeight * *depth];
+    Ogre::Box extents(left, top, left + *width, top + *height);
+    Ogre::PixelBox pb(extents, format, data);
+
+    render_panel_->getRenderWindow()->copyContentsToMemory(
+        pb, Ogre::RenderTarget::FB_AUTO);
+
+    return data;
 }
 
 std::string RVizViewer::GenerateTopicName(std::string const &base_name,
