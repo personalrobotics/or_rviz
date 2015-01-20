@@ -274,7 +274,8 @@ void KinBodyMarker::EnvironmentSync()
     // Update the KinBody's marker.
     if (has_pose_controls_) {
         OpenRAVE::Transform const kinbody_pose = kinbody->GetTransform();
-        server_->setPose(interactive_marker_->name, toROSPose(kinbody_pose));
+        server_->setPose(interactive_marker_->name, toROSPose(kinbody_pose),
+                         interactive_marker_->header);
     }
 
     // Update links. This includes the geometry of the KinBody.

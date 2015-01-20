@@ -131,7 +131,8 @@ LinkPtr LinkMarker::link() const
 
 void LinkMarker::set_pose(OpenRAVE::Transform const &pose) const
 {
-    server_->setPose(interactive_marker_->name, toROSPose(pose));
+    server_->setPose(interactive_marker_->name, toROSPose(pose),
+                     interactive_marker_->header);
 }
 
 void LinkMarker::clear_color()
@@ -189,7 +190,6 @@ void LinkMarker::set_parent_frame(std::string const &frame_id)
     if (interactive_marker_->header.frame_id != frame_id) {
         interactive_marker_->header.frame_id = frame_id;
         force_update_ = true;
-        RAVELOG_INFO("Changed frame ID to: %s\n", frame_id.c_str());
     }
 }
 
@@ -201,13 +201,17 @@ void LinkMarker::SwitchGeometryGroup(std::string const &group)
 
 bool LinkMarker::EnvironmentSync()
 {
+    LinkPtr const link = this->link();
+    bool is_changed = force_update_;
+
     // Re-create the geometry.
-    if (force_update_) {
+    if (is_changed) {
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
+
     force_update_ = false;
-    return force_update_;
+    return is_changed;
 }
 
 void LinkMarker::Invalidate()

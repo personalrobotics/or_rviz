@@ -43,7 +43,8 @@ void InteractiveMarkerGraphHandle::SetTransform(
     OpenRAVE::RaveTransform<float> const &t)
 {
     if (show_) {
-        server_->setPose(interactive_marker_->name, toROSPose<>(t));
+        server_->setPose(interactive_marker_->name, toROSPose<>(t),
+                         interactive_marker_->header);
     }
 }
 

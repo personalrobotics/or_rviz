@@ -153,7 +153,7 @@ bool JointMarker::EnvironmentSync()
     }
 
     // Update pose.
-    server_->setPose(marker_.name, toROSPose(pose()));
+    server_->setPose(marker_.name, toROSPose(pose()), marker_.header);
 
     if (!active_) {
         joint_initial_ = joint()->GetValue(0);
