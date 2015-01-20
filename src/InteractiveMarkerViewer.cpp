@@ -55,9 +55,9 @@ static double const kWidthScaleFactor = 100;
 
 namespace or_interactivemarker {
 
-namespace detail {
+namespace {
 
-static std::string GetRemainingContent(std::istream &stream, bool trim = false)
+std::string GetRemainingContent(std::istream &stream, bool trim = false)
 {
 
     std::istreambuf_iterator<char> eos;
@@ -68,56 +68,7 @@ static std::string GetRemainingContent(std::istream &stream, bool trim = false)
     return str;
 }
 
-/*
- * InteractiveMarkerGraphHandle
- */
-class InteractiveMarkerGraphHandle : public OpenRAVE::GraphHandle {
-public:
-    InteractiveMarkerGraphHandle(
-            InteractiveMarkerServerPtr const &interactive_marker_server,
-            InteractiveMarkerPtr const &interactive_marker)
-        : server_(interactive_marker_server)
-        , interactive_marker_(interactive_marker)
-        , show_(true)
-    {
-        BOOST_ASSERT(interactive_marker_server);
-        BOOST_ASSERT(interactive_marker);
-
-        server_->insert(*interactive_marker_);
-    }
-
-    virtual ~InteractiveMarkerGraphHandle()
-    {
-        server_->erase(interactive_marker_->name);
-    }
-
-    virtual void SetTransform(OpenRAVE::RaveTransform<float> const &t)
-    {
-        // TODO: This could SEGFAULT if it is called too quickly after the
-        // marker is created.
-        if (show_) {
-            server_->setPose(interactive_marker_->name, toROSPose<>(t));
-        }
-    }
-
-    virtual void SetShow(bool show)
-    {
-        if (show && !show_) {
-            server_->insert(*interactive_marker_);
-        } else if (!show && show_) {
-            server_->erase(interactive_marker_->name);
-        }
-        show_ = show;
-    }
-
-private:
-    InteractiveMarkerServerPtr server_;
-    InteractiveMarkerPtr interactive_marker_;
-    bool show_;
-};
-
 }
-
 
 InteractiveMarkerViewer::InteractiveMarkerViewer(
         OpenRAVE::EnvironmentBasePtr env,
@@ -301,7 +252,7 @@ GraphHandlePtr InteractiveMarkerViewer::plot3(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -334,7 +285,7 @@ OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, has_alpha, &marker.colors);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -355,7 +306,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawarrow(
     marker.points.push_back(toROSPoint(p1));
     marker.points.push_back(toROSPoint(p2));
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -372,7 +323,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -389,7 +340,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -406,7 +357,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -423,7 +374,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -438,7 +389,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawbox(
     marker.pose.position = toROSPoint<>(pos);
     marker.scale = toROSVector<>(2.0 * extents);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -468,7 +419,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
 
     ConvertMesh(points, stride, indices, num_triangles, &marker.points);
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -525,7 +476,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
         }
     }
 
-    return boost::make_shared<detail::InteractiveMarkerGraphHandle>(
+    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
         server_, interactive_marker
     );
 }
@@ -557,7 +508,7 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
     }
 
     if (type == "kinbody") {
-        std::string const name = detail::GetRemainingContent(in, true);
+        std::string const name = GetRemainingContent(in, true);
         auto const callback = boost::bind(
             &InteractiveMarkerViewer::KinBodyMenuCallback,
             this, kinbody, name
@@ -576,7 +527,7 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
             );
         }
 
-        std::string const name = detail::GetRemainingContent(in, true);
+        std::string const name = GetRemainingContent(in, true);
         auto const callback = boost::bind(
             &InteractiveMarkerViewer::LinkMenuCallback,
             this, link, name
@@ -605,7 +556,7 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
             );
         }
 
-        std::string const name = detail::GetRemainingContent(in, true);
+        std::string const name = GetRemainingContent(in, true);
         auto const callback = boost::bind(
             &InteractiveMarkerViewer::ManipulatorMenuCallback,
             this, manipulator, name

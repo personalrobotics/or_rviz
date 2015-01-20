@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include "markers/KinBodyMarker.h"
+#include "util/InteractiveMarkerGraphHandle.h"
 
 namespace or_interactivemarker {
 

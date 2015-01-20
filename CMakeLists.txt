@@ -10,15 +10,21 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     visualization_msgs
 )
-include_directories(${catkin_INCLUDE_DIRS} ${OpenRAVE_INCLUDE_DIRS})
-link_directories(${catkin_LIBRARY_DIRS} ${OpenRAVE_LIBRARY_DIRS})
+include_directories(SYSTEM
+    ${catkin_INCLUDE_DIRS}
+    ${OpenRAVE_INCLUDE_DIRS}
+)
+link_directories(
+    ${catkin_LIBRARY_DIRS}
+    ${OpenRAVE_LIBRARY_DIRS}
+)
 
 find_package(Boost REQUIRED COMPONENTS thread)
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
 find_package(OGRE REQUIRED)
-include_directories(${OGRE_INCLUDE_DIRS})
+include_directories(SYSTEM ${OGRE_INCLUDE_DIRS})
 link_directories(${OGRE_LIBRARY_DIRS})
 
 find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
@@ -53,6 +59,7 @@ add_library(${PROJECT_NAME}_markers SHARED
     src/markers/LinkMarker.cpp
     src/markers/ManipulatorMarker.cpp
     src/util/ScopedConnection.cpp
+    src/util/InteractiveMarkerGraphHandle.cpp
     src/util/ogre_conversions.cpp
     src/util/ros_conversions.cpp
 )
