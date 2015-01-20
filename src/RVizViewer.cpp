@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <OgreRenderWindow.h>
 #include <OgreHardwarePixelBuffer.h>
 #include <boost/format.hpp>
+#include <rviz/display_group.h>
 #include <rviz/render_panel.h>
 #include <rviz/visualization_manager.h>
 #include "util/ogre_conversions.h"
@@ -52,6 +53,8 @@ using boost::str;
 
 static double const kRefreshRate = 30;
 static std::string const kOffscreenCameraName = "OffscreenCamera";
+static std::string const kInteractiveMarkersDisplayName = "OpenRAVE Markers";
+static std::string const kEnvironmentDisplayName = "OpenRAVE Environment";
 
 namespace or_interactivemarker {
 
@@ -67,6 +70,70 @@ OffscreenRenderRequest::OffscreenRenderRequest()
     , depth(0)
     , memory(NULL)
 {
+}
+
+template <typename T>
+T *getOrCreateDisplay(::rviz::VisualizationManager *manager,
+                      std::string const &class_name,
+                      std::string const &name,
+                      bool enabled)
+{
+    ::rviz::DisplayGroup *display_group = manager->getRootDisplayGroup();
+    BOOST_ASSERT(display_group);
+
+    // Search for an existing display with the same name.
+    ::rviz::Display *this_display = NULL;
+    for (size_t i = 0; i < display_group->numDisplays(); ++i) {
+        ::rviz::Display *display = display_group->getDisplayAt(i);
+        BOOST_ASSERT(display);
+
+        if (display->getNameStd() == name) {
+            this_display = display;
+            break;
+        }
+    }
+
+    // Update the existing display.
+    if (this_display) {
+        std::string const matched_class = this_display->getClassId().toStdString();
+
+        if (matched_class != class_name) {
+            throw OpenRAVE::openrave_exception(
+                str(format(
+                    "Unable to create RViz display '%s' of type '%s': There is"
+                    " already a display of type '%s' with this name. Try deleting"
+                    " '$HOME/.rviz/config'.\n")
+                        % name % class_name % matched_class),
+                OpenRAVE::ORE_InvalidState
+            );
+        }
+
+        this_display->setEnabled(enabled);
+        RAVELOG_DEBUG("Re-using existing RViz diplay '%s' of type '%s'.\n",
+            name.c_str(), class_name.c_str()
+        );
+    } else {
+        this_display = manager->createDisplay(
+            QString::fromStdString(class_name),
+            QString::fromStdString(name),
+            true
+        );
+        RAVELOG_DEBUG("Creating new RViz diplay '%s' of type '%s'.\n",
+            name.c_str(), class_name.c_str()
+        );
+    }
+
+    // Cast to the display subclass.
+    T *display = dynamic_cast<T *>(this_display);
+    if (!display) {
+        throw OpenRAVE::openrave_exception(
+            str(format(
+                "Existing display '%s' has incorrect type. Try deleting"
+                "'$HOME/.rviz/config'\n") % name),
+            OpenRAVE::ORE_InvalidState
+        );
+    }
+    return display;
 }
 
 }
@@ -396,10 +463,10 @@ void RVizViewer::InitializeMenus()
 
 ::rviz::InteractiveMarkerDisplay *RVizViewer::InitializeInteractiveMarkers()
 {
-    auto *const display = dynamic_cast< ::rviz::InteractiveMarkerDisplay *>(
-        rviz_manager_->createDisplay("rviz/InteractiveMarkers",
-                                     "OpenRAVE Markers", true)
-    );
+    auto *const display =
+        detail::getOrCreateDisplay< ::rviz::InteractiveMarkerDisplay>(
+            rviz_manager_, "rviz/InteractiveMarkers",
+            kInteractiveMarkersDisplayName, true);
 
     std::string const update_topic = str(format("%s/update") % topic_name_);
     display->setTopic(QString::fromStdString(update_topic), "");
@@ -410,11 +477,10 @@ void RVizViewer::InitializeMenus()
 rviz::EnvironmentDisplay *RVizViewer::InitializeEnvironmentDisplay(
     OpenRAVE::EnvironmentBasePtr const &env)
 {
-    auto *const display = dynamic_cast<rviz::EnvironmentDisplay *>(
-        rviz_manager_->createDisplay(
-            "or_interactivemarker::rviz::EnvironmentDisplay",
-            "OpenRAVE Environment", true)
-    );
+    auto *const display =
+        detail::getOrCreateDisplay<rviz::EnvironmentDisplay>(
+            rviz_manager_, "or_interactivemarker::rviz::EnvironmentDisplay",
+            kEnvironmentDisplayName, true);
 
     display->set_environment(env);
 
