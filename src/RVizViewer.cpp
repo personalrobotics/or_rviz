@@ -396,7 +396,7 @@ void RVizViewer::InitializeMenus()
 
 ::rviz::InteractiveMarkerDisplay *RVizViewer::InitializeInteractiveMarkers()
 {
-    auto *const display = dynamic_cast<::rviz::InteractiveMarkerDisplay *>(
+    auto *const display = dynamic_cast< ::rviz::InteractiveMarkerDisplay *>(
         rviz_manager_->createDisplay("rviz/InteractiveMarkers",
                                      "OpenRAVE Markers", true)
     );
