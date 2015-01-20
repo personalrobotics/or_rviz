@@ -106,6 +106,9 @@ private:
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::KinBodyWeakPtr kinbody_;
     OpenRAVE::RobotBaseWeakPtr robot_;
+    OpenRAVE::UserDataPtr handle_kinbody_;
+    OpenRAVE::UserDataPtr handle_links_;
+    OpenRAVE::UserDataPtr handle_manipulators_;
     std::string parent_frame_id_;
     bool has_pose_controls_;
     bool has_joint_controls_;
@@ -119,6 +122,10 @@ private:
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerWrapper> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, KinBodyJointMarkerPtr> joint_markers_;
     boost::unordered_map<OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr> manipulator_markers_;
+
+    void InvalidateKinBody();
+    void InvalidateLinks();
+    void InvalidateManipulators();
 
     bool HasGhostManipulator(OpenRAVE::RobotBase::ManipulatorPtr const manipulator) const;
 

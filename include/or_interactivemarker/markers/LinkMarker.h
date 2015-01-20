@@ -76,6 +76,7 @@ public:
     void SwitchGeometryGroup(std::string const &group);
 
     virtual bool EnvironmentSync();
+    void Invalidate();
     void UpdateMenu();
 
 protected:

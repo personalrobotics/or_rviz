@@ -201,6 +201,11 @@ void InteractiveMarkerViewer::EnvironmentSync()
         body_marker->EnvironmentSync();
     }
 
+    // Update any graph handles.
+    for (util::InteractiveMarkerGraphHandle *const handle : graph_handles_) {
+        handle->set_parent_frame(parent_frame_id_);
+    }
+
     server_->applyChanges();
     ros::spinOnce();
 }
@@ -252,9 +257,7 @@ GraphHandlePtr InteractiveMarkerViewer::plot3(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
@@ -285,9 +288,7 @@ OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, has_alpha, &marker.colors);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawarrow(
@@ -306,9 +307,8 @@ GraphHandlePtr InteractiveMarkerViewer::drawarrow(
     marker.points.push_back(toROSPoint(p1));
     marker.points.push_back(toROSPoint(p2));
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
@@ -323,9 +323,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
@@ -340,9 +338,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
@@ -357,9 +353,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
@@ -374,9 +368,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinelist(
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawbox(
@@ -389,9 +381,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawbox(
     marker.pose.position = toROSPoint<>(pos);
     marker.scale = toROSVector<>(2.0 * extents);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::drawplane(
@@ -419,9 +409,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
 
     ConvertMesh(points, stride, indices, num_triangles, &marker.points);
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
@@ -476,9 +464,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
         }
     }
 
-    return boost::make_shared<util::InteractiveMarkerGraphHandle>(
-        server_, interactive_marker
-    );
+    return CreateGraphHandle(interactive_marker);
 }
 
 bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
@@ -566,14 +552,16 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
     return true;
 }
 
+void InteractiveMarkerViewer::GraphHandleRemovedCallback(
+        util::InteractiveMarkerGraphHandle *handle)
+{
+    graph_handles_.erase(handle);
+}
+
 bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
                                                       std::istream &in)
 {
     out << menu_queue_.rdbuf();
-}
-
-void InteractiveMarkerViewer::RemoveKinBody(OpenRAVE::KinBodyPtr body)
-{
 }
 
 void InteractiveMarkerViewer::BodyCallback(OpenRAVE::KinBodyPtr body, int flag)
@@ -616,6 +604,18 @@ void InteractiveMarkerViewer::ManipulatorMenuCallback(
     menu_queue_ << "manipulator " << manipulator->GetRobot()->GetName()
                 << " " << manipulator->GetName()
                 << " " << name << '\n';
+}
+
+util::InteractiveMarkerGraphHandlePtr InteractiveMarkerViewer::CreateGraphHandle(
+    visualization_msgs::InteractiveMarkerPtr const &interactive_marker)
+{
+    auto const handle = boost::make_shared<util::InteractiveMarkerGraphHandle>(
+        server_, interactive_marker,
+        boost::bind(&InteractiveMarkerViewer::GraphHandleRemovedCallback,
+                    this, _1)
+    );
+    graph_handles_.insert(handle.get());
+    return handle;
 }
 
 InteractiveMarkerPtr InteractiveMarkerViewer::CreateMarker() const

@@ -134,6 +134,22 @@ KinBodyMarker::KinBodyMarker(InteractiveMarkerServerPtr server,
     control.name = "move_y";
     control.interaction_mode = InteractiveMarkerControl::MOVE_AXIS;
     interactive_marker_->controls.push_back(control);
+
+    handle_kinbody_ = kinbody->RegisterChangeCallback(
+        OpenRAVE::KinBody::Prop_Name,
+        boost::bind(&KinBodyMarker::InvalidateKinBody, this)
+    );
+    handle_links_ = kinbody->RegisterChangeCallback(
+          OpenRAVE::KinBody::Prop_LinkDraw
+        | OpenRAVE::KinBody::Prop_LinkGeometry
+        | OpenRAVE::KinBody::Prop_LinkEnable,
+        boost::bind(&KinBodyMarker::InvalidateLinks, this)
+    );
+    handle_manipulators_ = kinbody->RegisterChangeCallback(
+          OpenRAVE::KinBody::Prop_RobotManipulatorName
+        | OpenRAVE::KinBody::Prop_RobotManipulatorSolver,
+        boost::bind(&KinBodyMarker::InvalidateManipulators, this)
+    );
 }
 
 KinBodyMarker::~KinBodyMarker()
@@ -383,7 +399,6 @@ void KinBodyMarker::UpdateMenu()
     for (LinkMarkerWrapper &marker_wrapper : link_markers_ | map_values) {
         UpdateMenu(marker_wrapper);
         marker_wrapper.link_marker->UpdateMenu();
-        // TODO: How can the link notify us that our menu changed?
     }
 }
 
@@ -545,6 +560,25 @@ void KinBodyMarker::PoseCallback(InteractiveMarkerFeedbackConstPtr const &feedba
         OpenRAVE::Transform const pose = toORPose<dReal>(feedback->pose);
         kinbody->SetTransform(pose);
     }
+}
+
+void KinBodyMarker::InvalidateKinBody()
+{
+    // We don't currently need to do anything when the KinBody's name changes.
+}
+
+void KinBodyMarker::InvalidateLinks()
+{
+    for (LinkMarkerWrapper const &link_wrapper : link_markers_ | map_values) {
+        link_wrapper.link_marker->Invalidate();
+    }
+}
+
+void KinBodyMarker::InvalidateManipulators()
+{
+    // The IK solver may have changed, so we have to completely re-construct
+    // the manipulator markers.
+    manipulator_markers_.clear();
 }
 
 bool KinBodyMarker::HasGhostManipulator(ManipulatorPtr const manipulator) const

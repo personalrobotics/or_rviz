@@ -186,8 +186,11 @@ std::vector<std::string> LinkMarker::group_names() const
 
 void LinkMarker::set_parent_frame(std::string const &frame_id)
 {
-    interactive_marker_->header.frame_id = frame_id;
-    force_update_ = true;
+    if (interactive_marker_->header.frame_id != frame_id) {
+        interactive_marker_->header.frame_id = frame_id;
+        force_update_ = true;
+        RAVELOG_INFO("Changed frame ID to: %s\n", frame_id.c_str());
+    }
 }
 
 void LinkMarker::SwitchGeometryGroup(std::string const &group)
@@ -198,38 +201,18 @@ void LinkMarker::SwitchGeometryGroup(std::string const &group)
 
 bool LinkMarker::EnvironmentSync()
 {
-    LinkPtr const link = this->link();
-    bool is_changed = force_update_;
-
-    // Check if we need to re-create the marker to propagate changes in the
-    // OpenRAVE environment.
-    for (GeometryPtr const &geometry : link->GetGeometries()) {
-        // Check if visibility changed.
-        auto const it1 = geometry_markers_.find(geometry.get());
-        bool const is_missing = it1 == geometry_markers_.end();
-        is_changed = is_changed || is_missing;
-
-        auto const it2 = visibility_map_.find(geometry.get());
-        bool const is_visible = (it2 != visibility_map_.end()) && it2->second;
-        is_changed = is_changed || (is_visible != geometry->IsVisible());
-
-        // TODO  Check if color changed.
-        // TODO: Check if the transform changed.
-        // TODO: Check if the geometry changed.
-
-        if (is_changed) {
-            break;
-        }
-    }
-
     // Re-create the geometry.
-    if (is_changed) {
+    if (force_update_) {
         CreateGeometry();
         server_->insert(*interactive_marker_);
     }
-
     force_update_ = false;
-    return is_changed;
+    return force_update_;
+}
+
+void LinkMarker::Invalidate()
+{
+    force_update_ = true;
 }
 
 void LinkMarker::CreateGeometry()

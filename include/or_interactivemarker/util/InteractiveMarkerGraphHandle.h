@@ -1,5 +1,6 @@
 #ifndef INTERACTIVEMARKERGRAPHHANDLE_H_
 #define INTERACTIVEMARKERGRAPHHANDLE_H_
+#include <boost/function.hpp>
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 
@@ -12,7 +13,8 @@ public:
 
     InteractiveMarkerGraphHandle(
         InteractiveMarkerServerPtr const &interactive_marker_server,
-        visualization_msgs::InteractiveMarkerPtr const &interactive_marker
+        visualization_msgs::InteractiveMarkerPtr const &interactive_marker,
+        boost::function<void (InteractiveMarkerGraphHandle *)> const &callback
     );
 
     virtual ~InteractiveMarkerGraphHandle();
@@ -25,8 +27,11 @@ public:
 private:
     InteractiveMarkerServerPtr server_;
     visualization_msgs::InteractiveMarkerPtr interactive_marker_;
+    boost::function<void (InteractiveMarkerGraphHandle *)> remove_callback_;
     bool show_;
 };
+
+typedef boost::shared_ptr<InteractiveMarkerGraphHandle> InteractiveMarkerGraphHandlePtr;
 
 }}
 

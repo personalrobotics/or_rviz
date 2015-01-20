@@ -119,6 +119,7 @@ private:
     OpenRAVE::EnvironmentBasePtr env_;
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     OpenRAVE::UserDataPtr body_callback_handle_;
+    boost::unordered_set<util::InteractiveMarkerGraphHandle *> graph_handles_;
 
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
     std::stringstream menu_queue_;
@@ -129,8 +130,7 @@ private:
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
 
-    virtual void RemoveKinBody(OpenRAVE::KinBodyPtr body);
-
+    void GraphHandleRemovedCallback(util::InteractiveMarkerGraphHandle *handle);
     void BodyCallback(OpenRAVE::KinBodyPtr kinbody, int flag);
     void KinBodyMenuCallback(OpenRAVE::KinBodyPtr kinbody, std::string const &name);
     void LinkMenuCallback(OpenRAVE::KinBody::LinkPtr link, std::string const &name);
@@ -138,6 +138,10 @@ private:
                                  std::string const &name);
 
     visualization_msgs::InteractiveMarkerPtr CreateMarker() const;
+    util::InteractiveMarkerGraphHandlePtr CreateGraphHandle(
+        visualization_msgs::InteractiveMarkerPtr const &marker
+    );
+
     void ConvertPoints(float const *points, int num_points, int stride,
                        std::vector<geometry_msgs::Point> *out_points) const;
     void ConvertColors(float const *colors, int num_colors, bool has_alpha,
