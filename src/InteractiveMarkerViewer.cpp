@@ -671,7 +671,7 @@ InteractiveMarkerPtr InteractiveMarkerViewer::CreateMarker() const
 {
     auto interactive_marker = boost::make_shared<InteractiveMarker>();
 
-    interactive_marker->header.frame_id = "/world"; // TODO: don't hardcode this
+    interactive_marker->header.frame_id = parent_frame_id_;
     interactive_marker->pose = toROSPose(OpenRAVE::Transform());
     interactive_marker->name = str(format("GraphHandle[%p]") % interactive_marker.get());
     interactive_marker->scale = 1.0;
