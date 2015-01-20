@@ -59,9 +59,9 @@ void EnvironmentDisplay::onInitialize()
         this, SLOT(EnvironmentChangeSlot())
     );
     property_frame_ = new ::rviz::TfFrameProperty(
-        "World Frame", kDefaultFrame, "OpenRAVE world frame",
-        this, context_->getFrameManager(), true,
-        SLOT(FrameChangeSlot())
+        "World Frame", ::rviz::TfFrameProperty::FIXED_FRAME_STRING,
+        "OpenRAVE world frame", this, context_->getFrameManager(),
+        true, SLOT(FrameChangeSlot())
     );
     property_bodies_ = new ::rviz::Property("Bodies", QVariant(), "", this);
 }
