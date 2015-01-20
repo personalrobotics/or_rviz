@@ -1,0 +1,8 @@
+<library path="lib/or_interactivemarker_rviz">
+    <class type="or_interactivemarker::rviz::EnvironmentDisplay"
+           base_class_type="rviz::Display">
+        <description>
+            Display information about an OpenRAVE environment.
+        </description>
+    </class>
+</library>
