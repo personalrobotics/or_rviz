@@ -606,9 +606,12 @@ void KinBodyMarker::GetManipulators(
         LinkPtr const base_link = manipulator->GetBase();
         LinkPtr const tip_link = manipulator->GetEndEffector();
         std::vector<LinkPtr> chain_links;
-        bool const success = robot->GetChain(
-                base_link->GetIndex(), tip_link->GetIndex(), chain_links);
-        BOOST_ASSERT(success);
+        bool const success = robot->GetChain(base_link->GetIndex(), tip_link->GetIndex(), chain_links);
+
+        if(!success)
+        {
+            continue;
+        }
 
         auto const chain_it = std::find(chain_links.begin(), chain_links.end(), link);
         if (chain_it != chain_links.end()) {

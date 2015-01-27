@@ -54,6 +54,21 @@ public:
     virtual int main(bool bShow = true);
     virtual void quitmainloop();
 
+    virtual void Reset()
+    {
+        // Unimplemented in this viewer.
+    }
+
+    virtual void RemoveKinBody(OpenRAVE::KinBodyPtr body)
+    {
+        // Unimplemented in this viewer.
+    }
+
+    virtual void SetCamera(const OpenRAVE::geometry::RaveTransform<float>& tf, float focalLength)
+    {
+        // Unimplemented in this viewer
+    }
+
     virtual OpenRAVE::UserDataPtr RegisterItemSelectionCallback(
         OpenRAVE::ViewerBase::ItemSelectionCallbackFn const &fncallback);
     virtual OpenRAVE::UserDataPtr RegisterViewerThreadCallback(
