@@ -79,6 +79,7 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     , topic_name_(topic_name)
     , server_(boost::make_shared<InteractiveMarkerServer>(topic_name))
     , parent_frame_id_(kDefaultWorldFrameId)
+    , pixels_to_meters_(0.001)
 {
     BOOST_ASSERT(env);
 
@@ -240,13 +241,13 @@ GraphHandlePtr InteractiveMarkerViewer::plot3(
 
     if (draw_style == 0) {
         marker.type = visualization_msgs::Marker::POINTS;
-        marker.scale.x = point_size;
-        marker.scale.y = point_size;
+        marker.scale.x = point_size * pixels_to_meters_;
+        marker.scale.y = point_size * pixels_to_meters_;
     } else if (draw_style == 1) {
         marker.type = visualization_msgs::Marker::SPHERE_LIST;
-        marker.scale.x = point_size;
-        marker.scale.y = point_size;
-        marker.scale.z = point_size;
+        marker.scale.x = point_size * pixels_to_meters_;
+        marker.scale.y = point_size * pixels_to_meters_;
+        marker.scale.z = point_size * pixels_to_meters_;
     } else {
         throw OpenRAVE::openrave_exception(str(
             format("Unsupported drawstyle %d; expected 0 or 1.")
@@ -269,14 +270,14 @@ OpenRAVE::GraphHandlePtr InteractiveMarkerViewer::plot3(
 
     if (draw_style == 0) {
         marker.type = visualization_msgs::Marker::POINTS;
-        marker.scale.x = point_size;
-        marker.scale.y = point_size;
+        marker.scale.x = point_size * pixels_to_meters_;
+        marker.scale.y = point_size * pixels_to_meters_;
     } else if (draw_style == 1) {
         // TODO: Does this support individual colors?
         marker.type = visualization_msgs::Marker::SPHERE_LIST;
-        marker.scale.x = point_size;
-        marker.scale.y = point_size;
-        marker.scale.z = point_size;
+        marker.scale.x = point_size * pixels_to_meters_;
+        marker.scale.y = point_size * pixels_to_meters_;
+        marker.scale.z = point_size * pixels_to_meters_;
     } else {
         throw OpenRAVE::openrave_exception(str(
             format("Unsupported drawstyle %d; expected 0 or 1.")
@@ -319,7 +320,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
     marker.type = visualization_msgs::Marker::LINE_STRIP;
     marker.color = toROSColor<>(color);
-    marker.scale.x = width;
+    marker.scale.x = width * pixels_to_meters_;
 
     ConvertPoints(points, num_points, stride, &marker.points);
 
@@ -333,7 +334,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawlinestrip(
     InteractiveMarkerPtr interactive_marker = CreateMarker();
     visualization_msgs::Marker &marker = interactive_marker->controls.front().markers.front();
     marker.type = visualization_msgs::Marker::LINE_STRIP;
-    marker.scale.x = width;
+    marker.scale.x = width * pixels_to_meters_;
 
     ConvertPoints(points, num_points, stride, &marker.points);
     ConvertColors(colors, num_points, false, &marker.colors);

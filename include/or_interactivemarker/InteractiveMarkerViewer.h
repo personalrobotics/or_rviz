@@ -142,6 +142,9 @@ private:
     bool parent_frame_id_changed_;
     std::string parent_frame_id_;
 
+    // Arbitrarily convert openrave point pixel size to meters for rendering
+    float pixels_to_meters_;
+
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
 
