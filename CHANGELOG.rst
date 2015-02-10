@@ -2,8 +2,8 @@
 Changelog for package or_interactivemarker
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.0 (2015-02-10)
+------------------
 * line/point size now corresponds to 1mm = 1 pixel
 * implemented dummy functions for pure virtuals. fixed a bug in creating manipulator markers
 * Re-use existing RViz displays, when possible.
