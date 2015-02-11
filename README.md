@@ -56,7 +56,8 @@ process as OpenRAVE. This RViz instance is automatically configured to display
 the OpenRAVE environment and supports the full range of methods exposed by the
 `ViewerBase` interface. Additionally, the `RViz` viewer allows you to interact
 with the OpenRAVE environment through a custom RViz display plugin; e.g. to
-change which OpenRAVE environment is being displayed.
+change which OpenRAVE environment is being displayed, and to
+load additional OpenRAVE environments and objects.
 
 Once an OpenRAVE environment `env` is created, you can attach an in-process
 viewer to it using the following command:
@@ -83,9 +84,12 @@ design of `librviz`.
 
 The following methods are implemented, but have not yet been fully tested:
 
-- `SetCamera`, `GetCameraTransform`, and `GetCameraIntrinsics`
+- `GetCameraTransform`, and `GetCameraIntrinsics`
 - `GetCameraImage` and `RegisterViewerImageCallback`
- 
+
+The following functions are unimplemented:
+
+- `SetCamera` (due to an internal limitation of `librviz`)
 
 ## License ##
 
