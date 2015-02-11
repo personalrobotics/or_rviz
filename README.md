@@ -12,9 +12,7 @@ or_interactivemarker provides two OpenRAVE viewers that publish an OpenRAVE
 environment as
 [interactive markers](http://wiki.ros.org/interactive_markers)
 to be visualized in
-[RViz](http://wiki.ros.org/rviz). The two viewers are:
-
-See below for more information.
+[RViz](http://wiki.ros.org/rviz). See below for more information.
 
 
 ## Usage: Out-of-Process Viewer 
