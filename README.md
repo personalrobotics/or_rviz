@@ -1,21 +1,26 @@
-# or_interactivemarker
-**Note:** The version of [interactive_markers](http://wiki.ros.org/interactive_markers)
-shipped with versions of ROS before indigo (e.g. groovy and hydro) have a
-[known issue](https://github.com/ros-visualization/interactive_markers/issues/18)
-that will cause OpenRAVE to SEGFAULT when the viewer is created. This issue is fixed
-[in a pull request](https://github.com/ros-visualization/interactive_markers/pull/19),
-but has not propagated to the official ROS Debian packages. **If you are using
-ROS Groovy or Hydro, you must checkout and build the `indigo-devel` branch of
-`interactive_markers`.**
+# or_interactivemarker #
 
-or_interactivemarker provides two OpenRAVE viewers that publish an OpenRAVE
-environment as
+**or_interactivemarker** is an OpenRAVE plugin that provides two ROS-friendly OpenRAVE
+viewers that publish an OpenRAVE environment as
 [interactive markers](http://wiki.ros.org/interactive_markers)
 to be visualized in
 [RViz](http://wiki.ros.org/rviz). See below for more information.
 
 
-## Usage: Out-of-Process Viewer 
+## Installation ##
+
+> :warning: **Note:** The version of [interactive_markers](http://wiki.ros.org/interactive_markers)
+> shipped with versions of ROS before indigo (e.g. groovy and hydro) have a
+> [known issue](https://github.com/ros-visualization/interactive_markers/issues/18)
+> that will cause OpenRAVE to SEGFAULT when the viewer is created. This issue is fixed
+> [in a pull request](https://github.com/ros-visualization/interactive_markers/pull/19),
+> but has not propagated to the official ROS Debian packages. **If you are using
+> ROS Groovy or Hydro, you must checkout and build the `indigo-devel` branch of
+> `interactive_markers`.**
+
+**or_interactivemarker** is a ROS package that can be installed into any ROS catkin workspace.  It requires the helper package `openrave_catkin` to be automatically loaded into OpenRAVE on startup.
+
+## Usage: Out-of-Process Viewer ##
 
 The **`InteractiveMarker` viewer** publishes the environment to a specified
 topic to be visualized by an external RViz process. As a result, this viewer is
@@ -45,7 +50,7 @@ running with an out-of-process RViz instance:
 - `GetCameraImage` and `RegisterViewerImageCallback`
 
 
-## Usage: In-Process Viewer
+## Usage: In-Process Viewer ##
 The **`RViz` viewer**  uses librviz and Qt to instantiate RViz in the same
 process as OpenRAVE. This RViz instance is automatically configured to display
 the OpenRAVE environment and supports the full range of methods exposed by the
@@ -82,13 +87,13 @@ The following methods are implemented, but have not yet been fully tested:
 - `GetCameraImage` and `RegisterViewerImageCallback`
  
 
-## License
+## License ##
 
-or_interactivemarker is licensed under a BSD license. See `LICENSE` for more
+or_interactivemarker is licensed under a BSD license. See [LICENSE](LICENSE) for more
 information.
 
 
-## Contributors
+## Contributors ##
 
 or_interactivemarker is developed by the
 [Personal Robotics Lab](https://personalrobotics.ri.cmu.edu) in the [Robotics
