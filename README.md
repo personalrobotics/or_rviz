@@ -37,8 +37,10 @@ env.SetViewer('InteractiveMarker')
 
 This will publish the OpenRAVE environment `env` as interactive markers on the
 `openrave` ROS namespace. You can view these markers in RViz by opening an
-external RViz instance (e.g. `rosrun rviz rviz`) and subscribing the
-`/openrave/update` topic.
+external RViz instance (e.g. `rosrun rviz rviz`) and creating an
+`InteractiveMarkers` display component that subscribes to the
+`/openrave/update` topic. Note that **you must manually create and enable this
+display component to view the OpenRAVE environment.**
 
 Note that **a ROS core must be running** for the viewer to function.
 Additionally, the following `ViewerBase` methods are not implemented when
@@ -90,6 +92,32 @@ The following methods are implemented, but have not yet been fully tested:
 The following functions are unimplemented:
 
 - `SetCamera` (due to an internal limitation of `librviz`)
+
+
+## Frequently Asked Questions ##
+
+You may get the following error message when running a standalone RViz instance
+after using the in-process viewer:
+
+> [ERROR] PluginlibFactory: The plugin for class
+> 'or_interactivemarker::rviz::EnvironmentDisplay' failed to load.  Error:
+> Could not find library corresponding to plugin
+> or_interactivemarker::rviz::EnvironmentDisplay. Make sure the plugin
+> description XML file has the correct name of the library and that the library
+> actually exists.
+
+This occurs if save your RViz configuration (i.e. `.vcg` file) from the
+in-process `RViz` viewer, then load it in a standalone RViz process. This
+configuration contains a custom OpenRAVE `EnvironmentDisplay` component that
+can only be constructed when running in the same process as OpenRAVE. You can
+prevent this error from printing in the future by deleting the offending
+`EnvironmentDisplay` component from RViz and re-saving your configuration.
+
+We are interested in finding a more elegant workaround for this problem. Please
+[open an issue](https://github.com/personalrobotics/or_interactivemarker/issues) or
+[send us a pull request](https://github.com/personalrobotics/or_interactivemarker/compare)
+if you have any suggestions.
+
 
 ## License ##
 
