@@ -1,32 +1,96 @@
-or_interactivemarker
-====================
+# or_interactivemarker
+**Note:** The version of [interactive_markers](http://wiki.ros.org/interactive_markers)
+shipped with versions of ROS before indigo (e.g. groovy and hydro) have a
+[known issue](https://github.com/ros-visualization/interactive_markers/issues/18)
+that will cause OpenRAVE to SEGFAULT when the viewer is created. This issue is fixed
+[in a pull request](https://github.com/ros-visualization/interactive_markers/pull/19),
+but has not propagated to the official ROS Debian packages. **If you are using
+ROS Groovy or Hydro, you must checkout and build the `indigo-devel` branch of
+`interactive_markers`.**
 
-This OpenRAVE viewer plugin publishes the environment as InteractiveMarkers
-that can be visualized in RViz.
+or_interactivemarker provides two OpenRAVE viewers that publish an OpenRAVE
+environment as
+[interactive markers](http://wiki.ros.org/interactive_markers)
+to be visualized in
+[RViz](http://wiki.ros.org/rviz). The two viewers are:
 
-## Usage ##
+See below for more information.
 
-After an OpenRAVE environment is initialized and a roscore is running, set the 
-environment to use `or_interactivemarker` as a viewer using the following command:
+
+## Usage: Out-of-Process Viewer 
+
+The **`InteractiveMarker` viewer** publishes the environment to a specified
+topic to be visualized by an external RViz process. As a result, this viewer is
+extremely lightweight and adds negligibly to the OpenRVE startup time. Since
+rendering occurs in a separate process, some of methods exposed by the OpenRAVE
+`ViewerBase` interface are not supported.
+
+Once an OpenRAVE environment `env` is created, you can attach the
+`InteractiveMarker` publisher to it using the following command:
 
 ```python
-env.SetViewer('InteractiveMarker openrave_interactivemarker')
+env.SetViewer('InteractiveMarker')
 ```
 
-The meaning of these arguments is mysterious and undocumented.  If it works correctly,
-you will now see several topics being published:
+This will publish the OpenRAVE environment `env` as interactive markers on the
+`openrave` ROS namespace. You can view these markers in RViz by opening an
+external RViz instance (e.g. `rosrun rviz rviz`) and subscribing the
+`/openrave/update` topic.
 
-```bash
-$ rostopic list
-[...]
-/openrave/feedback
-/openrave/update
-/openrave/update_full
-[...]
+Note that **a ROS core must be running** for the viewer to function.
+
+
+## Usage: In-Process Viewer
+The **`RViz` viewer**  uses librviz and Qt to instantiate RViz in the same
+process as OpenRAVE. This RViz instance is automatically configured to display
+the OpenRAVE environment and supports the full range of methods exposed by the
+`ViewerBase` interface. Additionally, the `RViz` viewer allows you to interact
+with the OpenRAVE environment through a custom RViz display plugin; e.g. to
+change which OpenRAVE environment is being displayed.
+
+Once an OpenRAVE environment `env` is created, you can attach an in-process
+viewer to it using the following command:
+
+```python
+env.SetViewer('RViz')
 ```
 
-In an RViz instance, you should now be able to visualizat an InteractiveMarker topic
-called `/openrave`.
+This will open an RViz window and automatically create two display components:
 
-*NOTE:*
-At the moment, due to a bug in the hydro branch of `interactive_marker`, in order for `or_interactivemarker` to work, you wil need to download the indigo-dev branch of `interactive_marker` and compile it from source before building `or_interactivemarker`. See [this issue](https://github.com/personalrobotics/or_interactivemarker/issues/2).
+1. An "OpenRAVE Markers" `InteractiveMarker` display that is subscribing to an
+   automatically generated topic name.
+2. An "OpenRAVE Environment" custom display with a few configuration options:
+    - Mapping between the OpenRAVE "world frame" and a TF frame (default: the
+      fixed frame in RViz)
+    - Current environment being displayed (default: environment with the lowest
+      ID when the viewer is created)
+    - List of `KinBody`s and `Robot`s in the environment
+
+Note that **a ROS core must be running** for the viewer to function. This is
+unfortunate, because both OpenRAVE and the RViz window are running in the same
+process. Unfortunately, this is a fundamental limitation inherited from the
+design of `librviz`.
+ 
+
+## License
+
+or_interactivemarker is licensed under a BSD license. See `LICENSE` for more information.
+
+
+## Contributors
+
+or_interactivemarker is developed by the
+[Personal Robotics Lab](https://personalrobotics.ri.cmu.edu) in the [Robotics
+Institute](https://www.ri.cmu.edu) at [Carnegie Mellon
+University](http://www.cmu.edu). The out-of-process `InteractiveMarker` viewer
+was originally developed by
+[Michael Koval](https://github.com/mkoval)
+and the in-process `RViz` viewer was originally developed by
+[Matt Klingensmith](https://github.com/mklingen).
+
+This is a non-exhaustive list of contributors:
+- [Michael Koval](https://github.com/mkoval)
+- [Matt Klingensmith](https://github.com/mklingen)
+- [Pras Velagapudi](https://github.com/psigen)
+- [Jen King](https://github.com/jeking04)
+
