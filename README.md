@@ -94,6 +94,40 @@ The following functions are unimplemented:
 - `SetCamera` (due to an internal limitation of `librviz`)
 
 
+## Brief Overview of Features ##
+
+or_interactivemarker publishes a separate `InteractiveMarker` for each of a
+robot's links. You can right click on any link of a robot to access the
+following functionality:
+
+- `Link`
+    - Enable/disable collision checking
+    - Enable/disable visibility
+    - View collision, render, or both types of geometry
+    - Change the active geometry group
+- `KinBody` or `Robot`
+    - Enable/disable handles to move the body's 6-DOF pose
+    - Enable/disable handles to rotate the body's joints (**Note:** only
+      revolute joints are supported)
+    - Perform any actions on `Link` to the entire body at once
+- `Manipulator`
+    - Set as the active manipulator
+    - Enable/disable a "ghost manipulator" that attempts to follow an inverse
+      kinematics target
+        - The ghost manipulator is green by default and turns red if no IK
+          solution exists for the current handle location
+        - Joint handles are attached to the ghost manipulator's free joints to
+          allow you to adjust the configuration of the manipulator in the null
+          space (**Note:** this feature has not been thoroughly tested
+        - Right click on the ghost manipulator to:
+            - Snap the robot's manipulator to the configuration of the ghost
+              manipulator
+            - Snap the ghost manipulator to the current configuration of the
+              robot's manipulator
+        - **Note:** All of this functionality is only implemented IK solvers
+          with the `Transform6D` IK parameterization type
+
+
 ## Frequently Asked Questions ##
 
 You may get the following error message when running a standalone RViz instance
