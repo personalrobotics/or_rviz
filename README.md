@@ -38,6 +38,13 @@ external RViz instance (e.g. `rosrun rviz rviz`) and subscribing the
 `/openrave/update` topic.
 
 Note that **a ROS core must be running** for the viewer to function.
+Additionally, the following `ViewerBase` methods are not implemented when
+running with an out-of-process RViz instance:
+
+- `SetBkgndColor`, `SetSize`, and `Move`
+- `GetName` and `SetName`
+- `SetCamera`, `GetCameraTransform`, and `GetCameraIntrinsics`
+- `GetCameraImage` and `RegisterViewerImageCallback`
 
 
 ## Usage: In-Process Viewer
@@ -70,11 +77,17 @@ Note that **a ROS core must be running** for the viewer to function. This is
 unfortunate, because both OpenRAVE and the RViz window are running in the same
 process. Unfortunately, this is a fundamental limitation inherited from the
 design of `librviz`.
+
+The following methods are implemented, but have not yet been fully tested:
+
+- `SetCamera`, `GetCameraTransform`, and `GetCameraIntrinsics`
+- `GetCameraImage` and `RegisterViewerImageCallback`
  
 
 ## License
 
-or_interactivemarker is licensed under a BSD license. See `LICENSE` for more information.
+or_interactivemarker is licensed under a BSD license. See `LICENSE` for more
+information.
 
 
 ## Contributors
