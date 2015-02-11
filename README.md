@@ -9,7 +9,8 @@ to be visualized in
 
 ## Installation ##
 
-> :warning: **Note:** The version of [interactive_markers](http://wiki.ros.org/interactive_markers)
+> :warning: **Note:** The version of
+> [interactive_markers](http://wiki.ros.org/interactive_markers)
 > shipped with versions of ROS before indigo (e.g. groovy and hydro) have a
 > [known issue](https://github.com/ros-visualization/interactive_markers/issues/18)
 > that will cause OpenRAVE to SEGFAULT when the viewer is created. This issue is fixed
@@ -18,7 +19,15 @@ to be visualized in
 > ROS Groovy or Hydro, you must checkout and build the `indigo-devel` branch of
 > `interactive_markers`.**
 
-**or_interactivemarker** is a ROS package that can be installed into any ROS catkin workspace.  It requires the helper package `openrave_catkin` to be automatically loaded into OpenRAVE on startup.
+**or_interactivemarker** is a ROS package that can be installed into any ROS
+Catkin workspace.  It requires the helper package
+[`openrave_catkin`](https://github.com/personalrobotics/openrave_catkin) to be
+automatically added to the `OPENRAVE_PLUGIN` path.
+
+You can try running `rosrun or_interactivemarker test.py` to test your
+installation. This script loads the `wamtest1.env.xml` environment, which is
+one of the default environments shipped with OpenRAVE, into the `RViz`
+in-process viewer.
 
 ## Usage: Out-of-Process Viewer ##
 
