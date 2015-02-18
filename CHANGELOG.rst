@@ -2,6 +2,12 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Renamed or_interactivemarker to or_rviz.
+* Added a README (`#14 <https://github.com/personalrobotics/or_interactivemarker/issues/14>`_), thanks @aaronjoh for the feedback
+* Contributors: Michael Koval, Pras Velagapudi, Matt Klingensmith, Aaron Johnson
+
 0.1.0 (2015-02-10)
 ------------------
 * line/point size now corresponds to 1mm = 1 pixel
