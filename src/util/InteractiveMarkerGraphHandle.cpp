@@ -3,7 +3,7 @@
 
 using visualization_msgs::InteractiveMarkerPtr;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 InteractiveMarkerGraphHandle::InteractiveMarkerGraphHandle(

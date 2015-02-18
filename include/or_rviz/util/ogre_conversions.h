@@ -3,7 +3,7 @@
 Copyright (c) 2015, Carnegie Mellon University
 All rights reserved.
 
-Authors: Michael Koval <mkoval@cs.cmu.edu>
+Authors: Matthew Klingensmith <mklingen@cs.cmu.edu>
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -29,26 +29,25 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
-#ifndef KINBODYJOINTMARKER_H_
-#define KINBODYJOINTMARKER_H_
-#include <openrave/openrave.h>
-#include <interactive_markers/interactive_marker_server.h>
-#include "JointMarker.h"
+#ifndef OGRE_CONVERSIONS_H_
+#define OGRE_CONVERSIONS_H_
 
-namespace or_interactivemarker {
-namespace markers {
+#include <OgrePose.h>
+#include <geometry_msgs/Pose.h>
+#include <openrave/geometry.h>
 
-class KinBodyJointMarker;
-typedef boost::shared_ptr<KinBodyJointMarker> KinBodyJointMarkerPtr;
+namespace or_rviz {
+namespace util {
 
-class KinBodyJointMarker : public JointMarker {
-public:
-    KinBodyJointMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
-                       OpenRAVE::KinBody::JointPtr joint);
-    virtual ~KinBodyJointMarker();
+template <class Scalar>
+OpenRAVE::geometry::RaveVector<Scalar> toORVector(Ogre::Vector3 const &vec);
+template <class Scalar>
+Ogre::Vector3 toOgreVector(OpenRAVE::geometry::RaveVector<Scalar> const &vec);
 
-    virtual bool EnvironmentSync();
-};
+template <class Scalar>
+OpenRAVE::geometry::RaveVector<Scalar> toORQuaternion(Ogre::Quaternion const &quat);
+template <class Scalar>
+Ogre::Quaternion toOgreQuaternion(OpenRAVE::geometry::RaveVector<Scalar> const &vec);
 
 }
 }

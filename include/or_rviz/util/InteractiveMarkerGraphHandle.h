@@ -4,7 +4,7 @@
 #include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 class InteractiveMarkerGraphHandle : public OpenRAVE::GraphHandle {

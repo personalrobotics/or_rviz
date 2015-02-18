@@ -58,7 +58,7 @@ using visualization_msgs::InteractiveMarkerControl;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 
-using namespace or_interactivemarker::util;
+using namespace or_rviz::util;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef boost::shared_ptr<OpenRAVE::TriMesh> TriMeshPtr;
@@ -66,7 +66,7 @@ typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef OpenRAVE::KinBody::Link::GeometryPtr GeometryPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 OpenRAVE::Vector const LinkMarker::kCollisionColor(0.0, 0.0, 1.0, 0.5);

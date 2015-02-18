@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <interactive_markers/menu_handler.h>
 #include <interactive_markers/interactive_marker_server.h>
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 class LinkMarker;

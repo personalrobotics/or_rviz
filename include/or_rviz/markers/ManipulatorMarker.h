@@ -29,45 +29,64 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
-#ifndef KINBODYLINKMARKER_H_
-#define KINBODYLINKMARKER_H_
+#ifndef MANIPULATORMARKER_H_
+#define MANIPULATORMARKER_H_
+#include <boost/unordered_map.hpp>
+#include <openrave/openrave.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include "LinkMarker.h"
+#include "JointMarker.h"
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
-class KinBodyLinkMarker;
-typedef boost::shared_ptr<KinBodyLinkMarker> KinBodyLinkMarkerPtr;
+class ManipulatorMarker;
+typedef boost::shared_ptr<ManipulatorMarker> ManipulatorMarkerPtr;
 
-class KinBodyLinkMarker : public LinkMarker {
+class ManipulatorMarker {
 public:
-    KinBodyLinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
-                      OpenRAVE::KinBody::LinkPtr link);
+    static OpenRAVE::Vector const kValidColor;
+    static OpenRAVE::Vector const kInvalidColor;
 
-    interactive_markers::MenuHandler &menu_handler();
+    ManipulatorMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+                      OpenRAVE::RobotBase::ManipulatorPtr manipulator);
+    virtual ~ManipulatorMarker();
 
-    virtual bool EnvironmentSync();
+    std::string id() const;
+
+    void set_parent_frame(std::string const &frame_id);
+
+    bool EnvironmentSync();
     void UpdateMenu();
 
 private:
-    typedef interactive_markers::MenuHandler MenuHandler;
+    boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+    OpenRAVE::RobotBase::ManipulatorPtr manipulator_;
 
-    bool menu_changed_;
-    std::vector<visualization_msgs::MenuEntry> menu_entries_;
-    MenuHandler menu_handler_;
-    MenuHandler::EntryHandle menu_link_;
-    MenuHandler::EntryHandle menu_visible_;
-    MenuHandler::EntryHandle menu_enabled_;
-    MenuHandler::EntryHandle menu_geom_;
-    MenuHandler::EntryHandle menu_geom_visual_;
-    MenuHandler::EntryHandle menu_geom_collision_;
-    MenuHandler::EntryHandle menu_geom_both_;
-    MenuHandler::EntryHandle menu_groups_;
-    boost::unordered_map<std::string, MenuHandler::EntryHandle> menu_groups_entries_;
+    visualization_msgs::InteractiveMarker ik_marker_;
+    visualization_msgs::InteractiveMarkerControl *ik_control_;
+    boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
+    boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> free_joint_markers_;
+
+    bool changed_pose_;
+    bool has_ik_;
+    bool force_update_;
+    OpenRAVE::Transform current_pose_;
+    std::vector<OpenRAVE::dReal> current_ik_;
+    std::vector<OpenRAVE::dReal> current_free_;
+
+    interactive_markers::MenuHandler menu_handler_;
+    interactive_markers::MenuHandler::EntryHandle menu_set_;
+    interactive_markers::MenuHandler::EntryHandle menu_reset_;
+
+    void CreateGeometry();
 
     void CreateMenu();
+    void UpdateMenu(LinkMarkerPtr link_marker);
     void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+
+    void IkFeedback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+    void InferFreeJoints(std::vector<OpenRAVE::KinBody::JointPtr> *free_joints) const;
 };
 
 }

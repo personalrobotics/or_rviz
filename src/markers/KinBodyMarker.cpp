@@ -54,7 +54,7 @@ using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 using interactive_markers::InteractiveMarkerServer;
 using interactive_markers::MenuHandler;
 
-using namespace or_interactivemarker::util;
+using namespace or_rviz::util;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
@@ -62,7 +62,7 @@ typedef OpenRAVE::RobotBase::ManipulatorPtr ManipulatorPtr;
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef MenuHandler::EntryHandle EntryHandle;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 // TODO: Move this to a helper header.

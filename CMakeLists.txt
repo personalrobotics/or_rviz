@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.4.6)
-project(or_interactivemarker)
+project(or_rviz)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 find_package(catkin REQUIRED COMPONENTS

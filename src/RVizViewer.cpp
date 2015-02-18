@@ -56,7 +56,7 @@ static std::string const kOffscreenCameraName = "OffscreenCamera";
 static std::string const kInteractiveMarkersDisplayName = "OpenRAVE Markers";
 static std::string const kEnvironmentDisplayName = "OpenRAVE Environment";
 
-namespace or_interactivemarker {
+namespace or_rviz {
 
 /*
  * Helpers
@@ -479,7 +479,7 @@ rviz::EnvironmentDisplay *RVizViewer::InitializeEnvironmentDisplay(
 {
     auto *const display =
         detail::getOrCreateDisplay<rviz::EnvironmentDisplay>(
-            rviz_manager_, "or_interactivemarker::rviz::EnvironmentDisplay",
+            rviz_manager_, "or_rviz::rviz::EnvironmentDisplay",
             kEnvironmentDisplayName, true);
 
     display->set_environment(env);

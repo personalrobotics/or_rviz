@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rviz/properties/tf_frame_property.h>
 #include <openrave/openrave.h>
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace rviz {
 
 class EnvironmentDisplay : public ::rviz::Display

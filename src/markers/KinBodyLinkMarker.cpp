@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using interactive_markers::MenuHandler;
 using visualization_msgs::InteractiveMarkerFeedbackConstPtr;
 
-using namespace or_interactivemarker::util;
+using namespace or_rviz::util;
 
 typedef OpenRAVE::KinBody::LinkPtr LinkPtr;
 typedef OpenRAVE::KinBody::LinkInfo LinkInfo;
@@ -54,7 +54,7 @@ static bool CheckStateToBool(MenuHandler::CheckState const &state)
     return state == MenuHandler::CHECKED;
 }
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 KinBodyLinkMarker::KinBodyLinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,

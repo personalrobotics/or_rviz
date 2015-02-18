@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "markers/KinBodyMarker.h"
 #include "util/InteractiveMarkerGraphHandle.h"
 
-namespace or_interactivemarker {
+namespace or_rviz {
 
 class InteractiveMarkerViewer : public OpenRAVE::ViewerBase {
 public:

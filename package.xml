@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>or_interactivemarker</name>
+  <name>or_rviz</name>
   <version>0.1.0</version>
   <description>
     OpenRAVE viewer plugin that publishes the environment as InteractiveMarkers
     that can be visualized in RViz.
   </description>
-  <url type="repository">https://github.com/mkoval/or_interactivemarker</url>
+  <url type="website">https://github.com/mkoval/or_rviz</url>
+  <url type="repository">https://github.com/mkoval/or_rviz.git</url>
+  <url type="bugtracker">https://github.com/mkoval/or_rviz/issues</url>
   <maintainer email="mkoval@cs.cmu.edu">Michael Koval</maintainer>
   <author email="mkoval@cs.cmu.edu">Michael Koval</author>
   <author email="mklingen@cs.cmu.edu">Matthew Klingensmith</author>
