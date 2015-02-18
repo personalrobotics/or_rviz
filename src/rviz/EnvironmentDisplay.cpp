@@ -41,7 +41,7 @@ using boost::lexical_cast;
 
 static QString const kDefaultFrame = "map";
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace rviz {
 
 EnvironmentDisplay::EnvironmentDisplay()
@@ -193,5 +193,4 @@ void EnvironmentDisplay::BodyCallback(OpenRAVE::KinBodyPtr body, int flag)
 
 // Tell pluginlib about this class.  It is important to do this in
 // global scope, outside our package's namespace.
-PLUGINLIB_EXPORT_CLASS(or_interactivemarker::rviz::EnvironmentDisplay,
-                       ::rviz::Display)
+PLUGINLIB_EXPORT_CLASS(or_rviz::rviz::EnvironmentDisplay, ::rviz::Display)

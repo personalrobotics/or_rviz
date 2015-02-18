@@ -48,7 +48,7 @@ using OpenRAVE::RobotBasePtr;
 using OpenRAVE::KinBody;
 using OpenRAVE::IkSolverBasePtr;
 
-using namespace or_interactivemarker::util;
+using namespace or_rviz::util;
 
 typedef OpenRAVE::RobotBase::RobotStateSaver RobotStateSaver;
 
@@ -66,7 +66,7 @@ typedef OpenRAVE::RobotBase::ManipulatorInfoConstPtr ManipulatorInfoConstPtr;
 typedef OpenRAVE::RobotBase::AttachedSensorInfo AttachedSensorInfo;
 typedef OpenRAVE::RobotBase::AttachedSensorInfoConstPtr AttachedSensorInfoConstPtr;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 OpenRAVE::Vector const ManipulatorMarker::kValidColor(0, 1, 0, 0.4);

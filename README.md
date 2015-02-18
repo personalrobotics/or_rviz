@@ -1,6 +1,6 @@
-# or_interactivemarker #
+# or_rviz #
 
-**or_interactivemarker** is an OpenRAVE plugin that provides two ROS-friendly OpenRAVE
+**or_rviz** is an OpenRAVE plugin that provides two ROS-friendly OpenRAVE
 viewers that publish an OpenRAVE environment as
 [interactive markers](http://wiki.ros.org/interactive_markers)
 to be visualized in
@@ -19,12 +19,12 @@ to be visualized in
 > ROS Groovy or Hydro, you must checkout and build the `indigo-devel` branch of
 > `interactive_markers`.**
 
-**or_interactivemarker** is a ROS package that can be installed into any ROS
+**or_rviz** is a ROS package that can be installed into any ROS
 Catkin workspace.  It requires the helper package
 [`openrave_catkin`](https://github.com/personalrobotics/openrave_catkin) to be
 automatically added to the `OPENRAVE_PLUGIN` path.
 
-You can try running `rosrun or_interactivemarker test.py` to test your
+You can try running `rosrun or_rviz test.py` to test your
 installation. This script loads the `wamtest1.env.xml` environment, which is
 one of the default environments shipped with OpenRAVE, into the `RViz`
 in-process viewer.
@@ -105,7 +105,7 @@ The following functions are unimplemented:
 
 ## Brief Overview of Features ##
 
-or_interactivemarker publishes a separate `InteractiveMarker` for each of a
+or_rviz publishes a separate `InteractiveMarker` for each of a
 robot's links. You can right click on any link of a robot to access the
 following functionality:
 
@@ -143,9 +143,9 @@ You may get the following error message when running a standalone RViz instance
 after using the in-process viewer:
 
 > [ERROR] PluginlibFactory: The plugin for class
-> 'or_interactivemarker::rviz::EnvironmentDisplay' failed to load.  Error:
+> 'or_rviz::rviz::EnvironmentDisplay' failed to load.  Error:
 > Could not find library corresponding to plugin
-> or_interactivemarker::rviz::EnvironmentDisplay. Make sure the plugin
+> or_rviz::rviz::EnvironmentDisplay. Make sure the plugin
 > description XML file has the correct name of the library and that the library
 > actually exists.
 
@@ -157,20 +157,20 @@ prevent this error from printing in the future by deleting the offending
 `EnvironmentDisplay` component from RViz and re-saving your configuration.
 
 We are interested in finding a more elegant workaround for this problem. Please
-[open an issue](https://github.com/personalrobotics/or_interactivemarker/issues) or
-[send us a pull request](https://github.com/personalrobotics/or_interactivemarker/compare)
+[open an issue](https://github.com/personalrobotics/or_rviz/issues) or
+[send us a pull request](https://github.com/personalrobotics/or_rviz/compare)
 if you have any suggestions.
 
 
 ## License ##
 
-or_interactivemarker is licensed under a BSD license. See [LICENSE](LICENSE) for more
+or_rviz is licensed under a BSD license. See [LICENSE](LICENSE) for more
 information.
 
 
 ## Contributors ##
 
-or_interactivemarker is developed by the
+or_rviz is developed by the
 [Personal Robotics Lab](https://personalrobotics.ri.cmu.edu) in the [Robotics
 Institute](https://www.ri.cmu.edu) at [Carnegie Mellon
 University](http://www.cmu.edu). The out-of-process `InteractiveMarker` viewer

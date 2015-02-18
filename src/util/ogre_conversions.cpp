@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using OpenRAVE::geometry::RaveVector;
 using OpenRAVE::geometry::RaveTransform;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 template <class Scalar>

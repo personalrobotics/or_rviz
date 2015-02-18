@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rviz/EnvironmentDisplay.h"
 #include "InteractiveMarkerViewer.h"
 
-namespace or_interactivemarker {
+namespace or_rviz {
 
 namespace detail {
 

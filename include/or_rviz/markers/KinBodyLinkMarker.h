@@ -29,39 +29,46 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
-#ifndef ROS_CONVERSIONS_H_
-#define ROS_CONVERSIONS_H_
-#include <std_msgs/ColorRGBA.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Vector3.h>
-#include <openrave/openrave.h>
+#ifndef KINBODYLINKMARKER_H_
+#define KINBODYLINKMARKER_H_
+#include <interactive_markers/interactive_marker_server.h>
+#include "LinkMarker.h"
 
-namespace or_interactivemarker {
-namespace util {
+namespace or_rviz {
+namespace markers {
 
-extern std::string const kDefaultWorldFrameId;
+class KinBodyLinkMarker;
+typedef boost::shared_ptr<KinBodyLinkMarker> KinBodyLinkMarkerPtr;
 
-// OpenRAVE to ROS
-template <class Scalar>
-std_msgs::ColorRGBA toROSColor(OpenRAVE::RaveVector<Scalar> const &color);
-template <class Scalar>
-geometry_msgs::Vector3 toROSVector(OpenRAVE::RaveVector<Scalar> const &or_vector);
-template <class Scalar>
-geometry_msgs::Pose toROSPose(OpenRAVE::RaveTransform<Scalar> const &or_pose);
-template <class Scalar>
-geometry_msgs::Point toROSPoint(OpenRAVE::RaveVector<Scalar> const &or_point);
-template <class Scalar>
-geometry_msgs::Quaternion toROSQuaternion(OpenRAVE::RaveVector<Scalar> const &or_quat);
+class KinBodyLinkMarker : public LinkMarker {
+public:
+    KinBodyLinkMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+                      OpenRAVE::KinBody::LinkPtr link);
 
-// ROS to OpenRAVE
-template <class Scalar>
-OpenRAVE::RaveVector<Scalar> toORPoint(geometry_msgs::Point const &point);
-template <class Scalar>
-OpenRAVE::RaveVector<Scalar> toORQuaternion(geometry_msgs::Quaternion const &quat);
-template <class Scalar>
-OpenRAVE::RaveTransform<Scalar> toORPose(geometry_msgs::Pose const &pose);
+    interactive_markers::MenuHandler &menu_handler();
+
+    virtual bool EnvironmentSync();
+    void UpdateMenu();
+
+private:
+    typedef interactive_markers::MenuHandler MenuHandler;
+
+    bool menu_changed_;
+    std::vector<visualization_msgs::MenuEntry> menu_entries_;
+    MenuHandler menu_handler_;
+    MenuHandler::EntryHandle menu_link_;
+    MenuHandler::EntryHandle menu_visible_;
+    MenuHandler::EntryHandle menu_enabled_;
+    MenuHandler::EntryHandle menu_geom_;
+    MenuHandler::EntryHandle menu_geom_visual_;
+    MenuHandler::EntryHandle menu_geom_collision_;
+    MenuHandler::EntryHandle menu_geom_both_;
+    MenuHandler::EntryHandle menu_groups_;
+    boost::unordered_map<std::string, MenuHandler::EntryHandle> menu_groups_entries_;
+
+    void CreateMenu();
+    void MenuCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
+};
 
 }
 }

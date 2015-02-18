@@ -45,15 +45,15 @@ using visualization_msgs::InteractiveMarkerPtr;
 using OpenRAVE::KinBodyPtr;
 using OpenRAVE::GraphHandlePtr;
 
-using namespace or_interactivemarker::markers;
-using namespace or_interactivemarker::util;
+using namespace or_rviz::markers;
+using namespace or_rviz::util;
 
 typedef boost::shared_ptr<interactive_markers::InteractiveMarkerServer> InteractiveMarkerServerPtr;
 
 static double const kRefreshRate = 30;
 static double const kWidthScaleFactor = 100;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 
 namespace {
 

@@ -51,7 +51,7 @@ InterfaceBasePtr CreateInterfaceValidated(
         InterfaceType type, std::string const &interfacename,
         std::istream & sinput, EnvironmentBasePtr env)
 {
-    using namespace or_interactivemarker;
+    using namespace or_rviz;
 
     if (type == PT_Viewer && (interfacename == "interactivemarker"
                            || interfacename == "rviz")) {

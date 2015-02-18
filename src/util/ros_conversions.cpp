@@ -40,7 +40,7 @@ using geometry_msgs::Pose;
 using geometry_msgs::Point;
 using geometry_msgs::Quaternion;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 std::string const kDefaultWorldFrameId = "/map";

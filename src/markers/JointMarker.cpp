@@ -46,12 +46,12 @@ using OpenRAVE::dReal;
 using OpenRAVE::KinBody;
 using OpenRAVE::KinBodyPtr;
 
-using namespace or_interactivemarker::util;
+using namespace or_rviz::util;
 
 typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
 typedef OpenRAVE::KinBody::JointPtr JointPtr;
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)

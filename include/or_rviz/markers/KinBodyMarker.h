@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "KinBodyJointMarker.h"
 #include "ManipulatorMarker.h"
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace markers {
 
 class KinBodyMarker;

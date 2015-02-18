@@ -29,47 +29,28 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
-#include "markers/KinBodyJointMarker.h"
-
-using interactive_markers::InteractiveMarkerServer;
-using OpenRAVE::KinBody;
-using OpenRAVE::KinBodyPtr;
-
-typedef boost::shared_ptr<InteractiveMarkerServer> InteractiveMarkerServerPtr;
-typedef OpenRAVE::KinBody::JointPtr JointPtr;
+#ifndef KINBODYJOINTMARKER_H_
+#define KINBODYJOINTMARKER_H_
+#include <openrave/openrave.h>
+#include <interactive_markers/interactive_marker_server.h>
+#include "JointMarker.h"
 
 namespace or_rviz {
 namespace markers {
 
-KinBodyJointMarker::KinBodyJointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
-    : JointMarker(server, joint)
-{
-}
+class KinBodyJointMarker;
+typedef boost::shared_ptr<KinBodyJointMarker> KinBodyJointMarkerPtr;
 
-KinBodyJointMarker::~KinBodyJointMarker()
-{
-}
+class KinBodyJointMarker : public JointMarker {
+public:
+    KinBodyJointMarker(boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server,
+                       OpenRAVE::KinBody::JointPtr joint);
+    virtual ~KinBodyJointMarker();
 
-bool KinBodyJointMarker::EnvironmentSync()
-{
-    // Update the KinBody in the OpenRAVE environment.
-    JointPtr const joint = this->joint();
-    KinBodyPtr const kinbody = joint->GetParent();
-    std::vector<int> dof_indices;
-    std::vector<OpenRAVE::dReal> dof_values;
-    dof_indices.push_back(joint->GetJointIndex());
-    kinbody->GetDOFValues(dof_values, dof_indices);
-    BOOST_ASSERT(joint->GetDOF() == 1);
-    BOOST_ASSERT(dof_values.size() == 1);
-
-    dof_values[0] = angle();
-    kinbody->SetDOFValues(dof_values, KinBody::CLA_CheckLimitsSilent, dof_indices);
-
-    // Update the pose of the joint from OpenRAVE.
-    set_pose(GetJointPose(joint));
-
-    return JointMarker::EnvironmentSync();
-}
+    virtual bool EnvironmentSync();
+};
 
 }
 }
+
+#endif

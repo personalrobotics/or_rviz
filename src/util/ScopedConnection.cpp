@@ -1,6 +1,6 @@
 #include "util/ScopedConnection.h"
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 ScopedConnection::ScopedConnection(boost::signals2::connection const &connection)

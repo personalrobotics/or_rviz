@@ -3,7 +3,7 @@
 #include <boost/signals2.hpp>
 #include <openrave/openrave.h>
 
-namespace or_interactivemarker {
+namespace or_rviz {
 namespace util {
 
 class ScopedConnection : public OpenRAVE::UserData {
