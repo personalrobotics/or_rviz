@@ -1,6 +1,6 @@
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Changelog for package or_interactivemarker
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog for package or_rviz
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 0.1.0 (2015-02-10)
 ------------------
@@ -30,7 +30,7 @@ Changelog for package or_interactivemarker
 * Renamed plugin file.
 * Renamed viewer filenames.
 * Implemented or_rviz specific viewer functions.
-* Hack to avoid crashing with a NULL IK solver (`#3 <https://github.com/personalrobotics/or_interactivemarker/issues/3>`_)
+* Hack to avoid crashing with a NULL IK solver (`#3 <https://github.com/personalrobotics/or_rviz/issues/3>`_)
 * Set uninitialized values in JointMarker
 * Fixed the joint control snapping problem.
 * Added support for changing the parent frame.
