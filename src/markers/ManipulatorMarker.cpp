@@ -76,6 +76,7 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
                                      ManipulatorPtr manipulator)
     : server_(server)
     , manipulator_(manipulator)
+    , reset_pose_(false)
     , changed_pose_(true)
     , has_ik_(true)
     , force_update_(false)
@@ -284,6 +285,14 @@ bool ManipulatorMarker::EnvironmentSync()
             is_changed = is_changed || is_joint_changed;
         }
     }
+
+    // Snap the pose handle to end-effector.
+    if (reset_pose_) {
+        server_->setPose(ik_marker_.name, toROSPose(current_pose_));
+        reset_pose_ = false;
+        is_changed = true;
+    }
+
     return is_changed;
 }
 
@@ -350,8 +359,11 @@ void ManipulatorMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
         );
     } else if (feedback->menu_entry_id == menu_reset_) {
         robot->GetDOFValues(current_ik_, arm_indices);
+
+        reset_pose_ = true;
         current_pose_ = manipulator_->GetEndEffectorTransform();
         current_free_.clear();
+
         RAVELOG_DEBUG("Snapped to current configuration of manipulator '%s'.\n",
             manipulator->GetName().c_str()
         );
