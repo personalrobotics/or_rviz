@@ -68,6 +68,7 @@ private:
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> free_joint_markers_;
 
+    bool reset_pose_;
     bool changed_pose_;
     bool has_ik_;
     bool force_update_;
