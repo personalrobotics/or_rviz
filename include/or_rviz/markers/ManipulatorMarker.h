@@ -53,6 +53,7 @@ public:
     virtual ~ManipulatorMarker();
 
     std::string id() const;
+    bool is_hidden() const;
 
     void set_parent_frame(std::string const &frame_id);
 
@@ -72,6 +73,8 @@ private:
     bool changed_pose_;
     bool has_ik_;
     bool force_update_;
+    bool hidden_;
+
     OpenRAVE::Transform current_pose_;
     std::vector<OpenRAVE::dReal> current_ik_;
     std::vector<OpenRAVE::dReal> current_free_;
@@ -79,6 +82,7 @@ private:
     interactive_markers::MenuHandler menu_handler_;
     interactive_markers::MenuHandler::EntryHandle menu_set_;
     interactive_markers::MenuHandler::EntryHandle menu_reset_;
+    interactive_markers::MenuHandler::EntryHandle menu_hide_;
 
     void CreateGeometry();
 
