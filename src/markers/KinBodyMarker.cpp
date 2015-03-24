@@ -308,8 +308,31 @@ void KinBodyMarker::EnvironmentSync()
     }
 
     // Update manipulators.
-    for (ManipulatorMarkerPtr const &manipulator_marker : manipulator_markers_ | map_values) {
-        manipulator_marker->EnvironmentSync();
+    typedef boost::unordered_map<
+        OpenRAVE::RobotBase::Manipulator *, ManipulatorMarkerPtr
+            >::iterator ManipulatorMarkerIterator;
+
+    ManipulatorMarkerIterator it = manipulator_markers_.begin();
+    bool manipulators_changed = false;
+
+    while (it != manipulator_markers_.end()) {
+        ManipulatorMarkerPtr const &manipulator_marker = it->second;
+
+        if (!manipulator_marker->is_hidden()) {
+            manipulator_marker->EnvironmentSync();
+            ++it;
+        }
+        // The ghost manipulator was hidden, e.g. in C++ or using an internal
+        // menu option. Remove the ManipulatorMarkerPtr and force the menu
+        // to update (to un-check the IK option).
+        else {
+            it = manipulator_markers_.erase(it);
+            manipulators_changed = true;
+        }
+    }
+
+    if (manipulators_changed) {
+        UpdateMenu();
     }
 }
 
@@ -532,7 +555,6 @@ void KinBodyMarker::MenuCallback(LinkMarkerWrapper &link_wrapper,
         } else {
             manipulator_markers_.erase(manipulator.get());
         }
-
         RAVELOG_DEBUG("Toggled IK control to %d for '%s' manipulator '%s'.\n",
             ik_enabled, kinbody->GetName().c_str(),
             manipulator->GetName().c_str()
