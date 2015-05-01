@@ -2,8 +2,8 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2015-05-01)
+------------------
 * Changed cylinder radius to match InteractiveMarker spec.
 * Added a "Hide IK Controls" option to the ghost arm
 * Snap the IK handle when using "Reset DOF Values".
