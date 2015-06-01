@@ -2,8 +2,8 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2015-06-01)
+------------------
 * fix frame name /map -> map to work with update
 * Contributors: Clint Liddick
 
