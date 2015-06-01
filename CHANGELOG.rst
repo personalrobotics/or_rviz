@@ -2,6 +2,11 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix frame name /map -> map to work with update
+* Contributors: Clint Liddick
+
 1.0.0 (2015-05-01)
 ------------------
 * Changed cylinder radius to match InteractiveMarker spec.
