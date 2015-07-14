@@ -35,7 +35,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/unordered_set.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+    #include <openrave/openrave.h>
+#endif
 #include "KinBodyLinkMarker.h"
 #include "KinBodyJointMarker.h"
 #include "ManipulatorMarker.h"

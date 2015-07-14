@@ -1,7 +1,11 @@
 #ifndef SCOPEDCONNECTION_H_
 #define SCOPEDCONNECTION_H_
 #include <boost/signals2.hpp>
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+    #include <openrave/openrave.h>
+#endif
 
 namespace or_rviz {
 namespace util {

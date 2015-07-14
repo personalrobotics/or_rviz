@@ -32,8 +32,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef KINBODYVISUAL_H_
 #define KINBODYVISUAL_H_
 
-#include <openrave/openrave.h>
-#include <openrave/kinbody.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+    #include <openrave/openrave.h>
+    #include <openrave/kinbody.h>
+#endif
 #include <vector>
 #include <rviz/properties/property.h>
 #include <rviz/properties/bool_property.h>

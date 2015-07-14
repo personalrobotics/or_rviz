@@ -32,7 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MANIPULATORMARKER_H_
 #define MANIPULATORMARKER_H_
 #include <boost/unordered_map.hpp>
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+    #include <openrave/openrave.h>
+#endif
 #include <interactive_markers/interactive_marker_server.h>
 #include "LinkMarker.h"
 #include "JointMarker.h"
