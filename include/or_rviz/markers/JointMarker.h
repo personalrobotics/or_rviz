@@ -31,7 +31,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *************************************************************************/
 #ifndef JOINTMARKER_H_
 #define JOINTMARKER_H_
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+# include <openrave/openrave.h>
+#endif
 #include <interactive_markers/interactive_marker_server.h>
 
 namespace or_rviz {

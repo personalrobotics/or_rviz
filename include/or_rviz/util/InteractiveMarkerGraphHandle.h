@@ -1,7 +1,11 @@
 #ifndef INTERACTIVEMARKERGRAPHHANDLE_H_
 #define INTERACTIVEMARKERGRAPHHANDLE_H_
 #include <boost/function.hpp>
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+# include <openrave/openrave.h>
+#endif
 #include <interactive_markers/interactive_marker_server.h>
 
 namespace or_rviz {

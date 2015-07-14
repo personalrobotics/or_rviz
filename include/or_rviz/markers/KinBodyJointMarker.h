@@ -31,7 +31,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *************************************************************************/
 #ifndef KINBODYJOINTMARKER_H_
 #define KINBODYJOINTMARKER_H_
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+# include <openrave/openrave.h>
+#endif
 #include <interactive_markers/interactive_marker_server.h>
 #include "JointMarker.h"
 
