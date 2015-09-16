@@ -76,6 +76,8 @@ ManipulatorMarker::ManipulatorMarker(InteractiveMarkerServerPtr server,
                                      ManipulatorPtr manipulator)
     : server_(server)
     , manipulator_(manipulator)
+    , hidden_(false)
+    , reset_pose_(false)
     , changed_pose_(true)
     , has_ik_(true)
     , force_update_(false)
@@ -151,6 +153,11 @@ std::string ManipulatorMarker::id() const
 
     return str(format("Environment[%d].KinBody[%s].Manipulator[%s]")
                % environment_id % robot->GetName() % manipulator_->GetName());
+}
+
+bool ManipulatorMarker::is_hidden() const
+{
+    return hidden_;
 }
 
 void ManipulatorMarker::set_parent_frame(std::string const &frame_id)
@@ -284,6 +291,14 @@ bool ManipulatorMarker::EnvironmentSync()
             is_changed = is_changed || is_joint_changed;
         }
     }
+
+    // Snap the pose handle to end-effector.
+    if (reset_pose_) {
+        server_->setPose(ik_marker_.name, toROSPose(current_pose_));
+        reset_pose_ = false;
+        is_changed = true;
+    }
+
     return is_changed;
 }
 
@@ -323,6 +338,7 @@ void ManipulatorMarker::CreateMenu()
 
     menu_set_ = menu_handler_.insert("Set DOF Values", cb);
     menu_reset_ = menu_handler_.insert("Restore DOF Values", cb);
+    menu_hide_ = menu_handler_.insert("Hide IK Controls", cb);
 }
 
 void ManipulatorMarker::UpdateMenu()
@@ -350,9 +366,17 @@ void ManipulatorMarker::MenuCallback(InteractiveMarkerFeedbackConstPtr const &fe
         );
     } else if (feedback->menu_entry_id == menu_reset_) {
         robot->GetDOFValues(current_ik_, arm_indices);
+
+        reset_pose_ = true;
         current_pose_ = manipulator_->GetEndEffectorTransform();
         current_free_.clear();
+
         RAVELOG_DEBUG("Snapped to current configuration of manipulator '%s'.\n",
+            manipulator->GetName().c_str()
+        );
+    } else if (feedback->menu_entry_id == menu_hide_) {
+        hidden_ = true;
+        RAVELOG_DEBUG("Disabling IK controls for manipulator '%s'.\n",
             manipulator->GetName().c_str()
         );
     }

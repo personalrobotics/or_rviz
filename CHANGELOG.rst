@@ -2,8 +2,26 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2015-06-01)
+------------------
+* fix frame name /map -> map to work with update
+* Contributors: Clint Liddick
+
+1.0.0 (2015-05-01)
+------------------
+* Changed cylinder radius to match InteractiveMarker spec.
+* Added a "Hide IK Controls" option to the ghost arm
+* Snap the IK handle when using "Reset DOF Values".
+* Updated CHANGELOG.
+* Renamed package in CHANGELOG.
+* Renamed or_interactivemarker to or_rviz.
+* Update the test.py script.
+* Added more usage information
+* Added some minor doc suggestions.
+* Added a note about which methods are in-process only.
+* Fleshed out the README.
+* Contributors: Michael Koval, Pras, Pras Velagapudi, mklingen
+
 * Renamed or_interactivemarker to or_rviz.
 * Added a README (`#14 <https://github.com/personalrobotics/or_interactivemarker/issues/14>`_), thanks @aaronjoh for the feedback
 * Contributors: Michael Koval, Pras Velagapudi, Matt Klingensmith, Aaron Johnson

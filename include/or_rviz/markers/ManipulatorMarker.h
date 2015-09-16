@@ -32,7 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MANIPULATORMARKER_H_
 #define MANIPULATORMARKER_H_
 #include <boost/unordered_map.hpp>
-#include <openrave/openrave.h>
+// workaround for qt moc bug w.r.t. BOOST_JOIN macro
+// see https://bugreports.qt.io/browse/QTBUG-22829
+#ifndef Q_MOC_RUN
+    #include <openrave/openrave.h>
+#endif
 #include <interactive_markers/interactive_marker_server.h>
 #include "LinkMarker.h"
 #include "JointMarker.h"
@@ -53,6 +57,7 @@ public:
     virtual ~ManipulatorMarker();
 
     std::string id() const;
+    bool is_hidden() const;
 
     void set_parent_frame(std::string const &frame_id);
 
@@ -68,9 +73,12 @@ private:
     boost::unordered_map<OpenRAVE::KinBody::Link *, LinkMarkerPtr> link_markers_;
     boost::unordered_map<OpenRAVE::KinBody::Joint *, JointMarkerPtr> free_joint_markers_;
 
+    bool reset_pose_;
     bool changed_pose_;
     bool has_ik_;
     bool force_update_;
+    bool hidden_;
+
     OpenRAVE::Transform current_pose_;
     std::vector<OpenRAVE::dReal> current_ik_;
     std::vector<OpenRAVE::dReal> current_free_;
@@ -78,6 +86,7 @@ private:
     interactive_markers::MenuHandler menu_handler_;
     interactive_markers::MenuHandler::EntryHandle menu_set_;
     interactive_markers::MenuHandler::EntryHandle menu_reset_;
+    interactive_markers::MenuHandler::EntryHandle menu_hide_;
 
     void CreateGeometry();
 

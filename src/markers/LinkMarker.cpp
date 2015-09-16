@@ -380,8 +380,8 @@ MarkerPtr LinkMarker::CreateCollisionGeometry(GeometryPtr geometry)
         double const cylinder_radius = geometry->GetCylinderRadius();
         double const cylinder_height= geometry->GetCylinderHeight();
         marker->type = Marker::CYLINDER;
-        marker->scale.x = 0.5 * cylinder_radius;
-        marker->scale.y = 0.5 * cylinder_radius;
+        marker->scale.x = 2.0 * cylinder_radius;
+        marker->scale.y = 2.0 * cylinder_radius;
         marker->scale.z = cylinder_height;
         break;
     }
