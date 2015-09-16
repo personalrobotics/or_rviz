@@ -416,8 +416,9 @@ void RVizViewer::EnvironmentSyncSlot()
  */
 void RVizViewer::InitializeLighting()
 {
-    rviz_scene_manager_->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
-
+    rviz_scene_manager_->setShadowTechnique(Ogre::SHADOWTYPE_STENCIL_ADDITIVE);
+    Ogre::Light* mainDirectional = rviz_scene_manager_->getLight( "MainDirectional" );
+    mainDirectional->setCastShadows(false);
     Ogre::Light *light = rviz_scene_manager_->createLight("FillLight");
     light->setType(Ogre::Light::LT_DIRECTIONAL);
     light->setDiffuseColour(0.6, 0.55, 0.5);
