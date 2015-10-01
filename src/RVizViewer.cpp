@@ -482,10 +482,8 @@ rviz::EnvironmentDisplay *RVizViewer::InitializeEnvironmentDisplay(
             rviz_manager_, "or_rviz::rviz::EnvironmentDisplay",
             kEnvironmentDisplayName, true);
 
-    display->set_environment(env);
-
-    environment_frame_handle_ = display->RegisterFrameChangeCallback(
-            boost::bind(&RVizViewer::set_parent_frame, this, _1));
+    //display->set_environment(env);
+    set_parent_frame(rviz_manager_->getFixedFrame().toStdString());
     environment_change_handle_
         = display->RegisterEnvironmentChangeCallback(
             boost::bind(&RVizViewer::set_environment, this, _1));
