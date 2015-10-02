@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *************************************************************************/
 #include <QVariant>
 #include <QString>
+#include <OGRE/OgreSceneManager.h>
 #include <boost/lexical_cast.hpp>
 #include <pluginlib/class_list_macros.h>
 #include <rviz/display_context.h>
@@ -63,6 +64,13 @@ void EnvironmentDisplay::onInitialize()
         "OpenRAVE world frame", this, context_->getFrameManager(),
         true, SLOT(FrameChangeSlot())
     );
+
+    property_shadows_ = new ::rviz::BoolProperty("Enable Shadows", false, "Enable shadows", this, SLOT(LightChangeSlot()));
+    property_cameralight_ = new ::rviz::BoolProperty("Camera Light", true, "Enable Camera Light", this, SLOT(LightChangeSlot()));
+    property_keylight_ = new ::rviz::BoolProperty("Key Light", true, "Enable Key Light", this, SLOT(LightChangeSlot()));
+    property_filllight_ = new ::rviz::BoolProperty("Fill Light", true, "Enable Fill Light", this, SLOT(LightChangeSlot()));
+    property_backlight_= new ::rviz::BoolProperty("Back Light", true, "Enable Back Light", this, SLOT(LightChangeSlot()));
+
     property_bodies_ = new ::rviz::Property("Bodies", QVariant(), "", this);
 }
 
@@ -143,6 +151,27 @@ boost::signals2::connection EnvironmentDisplay::RegisterEnvironmentChangeCallbac
 void EnvironmentDisplay::FrameChangeSlot()
 {
     frame_callbacks_(property_frame_->getFrameStd());
+}
+
+void EnvironmentDisplay::LightChangeSlot()
+{
+    bool shadows = property_shadows_->getBool();
+    bool cam = property_cameralight_->getBool();
+    bool key = property_keylight_->getBool();
+    bool fill = property_filllight_->getBool();
+    bool back = property_backlight_->getBool();
+
+
+    scene_manager_->setShadowTechnique(shadows ? Ogre::SHADOWTYPE_STENCIL_ADDITIVE : Ogre::SHADOWTYPE_NONE);
+
+    Ogre::Light* mainDirectional = scene_manager_->getLight( "MainDirectional" );
+    Ogre::Light* keyLight = scene_manager_->getLight( "KeyLight" );
+    Ogre::Light* fillLight = scene_manager_->getLight( "FillLight" );
+    Ogre::Light* backLight = scene_manager_->getLight( "BackLight" );
+    mainDirectional->setVisible(cam);
+    keyLight->setVisible(key);
+    fillLight->setVisible(fill);
+    backLight->setVisible(back);
 }
 
 void EnvironmentDisplay::EnvironmentChangeSlot()

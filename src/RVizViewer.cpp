@@ -418,6 +418,9 @@ void RVizViewer::InitializeLighting()
 {
     rviz_scene_manager_->setShadowTechnique(Ogre::SHADOWTYPE_NONE);
 
+    Ogre::Light* mainDirectional = rviz_scene_manager_->getLight( "MainDirectional" );
+    mainDirectional->setCastShadows(false);
+
     Ogre::Light *light = rviz_scene_manager_->createLight("FillLight");
     light->setType(Ogre::Light::LT_DIRECTIONAL);
     light->setDiffuseColour(0.6, 0.55, 0.5);
@@ -425,14 +428,14 @@ void RVizViewer::InitializeLighting()
     light->setDirection(0.05, 0.01, -1);
     light->setCastShadows(true);
 
-    Ogre::Light *light2 = rviz_scene_manager_->createLight("Backlight");
+    Ogre::Light *light2 = rviz_scene_manager_->createLight("BackLight");
     light2->setType(Ogre::Light::LT_DIRECTIONAL);
     light2->setDiffuseColour(0.2, 0.25, 0.3);
     light2->setSpecularColour(1, 1, 1);
     light2->setDirection(-0.1, -0.1, 0.05);
     light2->setCastShadows(false);
 
-    Ogre::Light *light3 = rviz_scene_manager_->createLight("Keylight");
+    Ogre::Light *light3 = rviz_scene_manager_->createLight("KeyLight");
     light3->setType(Ogre::Light::LT_DIRECTIONAL);
     light3->setDiffuseColour(0.4, 0.4, 0.4);
     light3->setSpecularColour(1, 1, 1);

@@ -70,6 +70,7 @@ public:
 public Q_SLOTS:
     void FrameChangeSlot();
     void EnvironmentChangeSlot();
+    void LightChangeSlot();
 
 protected:
     virtual void onInitialize();
@@ -83,6 +84,11 @@ private:
     ::rviz::TfFrameProperty *property_frame_;
     ::rviz::EnumProperty *property_environment_;
     ::rviz::Property *property_bodies_;
+    ::rviz::BoolProperty *property_shadows_;
+    ::rviz::BoolProperty *property_cameralight_;
+    ::rviz::BoolProperty *property_keylight_;
+    ::rviz::BoolProperty *property_filllight_;
+    ::rviz::BoolProperty *property_backlight_;
 
     boost::signals2::signal<FrameChangeCallback> frame_callbacks_;
     boost::signals2::signal<EnvironmentChangeCallback> env_changed_callbacks_;
