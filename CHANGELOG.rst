@@ -2,6 +2,14 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Added lighting options to the in-process viewer.
+* Fixed frame initialization issues with the in-process viewer.
+* Added missing dependencies to package.xml.
+* Added incude guards as workaround for a Moc bug (`#29 <https://github.com/personalrobotics/or_rviz/issues/29>`_)
+* Contributors: Chris Dellin, Michael Koval, Matt Klingsmith 
+
 1.0.1 (2015-06-01)
 ------------------
 * fix frame name /map -> map to work with update
