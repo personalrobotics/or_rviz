@@ -2,8 +2,8 @@
 Changelog for package or_rviz
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2015-10-12)
+------------------
 * Added lighting options to the in-process viewer.
 * Fixed frame initialization issues with the in-process viewer.
 * Added missing dependencies to package.xml.
