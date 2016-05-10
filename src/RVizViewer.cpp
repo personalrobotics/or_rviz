@@ -123,17 +123,11 @@ T *getOrCreateDisplay(::rviz::VisualizationManager *manager,
         );
     }
 
-    // Cast to the display subclass.
-    T *display = dynamic_cast<T *>(this_display);
-    if (!display) {
-        throw OpenRAVE::openrave_exception(
-            str(format(
-                "Existing display '%s' has incorrect type. Try deleting"
-                "'$HOME/.rviz/config'\n") % name),
-            OpenRAVE::ORE_InvalidState
-        );
-    }
-    return display;
+    // Cast to the display subclass. Ideally, we would use a dynamic_cast here
+    // to check that the Display is of the correct type. Unfortunately, that is
+    // not possible because recent builds of RViz do not include RTTI. And,
+    // even if they did, RTTI does not work reliably between shared objects.
+    return static_cast<T *>(this_display);
 }
 
 }
