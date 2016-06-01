@@ -79,6 +79,7 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     , topic_name_(topic_name)
     , server_(boost::make_shared<InteractiveMarkerServer>(topic_name))
     , parent_frame_id_(kDefaultWorldFrameId)
+    , parent_link_(nullptr)
     , pixels_to_meters_(0.001)
 {
     BOOST_ASSERT(env);
@@ -90,6 +91,14 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
     RegisterCommand("GetMenuSelection",
         boost::bind(&InteractiveMarkerViewer::GetMenuSelectionCommand, this, _1, _2),
         "Get the name of the last menu selection."
+    );
+    RegisterCommand("SetParentFrame",
+        boost::bind(&InteractiveMarkerViewer::SetParentFrameCommand, this, _1, _2),
+        "Set the name of the ROS frame ID to use as the root transform."
+    );
+    RegisterCommand("SetParentLink",
+        boost::bind(&InteractiveMarkerViewer::SetParentLinkCommand, this, _1, _2),
+        "Set the names of the OpenRAVE kinbody and link to use as the root transform."
     );
 
     set_environment(env);
@@ -563,6 +572,47 @@ bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
                                                       std::istream &in)
 {
     out << menu_queue_.rdbuf();
+    return true;
+}
+
+bool InteractiveMarkerViewer::SetParentFrameCommand(std::ostream &out,
+                                                    std::istream &in)
+{
+    std::string frame_id;
+    in >> frame_id;
+    set_parent_frame(frame_id);
+    return true;
+}
+
+bool InteractiveMarkerViewer::SetParentLinkCommand(std::ostream &out,
+                                                   std::istream &in)
+{
+    std::string kinbody_name, link_name;
+    in >> kinbody_name >> link_name;
+
+    // Get the KinBody associated with the parent link.
+    OpenRAVE::KinBodyConstPtr kinbody = env_->GetKinBody(kinbody_name);
+    if (!kinbody) {
+        throw OpenRAVE::openrave_exception(
+            str(format("There is no KinBody named '%s' in the environment.")
+                % kinbody_name),
+            OpenRAVE::ORE_Failed
+        );
+    }
+
+    // Get the parent Link.
+    OpenRAVE::KinBody::LinkPtr const link = kinbody->GetLink(link_name);
+    if (!link) {
+        throw OpenRAVE::openrave_exception(
+            str(format("KinBody '%s' has no link '%s'.")
+                % kinbody_name % link_name),
+            OpenRAVE::ORE_Failed
+        );
+    }
+
+    // Set this as the parent link used for published messages.
+    parent_link_ = link;
+    return true;
 }
 
 void InteractiveMarkerViewer::BodyCallback(OpenRAVE::KinBodyPtr body, int flag)

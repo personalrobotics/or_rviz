@@ -143,14 +143,16 @@ private:
     boost::signals2::signal<SelectionCallbackFn> selection_callbacks_;
     std::stringstream menu_queue_;
 
-    bool parent_frame_id_changed_;
     std::string parent_frame_id_;
+    OpenRAVE::KinBody::LinkConstPtr parent_link_;
 
     // Arbitrarily convert openrave point pixel size to meters for rendering
     float pixels_to_meters_;
 
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
+    bool SetParentFrameCommand(std::ostream &out, std::istream &in);
+    bool SetParentLinkCommand(std::ostream &out, std::istream &in);
 
     void GraphHandleRemovedCallback(util::InteractiveMarkerGraphHandle *handle);
     void BodyCallback(OpenRAVE::KinBodyPtr kinbody, int flag);
