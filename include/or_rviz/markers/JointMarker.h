@@ -80,6 +80,8 @@ private:
     bool force_update_;
     bool active_;
 
+    bool is_implemented_;  // does this marker do anything?
+
     void JointCallback(visualization_msgs::InteractiveMarkerFeedbackConstPtr const &feedback);
 };
 
