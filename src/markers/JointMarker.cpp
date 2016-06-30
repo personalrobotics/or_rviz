@@ -63,6 +63,7 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     , created_(false)
     , force_update_(true)
     , active_(false)
+    , is_implemented_(false)
 {
     BOOST_ASSERT(joint);
 
@@ -77,6 +78,8 @@ JointMarker::JointMarker(InteractiveMarkerServerPtr server, JointPtr joint)
     } else if (joint->IsMimic()) {
         return;
     }
+
+    is_implemented_ = true;
 
     marker_.header.frame_id = kDefaultWorldFrameId;
     marker_.name = id();
@@ -147,7 +150,7 @@ void JointMarker::set_parent_frame(std::string const &frame_id)
 bool JointMarker::EnvironmentSync()
 {
     // Re-create the marker, if necessary.
-    if (force_update_) {
+    if (force_update_ && is_implemented_) {
         server_->insert(marker_);
         force_update_ = false;
     }
