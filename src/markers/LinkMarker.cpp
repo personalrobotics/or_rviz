@@ -417,6 +417,12 @@ void LinkMarker::TriMeshToMarker(OpenRAVE::TriMesh const &trimesh,
         marker->points.push_back(toROSPoint(p2));
         marker->points.push_back(toROSPoint(p3));
     }
+
+    if (trimesh.indices.empty())
+    {
+        geometry_msgs::Point const point = toROSPoint(OpenRAVE::Vector());
+        marker->points.resize(3, point);
+    }
 }
 
 bool LinkMarker::HasTexture(std::string const &uri) const

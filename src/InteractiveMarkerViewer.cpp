@@ -424,6 +424,7 @@ GraphHandlePtr InteractiveMarkerViewer::drawtrimesh(
     marker.scale.y = 1;
     marker.scale.z = 1;
 
+
     ConvertMesh(points, stride, indices, num_triangles, &marker.points);
 
     // TODO: Colors should be per-vertex, not per-face.
@@ -707,18 +708,28 @@ void InteractiveMarkerViewer::ConvertMesh(
 
     auto const points_raw = reinterpret_cast<uint8_t const *>(points);
 
-    out_points->resize(3 * num_triangles);
-    for (int iindex = 0; iindex < num_triangles; ++iindex) {
+    if (num_triangles == 0) {
+        out_points->resize(3);
         for (int ivertex = 0; ivertex < 3; ++ivertex) {
-            int const index_offset = 3 * iindex + ivertex;
-            float const *or_point = reinterpret_cast<float const *>(
-                points_raw + stride * indices[index_offset]
-            );
+            geometry_msgs::Point &point = (*out_points)[ivertex];
+            point.x = 0.;
+            point.y = 0.;
+            point.z = 0.;
+        }
+    } else {
+        out_points->resize(3 * num_triangles);
+        for (int iindex = 0; iindex < num_triangles; ++iindex) {
+            for (int ivertex = 0; ivertex < 3; ++ivertex) {
+                int const index_offset = 3 * iindex + ivertex;
+                float const *or_point = reinterpret_cast<float const *>(
+                    points_raw + stride * indices[index_offset]
+                );
 
-            geometry_msgs::Point &out_point = out_points->at(3 * iindex + ivertex);
-            out_point.x = or_point[0];
-            out_point.y = or_point[1];
-            out_point.z = or_point[2];
+                geometry_msgs::Point &out_point = out_points->at(3 * iindex + ivertex);
+                out_point.x = or_point[0];
+                out_point.y = or_point[1];
+                out_point.z = or_point[2];
+            }
         }
     }
 }
