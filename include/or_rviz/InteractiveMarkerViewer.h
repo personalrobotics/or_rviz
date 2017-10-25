@@ -151,6 +151,8 @@ private:
 
     bool AddMenuEntryCommand(std::ostream &out, std::istream &in);
     bool GetMenuSelectionCommand(std::ostream &out, std::istream &in);
+    bool SetFrameIdCommand(std::ostream &out, std::istream &in);
+    bool GetFrameIdCommand(std::ostream &out, std::istream &in);
 
     void GraphHandleRemovedCallback(util::InteractiveMarkerGraphHandle *handle);
     void BodyCallback(OpenRAVE::KinBodyPtr kinbody, int flag);

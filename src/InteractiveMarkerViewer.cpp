@@ -91,6 +91,14 @@ InteractiveMarkerViewer::InteractiveMarkerViewer(
         boost::bind(&InteractiveMarkerViewer::GetMenuSelectionCommand, this, _1, _2),
         "Get the name of the last menu selection."
     );
+    RegisterCommand("GetFrameId",
+        boost::bind(&InteractiveMarkerViewer::GetFrameIdCommand, this, _1, _2),
+        "Get the frame in which interactive markers are published."
+    );
+    RegisterCommand("SetFrameId",
+        boost::bind(&InteractiveMarkerViewer::SetFrameIdCommand, this, _1, _2),
+        "Set the frame in which interactive markers will be published."
+    );
 
     set_environment(env);
 }
@@ -184,7 +192,7 @@ void InteractiveMarkerViewer::EnvironmentSync()
     env_->GetBodies(bodies);
 
     for (KinBodyPtr const &body : bodies) {
-        OpenRAVE::UserDataPtr raw = body->GetUserData("interactive_marker"); 
+        OpenRAVE::UserDataPtr raw = body->GetUserData("interactive_marker");
         auto body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
 
         // It's possibe to get here without the body's KinBodyMarker being
@@ -193,7 +201,7 @@ void InteractiveMarkerViewer::EnvironmentSync()
         if (!body_marker) {
             BodyCallback(body, 1);
 
-            raw = body->GetUserData("interactive_marker"); 
+            raw = body->GetUserData("interactive_marker");
             body_marker = boost::dynamic_pointer_cast<KinBodyMarker>(raw);
             BOOST_ASSERT(body_marker);
         }
@@ -485,7 +493,7 @@ bool InteractiveMarkerViewer::AddMenuEntryCommand(std::ostream &out,
         );
     }
 
-    OpenRAVE::UserDataPtr const marker_raw = kinbody->GetUserData("interactive_marker"); 
+    OpenRAVE::UserDataPtr const marker_raw = kinbody->GetUserData("interactive_marker");
     auto const marker = boost::dynamic_pointer_cast<KinBodyMarker>(marker_raw);
     if (!marker) {
         throw OpenRAVE::openrave_exception(
@@ -564,6 +572,30 @@ bool InteractiveMarkerViewer::GetMenuSelectionCommand(std::ostream &out,
                                                       std::istream &in)
 {
     out << menu_queue_.rdbuf();
+}
+
+bool GetFrameIdCommand(std::ostream &out, std::istream &in)
+{
+    out << parent_frame_id_;
+}
+
+bool SetFrameIdCommand(std::ostream &out, std::istream &in)
+{
+    std::string new_frame_id;
+    in >> new_frame_id;
+
+    // We should not publish an empty frame ID.
+    if (new_frame_id.empty()) {
+        throw OpenRAVE::openrave_exception(
+            "The frame ID cannot be empty.",
+            OpenRAVE::ORE_Failed
+        );
+    }
+
+    // Set the frame ID used for all marker publications.
+    RAVELOG_DEBUG("Frame ID changed: '%s' -> '%s'\n",
+        parent_frame_id_.c_str(), new_frame_id);
+    set_parent_frame(new_frame_id);
 }
 
 void InteractiveMarkerViewer::BodyCallback(OpenRAVE::KinBodyPtr body, int flag)
