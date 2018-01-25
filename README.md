@@ -24,10 +24,25 @@ Catkin workspace.  It requires the helper package
 [`openrave_catkin`](https://github.com/personalrobotics/openrave_catkin) to be
 automatically added to the `OPENRAVE_PLUGIN` path.
 
-You can try running `rosrun or_rviz test.py` to test your
-installation. This script loads the `wamtest1.env.xml` environment, which is
-one of the default environments shipped with OpenRAVE, into the `RViz`
-in-process viewer.
+### Installation step-by-step
+- Download [`openrave_catkin`](https://github.com/personalrobotics/openrave_catkin) in your `catkin_ws/src`.
+- Download `or_rviz` from this repository in your `catkin_ws/src`.
+- Run `catkin_make` within your `catkin_ws` directory.
+- At the end of the make process you should get an output similar to the one below:
+```
+Linking CXX shared library /home/rafael/catkin_ws/devel/share/openrave-0.9/plugins/or_rviz_plugin.so
+[100%] Built target or_rviz_plugin
+```
+- Take the important path `/home/rafael/catkin_ws/devel/share/openrave-0.9/plugins/or_rviz_plugin.so` (note that this is an example path, your should be different) and paste it into your `~/.bashrc` file as a new line as such:
+```
+export OPENRAVE_PLUGINS=$OPENRAVE_PLUGINS:~/catkin_ws/devel/share/openrave-0.9/plugins
+```
+- Source your `bashrc` for the changes to take effect by running: `source ~/.bashrc`.
+
+## Testing that the installation was successful
+One way is to check that the `RViz` viewer appears in your OpenRAVE plugin list. Run `openrave --listplugins` and verify that `RViz` appears under `viewer` section.
+
+You can also try running `rosrun or_rviz test.py` to test your installation. This script loads the `wamtest1.env.xml` environment, which is one of the default environments shipped with OpenRAVE, into the `RViz` in-process viewer.
 
 ## Usage: Out-of-Process Viewer ##
 
